@@ -1,0 +1,65 @@
+<script setup lang="ts">
+defineProps<{
+  open: boolean;
+  pending: boolean;
+  running: boolean;
+  status: {
+    ready: boolean;
+    code: string;
+    summary: string;
+    recommendedAction: string;
+    items: Array<{
+      key?: string;
+      label?: string;
+      category?: string;
+      status?: string;
+      message?: string;
+      exists?: boolean;
+    }>;
+    canRebuild: boolean;
+  };
+}>();
+
+const emit = defineEmits<{
+  close: [];
+  rebuild: [];
+}>();
+</script>
+
+<template>
+  <Transition name="create-dialog-backdrop" appear>
+    <div v-if="open" class="dialog-backdrop" @click.self="emit('close')">
+      <section class="create-dialog settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <h2 id="settings-title">设置</h2>
+
+        <div class="settings-runtime">
+          <strong class="settings-runtime-title">WinPython 环境</strong>
+          <p class="settings-runtime-summary">{{ status.summary }}</p>
+          <p v-if="status.recommendedAction" class="settings-runtime-summary">
+            {{ status.recommendedAction }}
+          </p>
+          <ul class="settings-runtime-list">
+            <li v-for="item in status.items" :key="item.key ?? item.label" class="settings-runtime-item">
+              <span>{{ item.label }}</span>
+              <span>{{ item.message }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="create-dialog-actions">
+          <button
+            class="dialog-button"
+            type="button"
+            :disabled="pending || running || !status.canRebuild"
+            @click="emit('rebuild')"
+          >
+            {{ pending ? "重建中" : "重建 Runtime" }}
+          </button>
+          <button class="dialog-button secondary" type="button" @click="emit('close')">
+            关闭
+          </button>
+        </div>
+      </section>
+    </div>
+  </Transition>
+</template>

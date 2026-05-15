@@ -1,0 +1,478 @@
+export namespace bridge {
+	
+	export class AISelectionItem {
+	    kind: string;
+	    text: string;
+	    name: string;
+	    alt: string;
+	    dataUrl: string;
+	    relativePath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AISelectionItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.text = source["text"];
+	        this.name = source["name"];
+	        this.alt = source["alt"];
+	        this.dataUrl = source["dataUrl"];
+	        this.relativePath = source["relativePath"];
+	    }
+	}
+	export class AISelectionPayload {
+	    items: AISelectionItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AISelectionPayload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.items = this.convertValues(source["items"], AISelectionItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AIProviderSettings {
+	    mode: string;
+	    url: string;
+	    key: string;
+	    model: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AIProviderSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.url = source["url"];
+	        this.key = source["key"];
+	        this.model = source["model"];
+	    }
+	}
+	export class AIGenerationRequest {
+	    sceneName: string;
+	    currentCode: string;
+	    settings: AIProviderSettings;
+	    selection: AISelectionPayload;
+	
+	    static createFrom(source: any = {}) {
+	        return new AIGenerationRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sceneName = source["sceneName"];
+	        this.currentCode = source["currentCode"];
+	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
+	        this.selection = this.convertValues(source["selection"], AISelectionPayload);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AIGenerationResult {
+	    code: string;
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AIGenerationResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.source = source["source"];
+	    }
+	}
+	
+	
+	
+	export class EnvironmentCheckItem {
+	    key: string;
+	    label: string;
+	    relativePath: string;
+	    category: string;
+	    status: string;
+	    message: string;
+	    exists: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new EnvironmentCheckItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.relativePath = source["relativePath"];
+	        this.category = source["category"];
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.exists = source["exists"];
+	    }
+	}
+	export class EnvironmentStatus {
+	    ready: boolean;
+	    code: string;
+	    severity: string;
+	    runtimeDir: string;
+	    summary: string;
+	    recommendedAction: string;
+	    checkedAt: string;
+	    items: EnvironmentCheckItem[];
+	    missing: string[];
+	    canRebuild: boolean;
+	    runtimeArchivePath: string;
+	    runtimeArchiveExists: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new EnvironmentStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ready = source["ready"];
+	        this.code = source["code"];
+	        this.severity = source["severity"];
+	        this.runtimeDir = source["runtimeDir"];
+	        this.summary = source["summary"];
+	        this.recommendedAction = source["recommendedAction"];
+	        this.checkedAt = source["checkedAt"];
+	        this.items = this.convertValues(source["items"], EnvironmentCheckItem);
+	        this.missing = source["missing"];
+	        this.canRebuild = source["canRebuild"];
+	        this.runtimeArchivePath = source["runtimeArchivePath"];
+	        this.runtimeArchiveExists = source["runtimeArchiveExists"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NoteImage {
+	    name: string;
+	    alt: string;
+	    dataUrl: string;
+	    relativePath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NoteImage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.alt = source["alt"];
+	        this.dataUrl = source["dataUrl"];
+	        this.relativePath = source["relativePath"];
+	    }
+	}
+	export class ScriptDocument {
+	    filename: string;
+	    code: string;
+	    noteMarkdown: string;
+	    noteImages: NoteImage[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ScriptDocument(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filename = source["filename"];
+	        this.code = source["code"];
+	        this.noteMarkdown = source["noteMarkdown"];
+	        this.noteImages = this.convertValues(source["noteImages"], NoteImage);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class WorkspaceSnapshot {
+	    scripts: string[];
+	    currentFile: string;
+	    document: ScriptDocument;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkspaceSnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scripts = source["scripts"];
+	        this.currentFile = source["currentFile"];
+	        this.document = this.convertValues(source["document"], ScriptDocument);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ImportSceneResult {
+	    cancelled: boolean;
+	    workspace: WorkspaceSnapshot;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportSceneResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cancelled = source["cancelled"];
+	        this.workspace = this.convertValues(source["workspace"], WorkspaceSnapshot);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class InitSnapshot {
+	    environment: EnvironmentStatus;
+	    workspace: WorkspaceSnapshot;
+	
+	    static createFrom(source: any = {}) {
+	        return new InitSnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.environment = this.convertValues(source["environment"], EnvironmentStatus);
+	        this.workspace = this.convertValues(source["workspace"], WorkspaceSnapshot);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class NoteDocument {
+	    markdown: string;
+	    images: NoteImage[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NoteDocument(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.markdown = source["markdown"];
+	        this.images = this.convertValues(source["images"], NoteImage);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class NoteImageInput {
+	    name: string;
+	    alt: string;
+	    dataUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NoteImageInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.alt = source["alt"];
+	        this.dataUrl = source["dataUrl"];
+	    }
+	}
+	export class PackageTransferResult {
+	    path: string;
+	    sceneName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PackageTransferResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.sceneName = source["sceneName"];
+	    }
+	}
+	export class RunControlResult {
+	    handled: boolean;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RunControlResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.handled = source["handled"];
+	        this.message = source["message"];
+	    }
+	}
+	
+	export class SubscriptionPurchaseResult {
+	    configured: boolean;
+	    url: string;
+	    deviceId: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SubscriptionPurchaseResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.configured = source["configured"];
+	        this.url = source["url"];
+	        this.deviceId = source["deviceId"];
+	        this.message = source["message"];
+	    }
+	}
+	export class SubscriptionStatus {
+	    status: string;
+	    activated: boolean;
+	    deviceId: string;
+	    expireAt: string;
+	    lastCheckedAt: string;
+	    message: string;
+	    model: string;
+	    baseUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SubscriptionStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.activated = source["activated"];
+	        this.deviceId = source["deviceId"];
+	        this.expireAt = source["expireAt"];
+	        this.lastCheckedAt = source["lastCheckedAt"];
+	        this.message = source["message"];
+	        this.model = source["model"];
+	        this.baseUrl = source["baseUrl"];
+	    }
+	}
+
+}
+

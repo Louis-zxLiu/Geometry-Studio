@@ -1,0 +1,128 @@
+package bridge
+
+type ScriptDocument struct {
+	Filename     string      `json:"filename"`
+	Code         string      `json:"code"`
+	NoteMarkdown string      `json:"noteMarkdown"`
+	NoteImages   []NoteImage `json:"noteImages"`
+}
+
+type NoteImage struct {
+	Name         string `json:"name"`
+	Alt          string `json:"alt"`
+	DataURL      string `json:"dataUrl"`
+	RelativePath string `json:"relativePath"`
+}
+
+type NoteDocument struct {
+	Markdown string      `json:"markdown"`
+	Images   []NoteImage `json:"images"`
+}
+
+type NoteImageInput struct {
+	Name    string `json:"name"`
+	Alt     string `json:"alt"`
+	DataURL string `json:"dataUrl"`
+}
+
+type EnvironmentCheckItem struct {
+	Key          string `json:"key"`
+	Label        string `json:"label"`
+	RelativePath string `json:"relativePath"`
+	Category     string `json:"category"`
+	Status       string `json:"status"`
+	Message      string `json:"message"`
+	Exists       bool   `json:"exists"`
+}
+
+type EnvironmentStatus struct {
+	Ready                bool                   `json:"ready"`
+	Code                 string                 `json:"code"`
+	Severity             string                 `json:"severity"`
+	RuntimeDir           string                 `json:"runtimeDir"`
+	Summary              string                 `json:"summary"`
+	RecommendedAction    string                 `json:"recommendedAction"`
+	CheckedAt            string                 `json:"checkedAt"`
+	Items                []EnvironmentCheckItem `json:"items"`
+	Missing              []string               `json:"missing"`
+	CanRebuild           bool                   `json:"canRebuild"`
+	RuntimeArchivePath   string                 `json:"runtimeArchivePath"`
+	RuntimeArchiveExists bool                   `json:"runtimeArchiveExists"`
+}
+
+type InitProgress struct {
+	Stage   string `json:"stage"`
+	Message string `json:"message"`
+	Percent int    `json:"percent"`
+}
+
+type WorkspaceSnapshot struct {
+	Scripts     []string       `json:"scripts"`
+	CurrentFile string         `json:"currentFile"`
+	Document    ScriptDocument `json:"document"`
+}
+
+type InitSnapshot struct {
+	Environment EnvironmentStatus `json:"environment"`
+	Workspace   WorkspaceSnapshot `json:"workspace"`
+}
+
+type ImportSceneResult struct {
+	Cancelled bool              `json:"cancelled"`
+	Workspace WorkspaceSnapshot `json:"workspace"`
+}
+
+type RunControlResult struct {
+	Handled bool   `json:"handled"`
+	Message string `json:"message"`
+}
+
+type AIProviderSettings struct {
+	Mode  string `json:"mode"`
+	URL   string `json:"url"`
+	Key   string `json:"key"`
+	Model string `json:"model"`
+}
+
+type AISelectionItem struct {
+	Kind         string `json:"kind"`
+	Text         string `json:"text"`
+	Name         string `json:"name"`
+	Alt          string `json:"alt"`
+	DataURL      string `json:"dataUrl"`
+	RelativePath string `json:"relativePath"`
+}
+
+type AISelectionPayload struct {
+	Items []AISelectionItem `json:"items"`
+}
+
+type AIGenerationRequest struct {
+	SceneName   string             `json:"sceneName"`
+	CurrentCode string             `json:"currentCode"`
+	Settings    AIProviderSettings `json:"settings"`
+	Selection   AISelectionPayload `json:"selection"`
+}
+
+type AIGenerationResult struct {
+	Code   string `json:"code"`
+	Source string `json:"source"`
+}
+
+type SubscriptionStatus struct {
+	Status        string `json:"status"`
+	Activated     bool   `json:"activated"`
+	DeviceID      string `json:"deviceId"`
+	ExpireAt      string `json:"expireAt"`
+	LastCheckedAt string `json:"lastCheckedAt"`
+	Message       string `json:"message"`
+	Model         string `json:"model"`
+	BaseURL       string `json:"baseUrl"`
+}
+
+type SubscriptionPurchaseResult struct {
+	Configured bool   `json:"configured"`
+	URL        string `json:"url"`
+	DeviceID   string `json:"deviceId"`
+	Message    string `json:"message"`
+}

@@ -1,0 +1,15 @@
+{
+  "runtimeVersion": "0.1.0",
+  "distribution": "WinPython",
+  "distributionVersion": "pending",
+  "pythonVersion": "pending",
+  "packages": {
+    "numpy": "pending",
+    "matplotlib": "pending",
+    "scipy": "pending",
+    "PyQt5": "pending",
+    "pip": "pending",
+    "setuptools": "pending",
+    "wheel": "pending"
+  }
+}

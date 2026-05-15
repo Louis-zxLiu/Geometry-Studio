@@ -1,0 +1,26 @@
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+build/bin/
+runtime/
+Scripts/
+*.exe
+*.dll
+*.zip
+.runtime-staging/
+.runtime-staging.7z
+.tools_py/
+WPy64-313110/
+packaging/downloads/
+packaging/output/
+packaging/staging/
+packaging/.tools_py/
+.DS_Store
+Thumbs.db
+
+# 技术/产品文档不上传
+Tec.md
+PRD.md
+tec.md
+prd.md

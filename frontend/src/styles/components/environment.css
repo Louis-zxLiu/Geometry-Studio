@@ -1,0 +1,56 @@
+.environment-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 40px 24px;
+  background: var(--workspace-bg);
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.environment-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.environment-title {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.environment-summary,
+.environment-missing {
+  color: var(--muted);
+}
+
+.environment-missing {
+  margin-left: auto;
+  text-align: right;
+}
+
+.environment-pulse {
+  display: inline-flex;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted), transparent 10%);
+  flex: 0 0 auto;
+}
+
+.environment-pulse.ready {
+  background: color-mix(in srgb, #58745c, white 18%);
+}
+
+.environment-pulse.missing {
+  background: color-mix(in srgb, #c06060, white 16%);
+}
+
+.environment-pulse.running {
+  background: #58745c;
+  opacity: 0.9;
+}
