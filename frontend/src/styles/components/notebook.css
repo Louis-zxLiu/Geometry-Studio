@@ -335,6 +335,23 @@
   height: 16px;
 }
 
+.notebook-continue-writing {
+  justify-self: start;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: "SimSun", "Songti SC", "STSong", serif;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  cursor: text;
+}
+
+.notebook-continue-writing:hover {
+  color: color-mix(in srgb, var(--text), var(--muted) 34%);
+}
+
 .notebook-context-menu {
   position: fixed;
   z-index: 1050;

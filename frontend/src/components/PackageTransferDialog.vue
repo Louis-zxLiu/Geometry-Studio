@@ -23,11 +23,11 @@ const emit = defineEmits<{
         aria-modal="true"
         aria-labelledby="package-transfer-title"
       >
-        <h2 id="package-transfer-title">导入 / 导出</h2>
+        <h2 id="package-transfer-title">场景包</h2>
 
         <div class="package-transfer-body">
           <p class="package-transfer-summary">
-            将当前场景导出为 `.pkc`，或导入别人分享的 `.pkc` 场景包。
+            导入或导出 .pkc 场景包，便于分享交流可视化作品
           </p>
           <p class="package-transfer-current">
             当前场景：{{ currentFile || "未选择场景" }}
@@ -47,7 +47,7 @@ const emit = defineEmits<{
             :disabled="pendingAction !== '' || running"
             @click="emit('import')"
           >
-            {{ pendingAction === "import" ? "导入中" : "导入 .pkc" }}
+            {{ pendingAction === "import" ? "导入中" : "导入" }}
           </button>
           <span class="dialog-action-divider" aria-hidden="true"></span>
           <button
@@ -56,10 +56,10 @@ const emit = defineEmits<{
             :disabled="pendingAction !== '' || running || !currentFile"
             @click="emit('export')"
           >
-            {{ pendingAction === "export" ? "导出中" : "导出当前场景" }}
+            {{ pendingAction === "export" ? "导出中" : "导出" }}
           </button>
           <button class="dialog-button secondary" type="button" :disabled="pendingAction !== ''" @click="emit('close')">
-            关闭
+            取消
           </button>
         </div>
       </section>

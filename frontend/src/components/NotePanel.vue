@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { AINoteSelectionItem, AINoteSelectionPayload } from "../features/ai/services/aiTypes";
 import type { NoteRenderBlock } from "../features/notebook/rendering/noteForwarder";
 import type { NoteDocument } from "../features/notebook/services/notebookStorage";
@@ -14,7 +14,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  "add-images": [files: File[]];
+  "add-images": [payload: { files: File[]; insertAt: number }];
   "ai-generate": [selection: AINoteSelectionPayload];
   "remove-image": [relativePath: string];
   toggle: [];
@@ -72,13 +72,41 @@ function focusMarkdownInput() {
   });
 }
 
+function focusMarkdownInputAtEnd() {
+  const nextMarkdown = ensureTrailingWriteLine(props.document.markdown);
+  if (nextMarkdown !== props.document.markdown) {
+    emit("update:markdown", nextMarkdown);
+  }
+
+  isEditingMarkdown.value = true;
+  closeContextMenu();
+  void nextTick(() => {
+    const textarea = markdownInput.value;
+    const scrollContainer = notebookScroll.value;
+    if (!textarea) {
+      return;
+    }
+
+    const end = textarea.value.length;
+    textarea.focus();
+    textarea.setSelectionRange(end, end);
+    textarea.scrollTop = textarea.scrollHeight;
+    if (scrollContainer) {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
+  });
+}
+
 function pickImages(event: Event) {
   const target = event.target as HTMLInputElement;
   if (!target.files?.length) {
     return;
   }
 
-  emit("add-images", Array.from(target.files));
+  emit("add-images", {
+    files: Array.from(target.files),
+    insertAt: getCurrentInsertionIndex(),
+  });
   target.value = "";
 }
 
@@ -94,7 +122,10 @@ function handlePaste(event: ClipboardEvent) {
   }
 
   event.preventDefault();
-  emit("add-images", files);
+  emit("add-images", {
+    files,
+    insertAt: getCurrentInsertionIndex(),
+  });
 }
 
 function handleDrop(event: DragEvent) {
@@ -107,7 +138,10 @@ function handleDrop(event: DragEvent) {
   }
 
   event.preventDefault();
-  emit("add-images", files);
+  emit("add-images", {
+    files,
+    insertAt: getCurrentInsertionIndex(),
+  });
 }
 
 function setDragging(nextValue: boolean) {
@@ -310,6 +344,32 @@ function resolveImagePathFromEventTarget(target: EventTarget | null) {
   }
 
   return imageElement.dataset.noteImagePath ?? "";
+}
+
+function ensureTrailingWriteLine(markdown: string) {
+  const normalized = markdown.replace(/\r\n/g, "\n");
+  if (!normalized) {
+    return normalized;
+  }
+
+  if (normalized.endsWith("\n\n")) {
+    return normalized;
+  }
+
+  if (normalized.endsWith("\n")) {
+    return `${normalized}\n`;
+  }
+
+  return `${normalized}\n\n`;
+}
+
+function getCurrentInsertionIndex() {
+  const textarea = markdownInput.value;
+  if (textarea && document.activeElement === textarea) {
+    return textarea.selectionStart ?? textarea.value.length;
+  }
+
+  return props.document.markdown.length;
 }
 
 onMounted(() => {
@@ -519,6 +579,15 @@ watch(
               />
             </figure>
           </template>
+
+          <button
+            v-if="!shouldShowMarkdownInput && currentFile"
+            class="notebook-continue-writing"
+            type="button"
+            @click="focusMarkdownInputAtEnd"
+          >
+            继续写点什么
+          </button>
         </section>
       </div>
     </div>

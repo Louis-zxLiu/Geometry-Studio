@@ -52,10 +52,11 @@ function normalizeMarkdown(markdown: string) {
 
 function collectReferencedImagePaths(markdown: string) {
   const paths = new Set<string>();
-  const matches = markdown.matchAll(/!\[[^\]]*]\(([^)\s]+)(?:\s+"[^"]*")?\)/g);
+  const matches = markdown.matchAll(/!\[[^\]]*]\((?:<([^>]+)>|([^)]+?))(?:\s+"[^"]*")?\)/g);
   for (const match of matches) {
-    if (match[1]) {
-      paths.add(match[1]);
+    const path = (match[1] ?? match[2] ?? "").trim();
+    if (path) {
+      paths.add(path);
     }
   }
 

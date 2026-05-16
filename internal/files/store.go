@@ -509,7 +509,7 @@ func sanitizeAssetName(name string) string {
 }
 
 func defaultScriptTemplate(sceneName string) string {
-	return "import matplotlib.pyplot as plt\n\n\nif __name__ == \"__main__\":\n    plt.figure(dpi=120)\n    plt.title(\"" + sceneName + "\")\n    plt.show()\n"
+	return "import matplotlib.pyplot as plt\n\nplt.rcParams.update({\n    \"text.usetex\": False,\n    \"font.family\": \"SimSun\",\n    \"mathtext.fontset\": \"stix\",\n    \"axes.unicode_minus\": False,\n    \"font.size\": 12\n})\n\n\nif __name__ == \"__main__\":\n    plt.figure(dpi=120)\n    plt.title(\"" + sceneName + "\")\n    plt.show()\n"
 }
 
 func stripExtension(filename string) string {

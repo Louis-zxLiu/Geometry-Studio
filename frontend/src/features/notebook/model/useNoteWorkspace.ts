@@ -11,6 +11,7 @@ import {
   createEmptyNoteDocument,
   createNotePanelStorage,
   normalizeNoteDocument,
+  type NoteImage,
   type NoteDocument,
 } from "../services/notebookStorage";
 
@@ -74,7 +75,8 @@ export function useNoteWorkspace(currentFile: Ref<string>, onError: ErrorHandler
     schedulePersist();
   }
 
-  async function addImages(files: File[]) {
+  async function addImages(payload: { files: File[]; insertAt?: number }) {
+    const files = payload.files;
     if (!currentFile.value || files.length === 0) {
       return;
     }
@@ -95,8 +97,24 @@ export function useNoteWorkspace(currentFile: Ref<string>, onError: ErrorHandler
         return;
       }
 
-      const document = await addScriptNoteImages(currentFile.value, nextImages);
-      currentDocument.value = normalizeNoteDocument(document);
+      const previousDocument = currentDocument.value;
+      const previousPaths = new Set(previousDocument.images.map((image) => image.relativePath));
+      const document = normalizeNoteDocument(
+        await addScriptNoteImages(currentFile.value, nextImages),
+      );
+      const addedImages = document.images.filter(
+        (image) => image.relativePath && !previousPaths.has(image.relativePath),
+      );
+      const nextMarkdown = insertImageReferences(
+        previousDocument.markdown,
+        addedImages,
+        payload.insertAt,
+      );
+      currentDocument.value = {
+        ...document,
+        markdown: nextMarkdown,
+      };
+      await saveScriptNote(currentFile.value, nextMarkdown);
       saveState.value = "saved";
     } catch (error) {
       onError(getErrorMessage(error));
@@ -110,8 +128,16 @@ export function useNoteWorkspace(currentFile: Ref<string>, onError: ErrorHandler
 
     try {
       await persistCurrentDocument(currentFile.value);
-      const document = await removeScriptNoteImage(currentFile.value, relativePath);
-      currentDocument.value = normalizeNoteDocument(document);
+      const previousMarkdown = currentDocument.value.markdown;
+      const document = normalizeNoteDocument(
+        await removeScriptNoteImage(currentFile.value, relativePath),
+      );
+      const nextMarkdown = removeImageReference(previousMarkdown, relativePath);
+      currentDocument.value = {
+        ...document,
+        markdown: nextMarkdown,
+      };
+      await saveScriptNote(currentFile.value, nextMarkdown);
       saveState.value = "saved";
     } catch (error) {
       onError(getErrorMessage(error));
@@ -206,6 +232,65 @@ function readFileAsDataUrl(file: File) {
 
 function stripExtension(filename: string) {
   return filename.replace(/\.[^.]+$/, "");
+}
+
+function insertImageReferences(markdown: string, images: NoteImage[], insertAt?: number) {
+  if (!images.length) {
+    return markdown;
+  }
+
+  const imageBlock = images.map(formatImageReference).join("\n\n");
+  if (!markdown) {
+    return imageBlock;
+  }
+
+  if (typeof insertAt !== "number" || Number.isNaN(insertAt)) {
+    const trimmedMarkdown = markdown.replace(/\s+$/u, "");
+    return `${trimmedMarkdown}\n\n${imageBlock}`;
+  }
+
+  const normalized = markdown.replace(/\r\n/g, "\n");
+  const safeIndex = Math.max(0, Math.min(insertAt, normalized.length));
+  const before = normalized.slice(0, safeIndex);
+  const after = normalized.slice(safeIndex);
+  const prefix = before && !before.endsWith("\n") ? "\n\n" : before.endsWith("\n\n") ? "" : before ? "\n" : "";
+  const suffix = after.startsWith("\n") ? "" : after ? "\n\n" : "";
+  return `${before}${prefix}${imageBlock}${suffix}${after}`;
+}
+
+function formatImageReference(image: NoteImage) {
+  const alt = escapeMarkdownAltText(image.alt || stripExtension(image.name) || "image");
+  return `![${alt}](<${image.relativePath}>)`;
+}
+
+function escapeMarkdownAltText(text: string) {
+  return text.replace(/[\[\]\\]/g, "\\$&");
+}
+
+function removeImageReference(markdown: string, relativePath: string) {
+  if (!markdown || !relativePath) {
+    return markdown;
+  }
+
+  const escapedPath = escapeRegExp(relativePath);
+  const imagePattern = new RegExp(
+    `^\\s*!\\[[^\\]]*\\]\\((?:<${escapedPath}>|${escapedPath})(?:\\s+"[^"]*")?\\)\\s*$`,
+    "u",
+  );
+  const filteredLines = markdown
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line) => !imagePattern.test(line));
+
+  return collapseBlankLines(filteredLines.join("\n")).trim();
+}
+
+function collapseBlankLines(markdown: string) {
+  return markdown.replace(/\n{3,}/g, "\n\n");
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function getErrorMessage(error: unknown) {

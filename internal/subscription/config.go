@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	defaultAuthURL = "http://bridge.5051001.xyz/auth/activate"
-	defaultBaseURL = "http://bridge.5051001.xyz/v1"
+	defaultAuthURL = "https://bridge.5051001.xyz/auth/activate"
+	defaultBaseURL = "https://bridge.5051001.xyz/v1"
 	defaultModel   = ""
 	defaultBuyURL  = "https://afdian.com/a/wingflow/plan"
 )

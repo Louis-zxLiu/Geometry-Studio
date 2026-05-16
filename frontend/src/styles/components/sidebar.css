@@ -111,6 +111,7 @@
   margin-bottom: 24px;
   padding-right: 58px;
   transition: opacity 220ms ease;
+  isolation: isolate;
 }
 
 .scene-item.renaming {
@@ -133,22 +134,32 @@
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 0;
+  min-height: 28px;
+  padding: 4px 10px 4px 8px;
   border: 0;
   background: transparent;
-  color: var(--text);
+  color: color-mix(in srgb, var(--text), transparent 14%);
   text-align: left;
   font-size: 12px;
   line-height: 1.35;
   letter-spacing: 0.08em;
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--text), transparent 92%);
+  text-decoration-color: color-mix(in srgb, var(--text), transparent 94%);
   text-underline-offset: 8px;
   cursor: pointer;
+  position: relative;
+  z-index: 1;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease;
 }
 
 .scene-item.active .scene-select-button {
   color: var(--text);
+  background: transparent;
+  font-weight: 600;
+  text-decoration-color: color-mix(in srgb, var(--text), transparent 90%);
 }
 
 .scene-name {
