@@ -80,6 +80,7 @@ const theme = proxyRefs(useTheme());
           @add-images="workspace.addNoteImages"
           @remove-image="workspace.removeNoteImage"
           @ai-generate="workspace.generateCodeFromNoteSelection"
+          @ai-design="workspace.generateDesignFromNoteSelection"
         />
       </div>
     </main>

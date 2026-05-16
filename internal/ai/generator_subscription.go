@@ -33,7 +33,7 @@ func (g *SubscriptionGenerator) Generate(ctx context.Context, request Generation
 	}
 
 	promptItems := mapPromptItems(request.Selection.Items)
-	promptTemplate := g.loadPrompt("subscription.txt")
+	promptTemplate := g.loadPrompt(resolvePromptPath(ModeSubscription, request.Kind))
 	return g.client.Generate(ctx, openai.Request{
 		BaseURL:      session.BaseURL,
 		APIKey:       session.Token,

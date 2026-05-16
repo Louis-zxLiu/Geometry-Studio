@@ -11,6 +11,7 @@ import {
   createAISettingsStorage,
 } from "../../ai/services/aiSettingsStorage";
 import type {
+  AINoteActionRequest,
   AINoteSelectionPayload,
   AIProviderSettings,
   AISubscriptionStatus,
@@ -63,6 +64,7 @@ export function usePlotWorkspace() {
       runtime.applyEnvironmentStatus(snapshot.environment);
       scriptWorkspace.applyWorkspaceSnapshot(snapshot.workspace);
       noteWorkspace.hydrateFromScriptDocument(snapshot.workspace.document ?? {});
+      await scriptWorkspace.restoreLastSelection();
       await refreshSubscriptionStatus(false);
       runtime.finishInitialization("Runtime ready");
     } catch (error) {
@@ -275,12 +277,12 @@ export function usePlotWorkspace() {
     }
   }
 
-  async function generateCodeFromNoteSelection(selection: AINoteSelectionPayload) {
+  async function runAINoteAction(request: AINoteActionRequest) {
     if (
       !scriptWorkspace.currentFile.value ||
       isRunning.value ||
       isAIGenerating.value ||
-      !selection.items.length
+      !request.selection.items.length
     ) {
       return;
     }
@@ -289,10 +291,11 @@ export function usePlotWorkspace() {
 
     try {
       const result = await generateCodeFromSelection({
+        kind: request.kind,
         sceneName: scriptWorkspace.currentFile.value,
         currentCode: scriptWorkspace.codeContent.value,
         settings: aiSettings.value,
-        selection,
+        selection: request.selection,
       });
 
       await streamGeneratedCode(result.code);
@@ -381,7 +384,10 @@ export function usePlotWorkspace() {
     environmentStatus: runtime.environmentStatus,
     exportCurrentScenePackage,
     addNoteImages: noteWorkspace.addImages,
-    generateCodeFromNoteSelection,
+    generateCodeFromNoteSelection: (selection: AINoteSelectionPayload) =>
+      runAINoteAction({ kind: "visualize", selection }),
+    generateDesignFromNoteSelection: (selection: AINoteSelectionPayload) =>
+      runAINoteAction({ kind: "design", selection }),
     hasNoteContent: noteWorkspace.hasContent,
     initProgressMessage: runtime.initProgressMessage,
     initProgressPercent: runtime.initProgressPercent,

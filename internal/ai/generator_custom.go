@@ -20,7 +20,7 @@ func NewCustomGenerator(prompts *PromptRepository) *CustomGenerator {
 }
 
 func (g *CustomGenerator) Generate(ctx context.Context, request GenerationRequest) (string, error) {
-	promptTemplate := g.loadPrompt("custom.txt")
+	promptTemplate := g.loadPrompt(resolvePromptPath(ModeCustom, request.Kind))
 	promptItems := mapPromptItems(request.Selection.Items)
 	return g.client.Generate(ctx, openai.Request{
 		BaseURL:      request.Settings.URL,

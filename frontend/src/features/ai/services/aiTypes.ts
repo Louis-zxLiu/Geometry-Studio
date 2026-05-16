@@ -1,4 +1,5 @@
 export type AIServiceMode = "custom" | "subscription";
+export type AIGenerationKind = "visualize" | "design";
 
 export type AIProviderSettings = {
   mode: AIServiceMode;
@@ -25,9 +26,15 @@ export type AINoteSelectionPayload = {
 };
 
 export type AIGenerationRequest = {
+  kind: AIGenerationKind;
   sceneName: string;
   currentCode: string;
   settings: AIProviderSettings;
+  selection: AINoteSelectionPayload;
+};
+
+export type AINoteActionRequest = {
+  kind: AIGenerationKind;
   selection: AINoteSelectionPayload;
 };
 

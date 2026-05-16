@@ -1,5 +1,6 @@
 import { createApp } from "vue";
 import App from "./App.vue";
+import { installZoomGuards } from "./lib/zoomGuards";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/layout.css";
@@ -14,4 +15,5 @@ import "./styles/components/notebook.css";
 import "./styles/components/runtime-loading.css";
 import "katex/dist/katex.min.css";
 
+installZoomGuards();
 createApp(App).mount("#app");

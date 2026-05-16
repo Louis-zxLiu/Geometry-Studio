@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import type { AINoteSelectionItem, AINoteSelectionPayload } from "../features/ai/services/aiTypes";
+import type { AINoteSelectionPayload } from "../features/ai/services/aiTypes";
 import type { NoteRenderBlock } from "../features/notebook/rendering/noteForwarder";
 import type { NoteDocument } from "../features/notebook/services/notebookStorage";
+import {
+  buildAINoteSelectionPayload,
+  collectSelectedImagesForContextMenu,
+} from "../features/notebook/selection/noteSelection";
 
 const props = defineProps<{
   currentFile: string;
@@ -16,6 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   "add-images": [payload: { files: File[]; insertAt: number }];
   "ai-generate": [selection: AINoteSelectionPayload];
+  "ai-design": [selection: AINoteSelectionPayload];
   "remove-image": [relativePath: string];
   toggle: [];
   "update:markdown": [markdown: string];
@@ -26,6 +31,7 @@ const notebookScroll = ref<HTMLElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const markdownInput = ref<HTMLTextAreaElement | null>(null);
 const previewImage = ref<{ src: string; alt: string } | null>(null);
+const previewScale = ref(1);
 const isEditingMarkdown = ref(false);
 const isDragging = ref(false);
 const textSelection = ref<{ text: string; selectedAt: number } | null>(null);
@@ -39,6 +45,10 @@ const markdownBlocks = computed(() =>
 
 const imageBlocks = computed(() =>
   props.renderBlocks.filter((block) => block.kind === "image"),
+);
+
+const contextMenuImages = computed(() =>
+  collectSelectedImagesForContextMenu(props.document, textSelection.value, selectedImageOrder.value),
 );
 
 const shouldShowMarkdownInput = computed(
@@ -58,10 +68,35 @@ function openFilePicker() {
 
 function openPreview(src: string, alt: string) {
   previewImage.value = { src, alt };
+  previewScale.value = 1;
 }
 
 function closePreview() {
   previewImage.value = null;
+  previewScale.value = 1;
+}
+
+function previewContextImage() {
+  const image = contextMenuImages.value[0];
+  if (!image) {
+    return;
+  }
+
+  openPreview(image.dataUrl, image.alt || image.name);
+  closeContextMenu();
+}
+
+function removeContextImages() {
+  const images = contextMenuImages.value;
+  if (!images.length) {
+    return;
+  }
+
+  images.forEach((image) => {
+    emit("remove-image", image.relativePath);
+  });
+  selectedImageOrder.value = {};
+  closeContextMenu();
 }
 
 function focusMarkdownInput() {
@@ -168,8 +203,14 @@ function toggleImageSelection(relativePath: string) {
 }
 
 function handleContextMenu(event: MouseEvent) {
-  event.preventDefault();
   const relativePath = resolveImagePathFromEventTarget(event.target);
+  const hasContextSelection = relativePath !== "" || isTextSelectionContextTarget(event.target);
+  if (!hasContextSelection) {
+    closeContextMenu();
+    return;
+  }
+
+  event.preventDefault();
   if (relativePath) {
     ensureImageSelection(relativePath);
   }
@@ -189,6 +230,24 @@ function handleTextSelectionChange() {
   window.requestAnimationFrame(() => {
     syncTextSelection();
   });
+}
+
+function handlePreviewWheel(event: WheelEvent) {
+  if (!previewImage.value) {
+    return;
+  }
+
+  event.preventDefault();
+  const nextScale = event.deltaY < 0 ? previewScale.value + 0.2 : previewScale.value - 0.2;
+  previewScale.value = clampPreviewScale(nextScale);
+}
+
+function zoomPreview(delta: number) {
+  previewScale.value = clampPreviewScale(previewScale.value + delta);
+}
+
+function resetPreviewZoom() {
+  previewScale.value = 1;
 }
 
 function handleNotebookClick(event: MouseEvent) {
@@ -241,50 +300,70 @@ function syncTextSelection() {
 }
 
 function runAIGeneration() {
+  runAIAction("generate");
+}
+
+function runAIDesign() {
+  runAIAction("design");
+}
+
+function runAIAction(kind: "generate" | "design") {
   const selection = buildSelectionPayload();
   if (!selection) {
     closeContextMenu();
     return;
   }
 
-  emit("ai-generate", selection);
+  if (kind === "design") {
+    emit("ai-design", selection);
+  } else {
+    emit("ai-generate", selection);
+  }
   closeContextMenu();
 }
 
 function buildSelectionPayload(): AINoteSelectionPayload | null {
-  const orderedItems: Array<AINoteSelectionItem & { selectedAt: number }> = [];
-  if (textSelection.value?.text) {
-    orderedItems.push({
-      kind: "text",
-      text: textSelection.value.text,
-      selectedAt: textSelection.value.selectedAt,
-    });
+  return buildAINoteSelectionPayload(
+    props.document,
+    textSelection.value,
+    selectedImageOrder.value,
+  );
+}
+
+function isTextSelectionContextTarget(target: EventTarget | null) {
+  const textarea = markdownInput.value;
+  if (
+    textarea &&
+    document.activeElement === textarea &&
+    textarea.selectionStart !== textarea.selectionEnd &&
+    target === textarea
+  ) {
+    return true;
   }
 
-  props.document.images.forEach((image) => {
-    const selectedAt = selectedImageOrder.value[image.relativePath];
-    if (!selectedAt) {
-      return;
-    }
-
-    orderedItems.push({
-      kind: "image",
-      name: image.name,
-      alt: image.alt,
-      dataUrl: image.dataUrl,
-      relativePath: image.relativePath,
-      selectedAt,
-    });
-  });
-
-  orderedItems.sort((left, right) => left.selectedAt - right.selectedAt);
-  if (!orderedItems.length) {
-    return null;
+  if (!(target instanceof Node)) {
+    return false;
   }
 
-  return {
-    items: orderedItems.map(({ selectedAt: _selectedAt, ...item }) => item),
-  };
+  const selection = window.getSelection();
+  if (
+    !selection ||
+    selection.isCollapsed ||
+    !notebookRoot.value?.contains(selection.anchorNode) ||
+    !notebookRoot.value?.contains(selection.focusNode)
+  ) {
+    return false;
+  }
+
+  try {
+    return selection.getRangeAt(0).intersectsNode(target);
+  } catch {
+    return false;
+  }
+}
+
+function clampPreviewScale(scale: number) {
+  return Math.max(0.6, Math.min(4, Number(scale.toFixed(2))));
 }
 
 function hasSelection() {
@@ -599,6 +678,28 @@ watch(
         :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
         @mousedown.stop
       >
+        <button
+          v-if="contextMenuImages.length > 0"
+          class="notebook-context-action"
+          type="button"
+          @click="previewContextImage"
+        >
+          <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 12s3.3-6 9-6 9 6 9 6-3.3 6-9 6-9-6-9-6Z" />
+            <path d="M12 9.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z" />
+          </svg>
+          <span>预览</span>
+        </button>
+        <button class="notebook-context-action" type="button" @click="runAIDesign">
+          <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 6.5h16" />
+            <path d="M4 12h10" />
+            <path d="M4 17.5h7" />
+            <path d="m16 15 4-4" />
+            <path d="m20 15-4-4" />
+          </svg>
+          <span>可视化设计</span>
+        </button>
         <button class="notebook-context-action" type="button" @click="runAIGeneration">
           <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
             <rect x="4.5" y="4.5" width="15" height="15" />
@@ -611,6 +712,19 @@ watch(
           </svg>
           <span>可视化</span>
         </button>
+        <button
+          v-if="contextMenuImages.length > 0"
+          class="notebook-context-action danger"
+          type="button"
+          @click="removeContextImages"
+        >
+          <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 7h12" />
+            <path d="m9 7 .6-2h4.8L15 7" />
+            <path d="M8 7v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V7" />
+          </svg>
+          <span>移除</span>
+        </button>
       </div>
 
       <div
@@ -619,7 +733,37 @@ watch(
         role="dialog"
         aria-modal="true"
         @click.self="closePreview"
+        @wheel.prevent="handlePreviewWheel"
       >
+        <div class="notebook-preview-toolbar">
+          <button
+            class="notebook-preview-control"
+            type="button"
+            title="缩小"
+            aria-label="缩小"
+            @click="zoomPreview(-0.2)"
+          >
+            -
+          </button>
+          <button
+            class="notebook-preview-control"
+            type="button"
+            title="恢复原始大小"
+            aria-label="恢复原始大小"
+            @click="resetPreviewZoom"
+          >
+            100%
+          </button>
+          <button
+            class="notebook-preview-control"
+            type="button"
+            title="放大"
+            aria-label="放大"
+            @click="zoomPreview(0.2)"
+          >
+            +
+          </button>
+        </div>
         <button
           class="notebook-preview-close"
           type="button"
@@ -642,6 +786,7 @@ watch(
           class="notebook-preview-image"
           :src="previewImage.src"
           :alt="previewImage.alt"
+          :style="{ transform: `scale(${previewScale})` }"
         />
       </div>
     </Teleport>

@@ -380,6 +380,10 @@
   background: color-mix(in srgb, var(--surface-soft), white 28%);
 }
 
+.notebook-context-action.danger:hover {
+  color: #b74848;
+}
+
 .notebook-context-icon {
   width: 14px;
   height: 14px;
@@ -400,12 +404,38 @@
   background: rgba(20, 20, 20, 0.72);
 }
 
+.notebook-preview-toolbar {
+  position: fixed;
+  top: 28px;
+  left: 30px;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.notebook-preview-control {
+  min-width: 42px;
+  height: 34px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f8f8f8;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.notebook-preview-control:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
 .notebook-preview-image {
   display: block;
   max-width: min(86vw, 1120px);
   max-height: 84vh;
   object-fit: contain;
   box-shadow: 0 26px 90px rgba(0, 0, 0, 0.28);
+  transform-origin: center center;
+  transition: transform 120ms ease;
 }
 
 .notebook-preview-close {

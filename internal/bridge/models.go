@@ -98,6 +98,7 @@ type AISelectionPayload struct {
 }
 
 type AIGenerationRequest struct {
+	Kind        string             `json:"kind"`
 	SceneName   string             `json:"sceneName"`
 	CurrentCode string             `json:"currentCode"`
 	Settings    AIProviderSettings `json:"settings"`

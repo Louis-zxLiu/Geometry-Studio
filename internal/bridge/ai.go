@@ -12,6 +12,7 @@ func (a *App) GenerateCodeFromSelection(request AIGenerationRequest) (AIGenerati
 	}
 
 	result, err := a.aiService.Generate(a.ctx, ai.GenerationRequest{
+		Kind:        ai.GenerationKind(request.Kind),
 		SceneName:   request.SceneName,
 		CurrentCode: request.CurrentCode,
 		Settings: ai.ProviderSettings{

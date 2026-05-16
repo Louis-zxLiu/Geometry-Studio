@@ -30,6 +30,7 @@ type SelectionPayload struct {
 }
 
 type GenerationRequest struct {
+	Kind        GenerationKind
 	SceneName   string
 	CurrentCode string
 	Settings    ProviderSettings
