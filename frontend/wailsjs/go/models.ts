@@ -71,6 +71,7 @@ export namespace bridge {
 	    }
 	}
 	export class AIGenerationRequest {
+	    kind: string;
 	    sceneName: string;
 	    currentCode: string;
 	    settings: AIProviderSettings;
@@ -82,6 +83,7 @@ export namespace bridge {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
 	        this.sceneName = source["sceneName"];
 	        this.currentCode = source["currentCode"];
 	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
