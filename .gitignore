@@ -3,6 +3,7 @@ frontend/node_modules/
 dist/
 frontend/dist/
 build/bin/
+build/release/
 runtime/
 Scripts/
 *.exe
@@ -16,6 +17,7 @@ packaging/downloads/
 packaging/output/
 packaging/staging/
 packaging/.tools_py/
+config/subscription.json
 .DS_Store
 Thumbs.db
 
