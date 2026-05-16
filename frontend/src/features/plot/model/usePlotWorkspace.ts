@@ -13,7 +13,6 @@ import {
 import type {
   AINoteSelectionPayload,
   AIProviderSettings,
-  AISubscriptionPurchaseResult,
   AISubscriptionStatus,
 } from "../../ai/services/aiTypes";
 import { useRunErrorDialog } from "../../errors/model/useRunErrorDialog";
@@ -39,7 +38,6 @@ export function usePlotWorkspace() {
     model: "",
     baseUrl: "",
   });
-  const subscriptionPurchaseState = ref<AISubscriptionPurchaseResult | null>(null);
   const isPackageTransferDialogOpen = ref(false);
   const packageTransferMessage = ref("");
   const packageTransferPendingAction = ref<"" | "import" | "export">("");
@@ -176,7 +174,6 @@ export function usePlotWorkspace() {
 
   function openAISettings() {
     isAISettingsDialogOpen.value = true;
-    subscriptionPurchaseState.value = null;
     void refreshSubscriptionStatus(true);
   }
 
@@ -321,7 +318,7 @@ export function usePlotWorkspace() {
 
   async function purchaseSubscription() {
     try {
-      subscriptionPurchaseState.value = await OpenSubscriptionPurchase();
+      await OpenSubscriptionPurchase();
     } catch (error) {
       runErrorDialog.openRunErrorDialog(getErrorMessage(error));
     }
@@ -420,7 +417,6 @@ export function usePlotWorkspace() {
     scripts: scriptWorkspace.scripts,
     selectScript: scriptWorkspace.selectScript,
     stopCurrentRun,
-    subscriptionPurchaseState,
     subscriptionStatus,
     toggleNotePanel,
     typingScriptName: scriptWorkspace.typingScriptName,

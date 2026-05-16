@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Quit, WindowMinimise, WindowToggleMaximise } from "../../wailsjs/runtime/runtime";
+
 defineProps<{
   isRunning: boolean;
 }>();
@@ -8,6 +10,18 @@ const emit = defineEmits<{
   run: [];
   stop: [];
 }>();
+
+function minimiseWindow() {
+  WindowMinimise();
+}
+
+function toggleMaximiseWindow() {
+  WindowToggleMaximise();
+}
+
+function closeWindow() {
+  Quit();
+}
 </script>
 
 <template>
@@ -40,6 +54,40 @@ const emit = defineEmits<{
       >
         <span class="run-icon" aria-hidden="true"></span>
         <span>{{ isRunning ? "停止运行" : "运行场景" }}</span>
+      </button>
+    </div>
+
+    <div class="topbar-drag-region" aria-hidden="true"></div>
+
+    <div class="topbar-window-controls">
+      <button
+        class="window-control-button"
+        type="button"
+        aria-label="最小化"
+        title="最小化"
+        @click="minimiseWindow"
+      >
+        <span class="window-control-line" aria-hidden="true"></span>
+      </button>
+
+      <button
+        class="window-control-button"
+        type="button"
+        aria-label="最大化或还原"
+        title="最大化或还原"
+        @click="toggleMaximiseWindow"
+      >
+        <span class="window-control-square" aria-hidden="true"></span>
+      </button>
+
+      <button
+        class="window-control-button close"
+        type="button"
+        aria-label="关闭"
+        title="关闭"
+        @click="closeWindow"
+      >
+        <span class="window-control-cross" aria-hidden="true"></span>
       </button>
     </div>
   </header>

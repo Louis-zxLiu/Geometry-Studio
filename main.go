@@ -24,10 +24,13 @@ func main() {
 	app := bridge.NewApp()
 
 	err = wails.Run(&options.App{
-		Title:  "PlotKityCat",
-		Width:  1440,
-		Height: 900,
-		Assets: assets,
+		Title:     "PlotKityCat",
+		Width:     1440,
+		Height:    900,
+		Frameless: true,
+		MinWidth:  1180,
+		MinHeight: 760,
+		Assets:    assets,
 		Bind: []interface{}{
 			app,
 		},

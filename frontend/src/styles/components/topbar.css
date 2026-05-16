@@ -1,6 +1,6 @@
 .topbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   min-height: 70px;
   padding: 0;
@@ -10,10 +10,27 @@
 
 .topbar-editor-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
   gap: 12px;
-  padding: 0 40px;
+  padding: 0 0 0 40px;
+  flex: 0 0 auto;
+}
+
+.topbar-drag-region {
+  --wails-draggable: drag;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 120px;
+}
+
+.topbar-window-controls {
+  display: inline-flex;
+  align-items: stretch;
+  align-self: stretch;
+  margin-left: 4px;
+  margin-right: 10px;
+  flex: 0 0 auto;
 }
 
 .topbar-actions {
@@ -22,7 +39,9 @@
 }
 
 .icon-button,
-.run-button {
+.run-button,
+.window-control-button {
+  --wails-draggable: no-drag;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -98,4 +117,62 @@
 .run-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.window-control-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  min-width: 30px;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  border-radius: 0;
+}
+
+.window-control-button:hover {
+  background: color-mix(in srgb, var(--text), transparent 95%);
+}
+
+.window-control-button.close:hover {
+  background: #b74848;
+  color: #fffaf5;
+}
+
+.window-control-line {
+  width: 9px;
+  border-top: 1px solid currentColor;
+}
+
+.window-control-square {
+  width: 9px;
+  height: 9px;
+  border: 1px solid currentColor;
+}
+
+.window-control-cross {
+  position: relative;
+  width: 9px;
+  height: 9px;
+}
+
+.window-control-cross::before,
+.window-control-cross::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 0;
+  width: 9px;
+  border-top: 1px solid currentColor;
+}
+
+.window-control-cross::before {
+  transform: rotate(45deg);
+}
+
+.window-control-cross::after {
+  transform: rotate(-45deg);
 }

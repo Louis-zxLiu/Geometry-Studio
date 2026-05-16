@@ -3,9 +3,9 @@
   "install_id": "26af41cb-afad-48e9-951a-25855a95dd39",
   "token": "",
   "expire_at": "",
-  "base_url": "",
-  "model": "",
-  "last_checked_at": "2026-05-15T11:58:55Z",
-  "status": "unconfigured",
-  "message": "订阅服务未配置"
+  "base_url": "http://bridge.5051001.xyz/v1",
+  "model": "gemini-3-flash",
+  "last_checked_at": "2026-05-16T01:56:03Z",
+  "status": "inactive",
+  "message": "subscription inactive"
 }

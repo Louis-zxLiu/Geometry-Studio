@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 
 	"plotkitycat/internal/paths"
+	"plotkitycat/internal/processutil"
 )
 
 type Request struct {
@@ -81,6 +81,7 @@ func (r *Runner) Run(sceneName string, req Request) error {
 	cmd := exec.Command(python, append(args, absScriptPath)...)
 	cmd.Dir = sceneDir
 	cmd.Env = append(os.Environ(), "MPLBACKEND=Qt5Agg")
+	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -198,7 +199,7 @@ func killProcessTree(pid int) error {
 
 	if runtime.GOOS == "windows" {
 		cmd := exec.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(pid))
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		cmd.SysProcAttr = processutil.WithoutConsoleWindow()
 		return cmd.Run()
 	}
 

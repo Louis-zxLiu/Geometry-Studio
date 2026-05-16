@@ -103,7 +103,6 @@ const theme = proxyRefs(useTheme());
     <AISettingsDialog
       :open="workspace.isAISettingsDialogOpen"
       :settings="workspace.aiSettings"
-      :purchase-state="workspace.subscriptionPurchaseState"
       :subscription-status="workspace.subscriptionStatus"
       @close="workspace.closeAISettings"
       @purchase-subscription="workspace.purchaseSubscription"

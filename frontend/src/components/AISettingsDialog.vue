@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type {
   AIProviderSettings,
-  AISubscriptionPurchaseResult,
   AISubscriptionStatus,
   AIServiceMode,
 } from "../features/ai/services/aiTypes";
@@ -10,7 +9,6 @@ const props = defineProps<{
   open: boolean;
   settings: AIProviderSettings;
   subscriptionStatus: AISubscriptionStatus;
-  purchaseState: AISubscriptionPurchaseResult | null;
 }>();
 
 const emit = defineEmits<{
@@ -107,38 +105,28 @@ function updateField(field: "url" | "key" | "model", value: string) {
                 使用订阅AI 20元/月
                 <span class="ai-inline-divider" aria-hidden="true">|</span>
                 <button
-                  v-if="!subscriptionStatus.activated"
                   class="ai-inline-action"
+                  :class="{ disabled: subscriptionStatus.activated }"
                   type="button"
+                  :disabled="subscriptionStatus.activated"
                   @click.stop="emit('purchase-subscription')"
                 >
                   购买
                 </button>
-                <span v-else class="ai-inline-status">已激活</span>
                 <span class="ai-inline-divider" aria-hidden="true">|</span>
                 <button
+                  v-if="!subscriptionStatus.activated"
                   class="ai-inline-action"
                   type="button"
                   @click.stop="emit('refresh-subscription')"
                 >
                   刷新
                 </button>
+                <span v-else class="ai-inline-status">已订阅</span>
               </strong>
               <small>订阅提供 AI 额度，适合不愿折腾 API、想开箱即用的老师</small>
             </span>
           </button>
-
-          <div class="ai-subscription-meta">
-            <p class="ai-subscription-message">
-              {{ purchaseState?.message || subscriptionStatus.message || "购买后点击刷新，检查激活状态" }}
-            </p>
-            <p v-if="subscriptionStatus.deviceId" class="ai-subscription-detail">
-              设备标识：{{ subscriptionStatus.deviceId }}
-            </p>
-            <p v-if="subscriptionStatus.expireAt" class="ai-subscription-detail">
-              到期时间：{{ subscriptionStatus.expireAt }}
-            </p>
-          </div>
         </div>
 
         <div class="create-dialog-actions">

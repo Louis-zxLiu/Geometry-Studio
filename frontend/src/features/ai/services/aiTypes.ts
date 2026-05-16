@@ -46,10 +46,3 @@ export type AISubscriptionStatus = {
   model: string;
   baseUrl: string;
 };
-
-export type AISubscriptionPurchaseResult = {
-  configured: boolean;
-  url: string;
-  deviceId: string;
-  message: string;
-};

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"plotkitycat/internal/paths"
+	"plotkitycat/internal/processutil"
 )
 
 type CheckItem struct {
@@ -148,6 +149,7 @@ func evaluatePythonImports(pythonPath string, requirements []Requirement) ([]Che
 
 	script := buildImportCheckScript(modules)
 	cmd := exec.Command(pythonPath, "-c", script)
+	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 

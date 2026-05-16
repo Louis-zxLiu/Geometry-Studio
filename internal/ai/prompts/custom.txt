@@ -23,8 +23,14 @@ output :
       import numpy as np
       from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-      plt.rcParams['axes.unicode_minus'] = False    # 用来正常显示负号
-      plt.rcParams['font.serif'] = ['Songti SC', 'SimSun']  # 用来正常显示中文
+      plt.rcParams['axes.unicode_minus'] = False
+      plt.rcParams.update({
+      "text.usetex": False,
+      "font.family": "SimSun",
+      "mathtext.fontset": "stix",
+      "axes.unicode_minus": False,
+      "font.size": 12
+        })
 
       # ================= 配置参数 =================
       FIG_SIZE = (10, 4.5)
@@ -125,6 +131,6 @@ output :
             plot_plane_plane_parallel()
             print("图2 (面面平行) 纯净版已生成！")
       '''
-notice : 代码需要用三引号包括，除此以外不要生成其它代码，不要二次使用两对三引号
+notice : 代码需要用一对三反引号包括，不要二次使用两对三反引号```去写代码片段引起误解
 start : 你好，今天想画点啥嘞？
           
