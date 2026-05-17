@@ -17,7 +17,6 @@ type SelectionItem struct {
 type Request struct {
 	SceneName   string
 	CurrentCode string
-	Prompt      string
 	Selection   []SelectionItem
 }
 
@@ -28,10 +27,6 @@ func BuildSystemPrompt(template string) string {
 func BuildUserPrompt(request Request) string {
 	lines := []string{
 		fmt.Sprintf("场景名：%s", request.SceneName),
-	}
-
-	if prompt := strings.TrimSpace(request.Prompt); prompt != "" {
-		lines = append(lines, "", "附加提示词：", prompt)
 	}
 
 	textLines := make([]string, 0)

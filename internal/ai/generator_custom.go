@@ -30,7 +30,6 @@ func (g *CustomGenerator) Generate(ctx context.Context, request GenerationReques
 		UserPrompt: prompting.BuildUserPrompt(prompting.Request{
 			SceneName:   request.SceneName,
 			CurrentCode: request.CurrentCode,
-			Prompt:      promptTemplate,
 			Selection:   promptItems,
 		}),
 		Images: prompting.ExtractImageDataURLs(promptItems),

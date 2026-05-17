@@ -42,7 +42,6 @@ func (g *SubscriptionGenerator) Generate(ctx context.Context, request Generation
 		UserPrompt: prompting.BuildUserPrompt(prompting.Request{
 			SceneName:   request.SceneName,
 			CurrentCode: request.CurrentCode,
-			Prompt:      promptTemplate,
 			Selection:   promptItems,
 		}),
 		Images: prompting.ExtractImageDataURLs(promptItems),
