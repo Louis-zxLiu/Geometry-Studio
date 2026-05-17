@@ -8,8 +8,7 @@
   "frontend:dev:serverUrl": "auto",
   "frontenddir": "frontend",
   "author": {
-    "name": "OpenAI Codex",
+    "name": "Wingflow",
     "email": ""
   }
 }
-
