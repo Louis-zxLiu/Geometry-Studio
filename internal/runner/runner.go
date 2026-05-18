@@ -64,6 +64,12 @@ func (r *Runner) Run(sceneName string, req Request) error {
 		return err
 	}
 
+	runtimeDir, err := paths.RuntimeDir()
+	if err != nil {
+		r.mu.Unlock()
+		return err
+	}
+
 	scriptsDir, err := paths.ScriptsDir()
 	if err != nil {
 		r.mu.Unlock()
@@ -80,7 +86,7 @@ func (r *Runner) Run(sceneName string, req Request) error {
 
 	cmd := exec.Command(python, append(args, absScriptPath)...)
 	cmd.Dir = sceneDir
-	cmd.Env = append(os.Environ(), "MPLBACKEND=Qt5Agg")
+	cmd.Env = buildPythonEnv(runtimeDir)
 	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
 
 	var stderr bytes.Buffer
@@ -190,6 +196,23 @@ func resolvePythonCommand() (string, []string, error) {
 	}
 
 	return "", nil, errors.New("python runtime not found; expected ./runtime/python.exe or ./runtime/pythonw.exe")
+}
+
+func buildPythonEnv(runtimeDir string) []string {
+	env := append([]string{}, os.Environ()...)
+	qtRoot := filepath.Join(runtimeDir, "Lib", "site-packages", "PyQt5", "Qt5")
+	qtBinDir := filepath.Join(qtRoot, "bin")
+	qtPluginsDir := filepath.Join(qtRoot, "plugins")
+	qtPlatformsDir := filepath.Join(qtPluginsDir, "platforms")
+
+	env = append(env,
+		"MPLBACKEND=Qt5Agg",
+		"QT_QPA_PLATFORM_PLUGIN_PATH="+qtPlatformsDir,
+		"QT_PLUGIN_PATH="+qtPluginsDir,
+		"PATH="+qtBinDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+	)
+
+	return env
 }
 
 func killProcessTree(pid int) error {
