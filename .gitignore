@@ -18,6 +18,7 @@ packaging/output/
 packaging/staging/
 packaging/.tools_py/
 config/subscription.json
+tools/ai_probe.go
 .DS_Store
 Thumbs.db
 
