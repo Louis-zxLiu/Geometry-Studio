@@ -10,6 +10,11 @@ export type NoteDocument = {
   images: NoteImage[];
 };
 
+type NoteDocumentInput = {
+  markdown?: unknown;
+  images?: unknown;
+};
+
 const panelStateKey = "plotkitycat:note:panel-open";
 
 export function createNotePanelStorage() {
@@ -39,7 +44,7 @@ export function createEmptyNoteDocument(): NoteDocument {
   };
 }
 
-export function normalizeNoteDocument(value: Partial<NoteDocument> | null | undefined): NoteDocument {
+export function normalizeNoteDocument(value: NoteDocumentInput | null | undefined): NoteDocument {
   return {
     markdown: typeof value?.markdown === "string" ? value.markdown : "",
     images: Array.isArray(value?.images)

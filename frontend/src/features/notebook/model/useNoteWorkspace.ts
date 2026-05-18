@@ -56,7 +56,7 @@ export function useNoteWorkspace(currentFile: Ref<string>, onError: ErrorHandler
 
   function hydrateFromScriptDocument(note: {
     noteMarkdown?: unknown;
-    noteImages?: Array<Record<string, unknown>>;
+    noteImages?: unknown;
   }) {
     void flushPendingSave(currentFile.value);
     currentDocument.value = normalizeNoteDocument({

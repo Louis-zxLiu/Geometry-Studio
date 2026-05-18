@@ -28,3 +28,14 @@ type ChatResponse struct {
 		} `json:"message"`
 	} `json:"choices"`
 }
+
+type ChatStreamResponse struct {
+	Choices []struct {
+		Delta struct {
+			Content string `json:"content"`
+		} `json:"delta"`
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
