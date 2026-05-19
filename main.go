@@ -3,9 +3,11 @@ package main
 import (
 	"embed"
 	"fmt"
+	"os"
 
 	"plotkitycat/internal/bridge"
 	"plotkitycat/internal/instancelock"
+	"plotkitycat/internal/startupdiag"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -16,9 +18,19 @@ import (
 var assets embed.FS
 
 func main() {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err := fmt.Errorf("%v", recovered)
+			startupdiag.ShowStartupError("PlotKityCat Startup Error", startupdiag.StartupErrorMessage(err))
+			os.Exit(1)
+		}
+	}()
+
 	lock, err := instancelock.Acquire()
 	if err != nil {
-		panic(fmt.Errorf("PlotKityCat is already running: %w", err))
+		startErr := fmt.Errorf("failed to acquire single-instance lock on 127.0.0.1:49152: %w", err)
+		startupdiag.ShowStartupError("PlotKityCat Startup Error", startupdiag.StartupErrorMessage(startErr))
+		panic(startErr)
 	}
 	defer lock.Release()
 
@@ -44,6 +56,7 @@ func main() {
 		OnShutdown: app.Shutdown,
 	})
 	if err != nil {
-		panic(err)
+		startupdiag.ShowStartupError("PlotKityCat Startup Error", startupdiag.StartupErrorMessage(err))
+		os.Exit(1)
 	}
 }
