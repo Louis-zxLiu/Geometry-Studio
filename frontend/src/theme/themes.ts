@@ -40,8 +40,15 @@ function createTheme(seed: ThemeSeed): AppTheme {
     "--file-icon-bg": "transparent",
     "--file-icon-text": seed.smoke,
     "--dialog-bg": seed.main,
-    "--dialog-input-bg": "transparent",
-    "--dialog-input-focus": seed.bg,
+    "--dialog-input-surface": seed.dark
+      ? "color-mix(in srgb, " + seed.sidebar + ", black 18%)"
+      : "color-mix(in srgb, " + seed.main + ", " + seed.bg + " 42%)",
+    "--dialog-input-bg": seed.dark
+      ? "color-mix(in srgb, " + seed.main + ", white 4%)"
+      : "color-mix(in srgb, " + seed.main + ", white 12%)",
+    "--dialog-input-focus": seed.dark
+      ? "color-mix(in srgb, " + seed.main + ", white 8%)"
+      : "color-mix(in srgb, " + seed.bg + ", white 18%)",
     "--dialog-shadow": seed.dark ? "rgba(0, 0, 0, 0.34)" : "rgba(67, 52, 34, 0.1)",
     "--dialog-line": seed.accent,
     "--loading-track": seed.accent,

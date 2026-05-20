@@ -74,7 +74,7 @@
 }
 
 .dialog-button.secondary {
-  color: rgba(29, 29, 31, 0.86);
+  color: color-mix(in srgb, var(--text), transparent 12%);
 }
 
 .dialog-button.primary {
@@ -167,7 +167,7 @@
   display: grid;
   gap: 12px;
   padding: 14px 16px 16px;
-  background: color-mix(in srgb, var(--surface-soft), white 32%);
+  background: var(--dialog-input-surface);
 }
 
 .ai-provider-card.muted {
@@ -191,16 +191,23 @@
   padding: 0;
   border: 0;
   outline: 0;
-  background: transparent;
+  background: var(--dialog-input-bg);
   color: var(--text);
   font: inherit;
   font-size: 0.84rem;
   letter-spacing: 0.04em;
   box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--dialog-line), transparent 15%);
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
 }
 
 .ai-provider-input::placeholder {
   color: color-mix(in srgb, var(--muted), transparent 24%);
+}
+
+.ai-provider-input:focus {
+  background: var(--dialog-input-focus);
 }
 
 .ai-inline-divider,

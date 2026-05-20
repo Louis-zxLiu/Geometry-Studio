@@ -27,7 +27,8 @@
   --file-icon-bg: transparent;
   --file-icon-text: #999999;
   --dialog-bg: #ffffff;
-  --dialog-input-bg: transparent;
+  --dialog-input-surface: #f7f8f7;
+  --dialog-input-bg: #ffffff;
   --dialog-input-focus: #f7f8f7;
   --dialog-shadow: rgba(67, 52, 34, 0.1);
   --dialog-line: #eeeeee;

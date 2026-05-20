@@ -8,6 +8,7 @@ import (
 	"plotkitycat/internal/bridge"
 	"plotkitycat/internal/instancelock"
 	"plotkitycat/internal/startupdiag"
+	"plotkitycat/internal/windowmetrics"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -35,11 +36,12 @@ func main() {
 	defer lock.Release()
 
 	app := bridge.NewApp()
+	initialWindowSize := windowmetrics.InitialWindowSize()
 
 	err = wails.Run(&options.App{
 		Title:     "PlotKityCat",
-		Width:     1440,
-		Height:    900,
+		Width:     initialWindowSize.Width,
+		Height:    initialWindowSize.Height,
 		Frameless: true,
 		MinWidth:  1180,
 		MinHeight: 760,
