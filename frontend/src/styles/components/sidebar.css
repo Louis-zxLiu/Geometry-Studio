@@ -63,12 +63,13 @@
 
 .create-button {
   justify-content: flex-start;
+  gap: 10px;
   width: 100%;
   min-height: 28px;
   margin: 12px 0 24px;
   padding: 0;
   background: transparent;
-  color: var(--text);
+  color: var(--muted);
   text-align: left;
   font-size: 12px;
   font-weight: 600;
@@ -77,13 +78,23 @@
 }
 
 .create-icon {
-  display: inline;
-  width: auto;
-  height: auto;
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.create-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 1.25;
 }
 
 .sidebar-body {
@@ -503,9 +514,14 @@
   content: none;
 }
 
-.scene-select-button:hover,
-.create-button:hover {
+.scene-select-button:hover {
+  color: var(--text);
   opacity: 0.6;
+}
+
+.create-button:hover {
+  color: var(--text);
+  opacity: 1;
 }
 
 .scene-list-transition-enter-active,

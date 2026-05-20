@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import type { AINoteSelectionPayload } from "../features/ai/services/aiTypes";
-import type { NoteRenderBlock } from "../features/notebook/rendering/noteForwarder";
-import type { NoteDocument } from "../features/notebook/services/notebookStorage";
+import type { AINoteSelectionPayload } from "../../features/ai/services/aiTypes";
+import type { NoteRenderBlock } from "../../features/notebook/rendering/noteForwarder";
+import type { NoteDocument } from "../../features/notebook/services/notebookStorage";
 import {
   buildAINoteSelectionPayload,
   collectSelectedImagesForContextMenu,
-} from "../features/notebook/selection/noteSelection";
+} from "../../features/notebook/selection/noteSelection";
+import NoteContextMenu from "./NoteContextMenu.vue";
+import NoteImageBlock from "./NoteImageBlock.vue";
+import NoteImagePreview from "./NoteImagePreview.vue";
 
 const props = defineProps<{
   currentFile: string;
@@ -259,6 +262,11 @@ function handleNotebookClick(event: MouseEvent) {
   event.preventDefault();
   event.stopPropagation();
   toggleImageSelection(relativePath);
+}
+
+function handleImageBlockContext(event: MouseEvent, relativePath: string) {
+  ensureImageSelection(relativePath);
+  handleContextMenu(event);
 }
 
 function syncTextSelection() {
@@ -581,82 +589,14 @@ watch(
           />
 
           <template v-for="block in imageBlocks" :key="block.id">
-            <figure
-              class="notebook-image-block"
-              :class="{ selected: selectedImagePaths.has(block.image.relativePath) }"
-              @mousedown.left.prevent
-              @click="toggleImageSelection(block.image.relativePath)"
-              @contextmenu.stop.prevent="ensureImageSelection(block.image.relativePath); handleContextMenu($event)"
-            >
-              <div class="notebook-image-actions">
-                <button
-                  class="notebook-image-action"
-                  type="button"
-                  title="预览图片"
-                  aria-label="预览图片"
-                  @click.stop="openPreview(block.image.dataUrl, block.image.alt || block.image.name)"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      d="M3 12s3.3-6 9-6 9 6 9 6-3.3 6-9 6-9-6-9-6Z"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="1.7"
-                    />
-                    <path
-                      d="M12 9.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="1.7"
-                    />
-                  </svg>
-                </button>
-
-                <button
-                  class="notebook-image-action danger"
-                  type="button"
-                  title="移除图片"
-                  aria-label="移除图片"
-                  @click.stop="emit('remove-image', block.image.relativePath)"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      d="M6 7h12"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="1.7"
-                    />
-                    <path
-                      d="m9 7 .6-2h4.8L15 7"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="1.7"
-                    />
-                    <path
-                      d="M8 7v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V7"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="1.7"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <img
-                class="notebook-image"
-                :src="block.image.dataUrl"
-                :alt="block.image.alt || block.image.name"
-              />
-            </figure>
+            <NoteImageBlock
+              :block="block"
+              :selected="selectedImagePaths.has(block.image.relativePath)"
+              @preview="openPreview"
+              @remove="emit('remove-image', $event)"
+              @select="toggleImageSelection"
+              @context="handleImageBlockContext"
+            />
           </template>
 
           <button
@@ -672,123 +612,29 @@ watch(
     </div>
 
     <Teleport to="body">
-      <div
-        v-if="contextMenu && !aiBusy"
-        class="notebook-context-menu"
-        :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
-        @mousedown.stop
-      >
-        <button
-          v-if="contextMenuImages.length > 0"
-          class="notebook-context-action"
-          type="button"
-          @click="previewContextImage"
-        >
-          <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M3 12s3.3-6 9-6 9 6 9 6-3.3 6-9 6-9-6-9-6Z" />
-            <path d="M12 9.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z" />
-          </svg>
-          <span>预览</span>
-        </button>
-        <button class="notebook-context-action" type="button" @click="runAIDesign">
-          <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 6.5h16" />
-            <path d="M4 12h10" />
-            <path d="M4 17.5h7" />
-            <path d="m16 15 4-4" />
-            <path d="m20 15-4-4" />
-          </svg>
-          <span>可视化设计</span>
-        </button>
-        <button class="notebook-context-action" type="button" @click="runAIGeneration">
-          <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="4.5" y="4.5" width="15" height="15" />
-            <path d="M9 15.4 12 8.6l3 6.8" />
-            <path d="M10 13.2h4" />
-            <path d="M8 4.5V2.8" />
-            <path d="M16 4.5V2.8" />
-            <path d="M8 21.2v-1.7" />
-            <path d="M16 21.2v-1.7" />
-          </svg>
-          <span>可视化</span>
-        </button>
-        <button
-          v-if="contextMenuImages.length > 0"
-          class="notebook-context-action danger"
-          type="button"
-          @click="removeContextImages"
-        >
-          <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 7h12" />
-            <path d="m9 7 .6-2h4.8L15 7" />
-            <path d="M8 7v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V7" />
-          </svg>
-          <span>移除</span>
-        </button>
-      </div>
-
-      <div
-        v-if="previewImage"
-        class="notebook-image-preview"
-        role="dialog"
-        aria-modal="true"
-        @click.self="closePreview"
-        @wheel.prevent="handlePreviewWheel"
-      >
-        <div class="notebook-preview-toolbar">
-          <button
-            class="notebook-preview-control"
-            type="button"
-            title="缩小"
-            aria-label="缩小"
-            @click="zoomPreview(-0.2)"
-          >
-            -
-          </button>
-          <button
-            class="notebook-preview-control"
-            type="button"
-            title="恢复原始大小"
-            aria-label="恢复原始大小"
-            @click="resetPreviewZoom"
-          >
-            100%
-          </button>
-          <button
-            class="notebook-preview-control"
-            type="button"
-            title="放大"
-            aria-label="放大"
-            @click="zoomPreview(0.2)"
-          >
-            +
-          </button>
-        </div>
-        <button
-          class="notebook-preview-close"
-          type="button"
-          title="关闭预览"
-          aria-label="关闭预览"
-          @click="closePreview"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="m7 7 10 10M17 7 7 17"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.8"
-            />
-          </svg>
-        </button>
-        <img
-          class="notebook-preview-image"
-          :src="previewImage.src"
-          :alt="previewImage.alt"
-          :style="{ transform: `scale(${previewScale})` }"
+      <Transition name="floating-menu" appear>
+        <NoteContextMenu
+          v-if="contextMenu && !aiBusy"
+          :position="contextMenu"
+          :images="contextMenuImages"
+          @preview="previewContextImage"
+          @design="runAIDesign"
+          @generate="runAIGeneration"
+          @remove="removeContextImages"
         />
-      </div>
+      </Transition>
+
+      <Transition name="preview-dialog" appear>
+        <NoteImagePreview
+          v-if="previewImage"
+          :image="previewImage"
+          :scale="previewScale"
+          @close="closePreview"
+          @wheel="handlePreviewWheel"
+          @zoom="zoomPreview"
+          @reset="resetPreviewZoom"
+        />
+      </Transition>
     </Teleport>
   </aside>
 </template>

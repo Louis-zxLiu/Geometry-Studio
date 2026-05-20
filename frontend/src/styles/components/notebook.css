@@ -459,6 +459,94 @@
   height: 20px;
 }
 
+.floating-menu-enter-active {
+  animation: floating-menu-enter 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.floating-menu-leave-active {
+  animation: floating-menu-exit 110ms ease-in both;
+}
+
+.preview-dialog-enter-active {
+  animation: preview-dialog-enter 240ms ease-out both;
+}
+
+.preview-dialog-enter-active .notebook-preview-image {
+  animation: preview-image-enter 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.preview-dialog-leave-active {
+  animation: preview-dialog-exit 180ms ease-in both;
+}
+
+.preview-dialog-leave-active .notebook-preview-image {
+  animation: preview-image-exit 160ms cubic-bezier(0.7, 0, 0.84, 0) both;
+}
+
+@keyframes floating-menu-enter {
+  from {
+    opacity: 0;
+    transform: translate(10px, 12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(10px, 6px) scale(1);
+  }
+}
+
+@keyframes floating-menu-exit {
+  from {
+    opacity: 1;
+    transform: translate(10px, 6px) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(10px, 10px) scale(0.99);
+  }
+}
+
+@keyframes preview-dialog-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes preview-dialog-exit {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes preview-image-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes preview-image-exit {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
 .katex-display {
   margin: 1.15em 0;
   overflow-x: auto;

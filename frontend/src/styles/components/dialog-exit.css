@@ -1,9 +1,9 @@
 .create-dialog-backdrop-leave-active {
-  animation: dialog-backdrop-exit 150ms ease-in both;
+  animation: dialog-backdrop-exit 200ms ease-in both;
 }
 
 .create-dialog-backdrop-leave-active .create-dialog {
-  animation: dialog-panel-exit 150ms cubic-bezier(0.7, 0, 0.84, 0) both;
+  animation: dialog-panel-exit 190ms cubic-bezier(0.7, 0, 0.84, 0) both;
 }
 
 @keyframes dialog-backdrop-exit {
