@@ -57,9 +57,16 @@ type InitProgress struct {
 }
 
 type WorkspaceSnapshot struct {
-	Scripts     []string       `json:"scripts"`
-	CurrentFile string         `json:"currentFile"`
-	Document    ScriptDocument `json:"document"`
+	Scripts          []string        `json:"scripts"`
+	CurrentFile      string          `json:"currentFile"`
+	Document         ScriptDocument  `json:"document"`
+	Workspaces       []WorkspaceInfo `json:"workspaces"`
+	CurrentWorkspace string          `json:"currentWorkspace"`
+}
+
+type WorkspaceInfo struct {
+	Name       string `json:"name"`
+	SceneCount int    `json:"sceneCount"`
 }
 
 type InitSnapshot struct {

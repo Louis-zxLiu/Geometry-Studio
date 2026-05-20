@@ -8,7 +8,11 @@ export function BootstrapWorkspace():Promise<bridge.WorkspaceSnapshot>;
 
 export function CreateScript(arg1:string):Promise<bridge.ScriptDocument>;
 
+export function CreateWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;
+
 export function DeleteScript(arg1:string):Promise<bridge.WorkspaceSnapshot>;
+
+export function DeleteWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;
 
 export function ExportScenePackage(arg1:string):Promise<bridge.PackageTransferResult>;
 
@@ -38,6 +42,8 @@ export function RemoveScriptNoteImage(arg1:string,arg2:string):Promise<bridge.No
 
 export function RenameScript(arg1:string,arg2:string):Promise<bridge.WorkspaceSnapshot>;
 
+export function RenameWorkspace(arg1:string,arg2:string):Promise<bridge.WorkspaceSnapshot>;
+
 export function SaveAndRun(arg1:string,arg2:string):Promise<void>;
 
 export function SaveScript(arg1:string,arg2:string):Promise<void>;
@@ -45,3 +51,5 @@ export function SaveScript(arg1:string,arg2:string):Promise<void>;
 export function SaveScriptNote(arg1:string,arg2:string):Promise<void>;
 
 export function StopCurrentRun():Promise<bridge.RunControlResult>;
+
+export function SwitchWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;

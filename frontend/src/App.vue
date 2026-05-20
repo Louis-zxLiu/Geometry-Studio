@@ -28,7 +28,9 @@ const theme = proxyRefs(useTheme());
 
     <SidebarPanel
       :scripts="workspace.scripts"
+      :workspaces="workspace.workspaces"
       :current-file="workspace.currentFile"
+      :current-workspace="workspace.currentWorkspace"
       :typing-script-name="workspace.typingScriptName"
       :deleting-script-name="workspace.deletingScriptName"
       :is-renaming="workspace.isRenamingScript"
@@ -37,6 +39,10 @@ const theme = proxyRefs(useTheme());
       @create="workspace.openCreateDialog"
       @rename="workspace.renameScript"
       @delete="workspace.deleteScript"
+      @switch-workspace="workspace.switchWorkspace"
+      @create-workspace="workspace.createWorkspace"
+      @rename-workspace="workspace.renameWorkspace"
+      @delete-workspace="workspace.deleteWorkspace"
       @ai-settings="workspace.openAISettings"
       @settings="workspace.openSettings"
       @appearance="theme.cycleTheme"

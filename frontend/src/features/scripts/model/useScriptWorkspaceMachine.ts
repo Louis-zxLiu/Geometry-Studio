@@ -1,7 +1,7 @@
 import { computed, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import { createScriptRepository } from "../services/scriptRepository";
 import { createScriptSelectionStorage } from "../services/scriptSelectionStorage";
-import type { WorkspaceSnapshotLike } from "../services/scriptBridgeCompat";
+import type { WorkspaceInfoLike, WorkspaceSnapshotLike } from "../services/scriptBridgeCompat";
 
 type ErrorHandler = (message: string) => void;
 type WorkspacePhase = "idle" | "syncing" | "creating" | "renaming" | "deleting";
@@ -13,6 +13,8 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
   const repository = createScriptRepository();
   const selectionStorage = createScriptSelectionStorage();
   const scripts = ref<string[]>([]);
+  const workspaces = ref<WorkspaceInfoLike[]>([]);
+  const currentWorkspace = ref("");
   const currentFile = ref("");
   const codeContent = ref("");
   const lastLoadedCode = ref("");
@@ -40,6 +42,8 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
       codeContent.value !== lastLoadedCode.value;
 
     scripts.value = snapshot?.scripts ?? [];
+    workspaces.value = snapshot?.workspaces ?? [];
+    currentWorkspace.value = snapshot?.currentWorkspace ?? currentWorkspace.value;
     currentFile.value = nextCurrentFile;
     if (!preserveCurrentCode) {
       codeContent.value = nextCode;
@@ -215,6 +219,83 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
     }
   }
 
+  async function switchWorkspace(name: string) {
+    const targetName = name.trim();
+    if (!targetName || targetName === currentWorkspace.value || workspacePhase.value !== "idle") {
+      return;
+    }
+
+    workspacePhase.value = "syncing";
+
+    try {
+      await saveCurrentScript();
+      const snapshot = await withTimeout(repository.switchWorkspace(targetName), "切换工作区超时");
+      applyWorkspaceSnapshot(snapshot, { preserveDirtyCurrent: false });
+    } catch (error) {
+      onError(getErrorMessage(error));
+    } finally {
+      workspacePhase.value = "idle";
+    }
+  }
+
+  async function createWorkspace(name: string) {
+    const targetName = name.trim();
+    if (!targetName || workspacePhase.value !== "idle") {
+      return;
+    }
+
+    workspacePhase.value = "creating";
+
+    try {
+      await saveCurrentScript();
+      const snapshot = await withTimeout(repository.createWorkspace(targetName), "创建工作区超时");
+      applyWorkspaceSnapshot(snapshot, { preserveDirtyCurrent: false });
+    } catch (error) {
+      onError(getErrorMessage(error));
+    } finally {
+      workspacePhase.value = "idle";
+    }
+  }
+
+  async function renameWorkspace(oldName: string, newName: string) {
+    const targetName = newName.trim();
+    if (!oldName || !targetName || workspacePhase.value !== "idle") {
+      return;
+    }
+
+    workspacePhase.value = "renaming";
+
+    try {
+      await saveCurrentScript();
+      const snapshot = await withTimeout(
+        repository.renameWorkspace(oldName, targetName),
+        "重命名工作区超时",
+      );
+      applyWorkspaceSnapshot(snapshot, { preserveDirtyCurrent: false });
+    } catch (error) {
+      onError(getErrorMessage(error));
+    } finally {
+      workspacePhase.value = "idle";
+    }
+  }
+
+  async function deleteWorkspace(name: string) {
+    if (!name || workspacePhase.value !== "idle") {
+      return;
+    }
+
+    workspacePhase.value = "deleting";
+
+    try {
+      const snapshot = await withTimeout(repository.deleteWorkspace(name), "删除工作区超时");
+      applyWorkspaceSnapshot(snapshot, { preserveDirtyCurrent: false });
+    } catch (error) {
+      onError(getErrorMessage(error));
+    } finally {
+      workspacePhase.value = "idle";
+    }
+  }
+
   async function runCurrentScript() {
     if (!currentFile.value || isRunning.value) {
       return;
@@ -262,9 +343,12 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
     applyWorkspaceSnapshot,
     closeCreateDialog,
     codeContent,
+    createWorkspace,
     createScript,
     currentFile,
+    currentWorkspace,
     deleteScript,
+    deleteWorkspace,
     deletingScriptName,
     isCreateDialogOpen,
     isCreatingScript,
@@ -272,14 +356,17 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
     isRenamingScript,
     openCreateDialog,
     renameScript,
+    renameWorkspace,
     restoreLastSelection,
     runCurrentScript,
     saveCurrentScript,
     scripts,
     selectScript,
+    switchWorkspace,
     syncWorkspace,
     typingScriptName,
     updateCode,
+    workspaces,
     workspacePhase,
   };
 }

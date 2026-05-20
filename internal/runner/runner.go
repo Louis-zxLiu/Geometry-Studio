@@ -13,6 +13,7 @@ import (
 
 	"plotkitycat/internal/paths"
 	"plotkitycat/internal/processutil"
+	"plotkitycat/internal/workspaces"
 )
 
 type Request struct {
@@ -41,14 +42,15 @@ func (e *RunError) Error() string {
 }
 
 type Runner struct {
-	mu       sync.Mutex
-	running  bool
-	stopping bool
-	cmd      *exec.Cmd
+	mu         sync.Mutex
+	running    bool
+	stopping   bool
+	cmd        *exec.Cmd
+	workspaces *workspaces.Manager
 }
 
-func New() *Runner {
-	return &Runner{}
+func New(workspaceManager *workspaces.Manager) *Runner {
+	return &Runner{workspaces: workspaceManager}
 }
 
 func (r *Runner) Run(sceneName string, req Request) error {
@@ -70,7 +72,7 @@ func (r *Runner) Run(sceneName string, req Request) error {
 		return err
 	}
 
-	scriptsDir, err := paths.ScriptsDir()
+	scriptsDir, err := r.workspaces.CurrentDir()
 	if err != nil {
 		r.mu.Unlock()
 		return err

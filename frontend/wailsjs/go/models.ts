@@ -201,6 +201,20 @@ export namespace bridge {
 		    return a;
 		}
 	}
+	export class WorkspaceInfo {
+	    name: string;
+	    sceneCount: number;
+
+	    static createFrom(source: any = {}) {
+	        return new WorkspaceInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.sceneCount = source["sceneCount"];
+	    }
+	}
 	export class NoteImage {
 	    name: string;
 	    alt: string;
@@ -259,6 +273,8 @@ export namespace bridge {
 	    scripts: string[];
 	    currentFile: string;
 	    document: ScriptDocument;
+	    workspaces: WorkspaceInfo[];
+	    currentWorkspace: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new WorkspaceSnapshot(source);
@@ -269,6 +285,8 @@ export namespace bridge {
 	        this.scripts = source["scripts"];
 	        this.currentFile = source["currentFile"];
 	        this.document = this.convertValues(source["document"], ScriptDocument);
+	        this.workspaces = this.convertValues(source["workspaces"], WorkspaceInfo);
+	        this.currentWorkspace = source["currentWorkspace"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -476,5 +494,5 @@ export namespace bridge {
 	    }
 	}
 
-}
 
+}

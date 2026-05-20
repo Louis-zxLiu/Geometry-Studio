@@ -277,6 +277,26 @@ export function usePlotWorkspace() {
     }
   }
 
+  async function switchWorkspace(name: string) {
+    await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
+    await scriptWorkspace.switchWorkspace(name);
+  }
+
+  async function createWorkspace(name: string) {
+    await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
+    await scriptWorkspace.createWorkspace(name);
+  }
+
+  async function renameWorkspace(oldName: string, newName: string) {
+    await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
+    await scriptWorkspace.renameWorkspace(oldName, newName);
+  }
+
+  async function deleteWorkspace(name: string) {
+    await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
+    await scriptWorkspace.deleteWorkspace(name);
+  }
+
   async function runAINoteAction(request: AINoteActionRequest) {
     if (
       !scriptWorkspace.currentFile.value ||
@@ -378,8 +398,11 @@ export function usePlotWorkspace() {
       }
     },
     createScript: scriptWorkspace.createScript,
+    createWorkspace,
     currentFile: scriptWorkspace.currentFile,
+    currentWorkspace: scriptWorkspace.currentWorkspace,
     deleteScript: scriptWorkspace.deleteScript,
+    deleteWorkspace,
     deletingScriptName: scriptWorkspace.deletingScriptName,
     environmentStatus: runtime.environmentStatus,
     exportCurrentScenePackage,
@@ -416,12 +439,14 @@ export function usePlotWorkspace() {
     noteRenderBlocks: noteWorkspace.renderBlocks,
     noteSaveState: noteWorkspace.saveState,
     renameScript: scriptWorkspace.renameScript,
+    renameWorkspace,
     removeNoteImage: noteWorkspace.removeImage,
     rebuildRuntime,
     runCurrentScript: scriptWorkspace.runCurrentScript,
     runErrorText: runErrorDialog.runErrorText,
     scripts: scriptWorkspace.scripts,
     selectScript: scriptWorkspace.selectScript,
+    switchWorkspace,
     stopCurrentRun,
     subscriptionStatus,
     toggleNotePanel,
@@ -429,6 +454,7 @@ export function usePlotWorkspace() {
     updateCode: scriptWorkspace.updateCode,
     updateAISettings,
     updateNoteMarkdown: noteWorkspace.updateMarkdown,
+    workspaces: scriptWorkspace.workspaces,
     workspacePhase: scriptWorkspace.workspacePhase,
     refreshSubscriptionStatusManually,
   };

@@ -7,6 +7,7 @@ import (
 
 	"plotkitycat/internal/files"
 	"plotkitycat/internal/runner"
+	"plotkitycat/internal/workspaces"
 )
 
 func (a *App) BootstrapWorkspace() (WorkspaceSnapshot, error) {
@@ -53,10 +54,21 @@ func (a *App) workspaceSnapshot(preferredFile string) (WorkspaceSnapshot, error)
 		}
 	}
 
+	workspaceItems, err := a.workspaceManager.List()
+	if err != nil {
+		return WorkspaceSnapshot{}, err
+	}
+	currentWorkspace, err := a.workspaceManager.CurrentName()
+	if err != nil {
+		return WorkspaceSnapshot{}, err
+	}
+
 	snapshot := WorkspaceSnapshot{
-		Scripts:     scripts,
-		CurrentFile: currentFile,
-		Document:    document,
+		Scripts:          scripts,
+		CurrentFile:      currentFile,
+		Document:         document,
+		Workspaces:       mapWorkspaces(workspaceItems),
+		CurrentWorkspace: currentWorkspace,
 	}
 
 	a.emit(EventScriptsLoaded, EventPayload{
@@ -76,6 +88,38 @@ func (a *App) GetScriptList() ([]string, error) {
 	}
 
 	return scripts, err
+}
+
+func (a *App) SwitchWorkspace(name string) (WorkspaceSnapshot, error) {
+	if err := a.workspaceManager.Switch(name); err != nil {
+		return WorkspaceSnapshot{}, err
+	}
+
+	return a.workspaceSnapshot("")
+}
+
+func (a *App) CreateWorkspace(name string) (WorkspaceSnapshot, error) {
+	if _, err := a.workspaceManager.Create(name); err != nil {
+		return WorkspaceSnapshot{}, err
+	}
+
+	return a.workspaceSnapshot("")
+}
+
+func (a *App) RenameWorkspace(oldName string, newName string) (WorkspaceSnapshot, error) {
+	if _, err := a.workspaceManager.Rename(oldName, newName); err != nil {
+		return WorkspaceSnapshot{}, err
+	}
+
+	return a.workspaceSnapshot("")
+}
+
+func (a *App) DeleteWorkspace(name string) (WorkspaceSnapshot, error) {
+	if err := a.workspaceManager.Delete(name); err != nil {
+		return WorkspaceSnapshot{}, err
+	}
+
+	return a.workspaceSnapshot("")
 }
 
 func (a *App) GetScriptContent(filename string) (ScriptDocument, error) {
@@ -308,6 +352,18 @@ func mapNoteImages(images []files.NoteImage) []NoteImage {
 			Alt:          image.Alt,
 			DataURL:      image.DataURL,
 			RelativePath: image.RelativePath,
+		})
+	}
+
+	return mapped
+}
+
+func mapWorkspaces(items []workspaces.Workspace) []WorkspaceInfo {
+	mapped := make([]WorkspaceInfo, 0, len(items))
+	for _, item := range items {
+		mapped = append(mapped, WorkspaceInfo{
+			Name:       item.Name,
+			SceneCount: item.SceneCount,
 		})
 	}
 

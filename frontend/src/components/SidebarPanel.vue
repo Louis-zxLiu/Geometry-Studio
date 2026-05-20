@@ -3,8 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import brandLogoUrl from "../assets/brand-logo.png";
 
 const props = defineProps<{
+  currentWorkspace: string;
   currentFile: string;
   scripts: string[];
+  workspaces: Array<{ name?: string; sceneCount?: number }>;
   typingScriptName: string;
   deletingScriptName: string;
   isRenaming: boolean;
@@ -15,12 +17,24 @@ const emit = defineEmits<{
   "ai-settings": [];
   appearance: [];
   create: [];
+  "create-workspace": [name: string];
   delete: [filename: string];
+  "delete-workspace": [name: string];
   rename: [oldFilename: string, newFilename: string];
+  "rename-workspace": [oldName: string, newName: string];
   select: [filename: string];
   settings: [];
+  "switch-workspace": [name: string];
 }>();
 
+const isWorkspacePickerOpen = ref(false);
+const workspaceSearch = ref("");
+const isCreatingWorkspace = ref(false);
+const newWorkspaceDraft = ref("");
+const contextWorkspace = ref("");
+const renamingWorkspace = ref("");
+const workspaceRenameDraft = ref("");
+const deleteConfirmWorkspace = ref("");
 const contextScript = ref("");
 const renamingScript = ref("");
 const renameDraft = ref("");
@@ -33,6 +47,14 @@ const visibleScripts = computed(() =>
     label: animatedNames.value[script] ?? script,
   })),
 );
+
+const visibleWorkspaces = computed(() => {
+  const keyword = workspaceSearch.value.trim().toLowerCase();
+  return props.workspaces.filter((workspace) => {
+    const name = workspace.name ?? "";
+    return !keyword || name.toLowerCase().includes(keyword);
+  });
+});
 
 watch(
   () => props.typingScriptName,
@@ -65,6 +87,13 @@ watch(
   },
 );
 
+watch(
+  () => props.currentWorkspace,
+  () => {
+    closeWorkspaceRowActions();
+  },
+);
+
 onMounted(() => {
   window.addEventListener("click", handleOutsideClick);
 });
@@ -79,6 +108,123 @@ function handleOutsideClick() {
   }
 
   closeRowActions();
+}
+
+function toggleWorkspacePicker(event: MouseEvent) {
+  event.stopPropagation();
+  isWorkspacePickerOpen.value = !isWorkspacePickerOpen.value;
+  if (!isWorkspacePickerOpen.value) {
+    closeWorkspacePicker();
+  }
+}
+
+function keepWorkspacePickerOpen(event: MouseEvent) {
+  event.stopPropagation();
+}
+
+function handleWorkspaceBackdropClick() {
+  if (props.isRenaming || props.isDeleting) {
+    return;
+  }
+
+  closeWorkspacePicker();
+}
+
+function selectWorkspace(name?: string) {
+  if (!name) {
+    return;
+  }
+
+  emit("switch-workspace", name);
+  closeWorkspacePicker();
+}
+
+function handleWorkspaceRowClick(name?: string) {
+  selectWorkspace(name);
+}
+
+function openWorkspaceContext(name: string | undefined, event: MouseEvent) {
+  event.preventDefault();
+  openWorkspaceActions(name, event);
+}
+
+function startCreateWorkspace() {
+  isCreatingWorkspace.value = true;
+  newWorkspaceDraft.value = "";
+}
+
+function submitCreateWorkspace() {
+  const name = newWorkspaceDraft.value.trim();
+  if (!name) {
+    return;
+  }
+
+  emit("create-workspace", name);
+  closeWorkspacePicker();
+}
+
+function cancelCreateWorkspace() {
+  isCreatingWorkspace.value = false;
+  newWorkspaceDraft.value = "";
+}
+
+function openWorkspaceActions(name?: string, event?: MouseEvent) {
+  event?.stopPropagation();
+  if (!name) {
+    return;
+  }
+
+  contextWorkspace.value = name;
+  deleteConfirmWorkspace.value = "";
+}
+
+function startRenameWorkspace(name?: string) {
+  if (!name || props.isRenaming || props.isDeleting) {
+    return;
+  }
+
+  renamingWorkspace.value = name;
+  workspaceRenameDraft.value = name;
+  deleteConfirmWorkspace.value = "";
+}
+
+function submitRenameWorkspace() {
+  const nextName = workspaceRenameDraft.value.trim();
+  if (!renamingWorkspace.value || !nextName) {
+    return;
+  }
+
+  emit("rename-workspace", renamingWorkspace.value, nextName);
+  closeWorkspacePicker();
+}
+
+function requestDeleteWorkspace(name?: string) {
+  if (!name || name === props.currentWorkspace) {
+    return;
+  }
+
+  if (deleteConfirmWorkspace.value === name) {
+    emit("delete-workspace", name);
+    closeWorkspacePicker();
+    return;
+  }
+
+  deleteConfirmWorkspace.value = name;
+}
+
+function closeWorkspacePicker() {
+  isWorkspacePickerOpen.value = false;
+  workspaceSearch.value = "";
+  isCreatingWorkspace.value = false;
+  newWorkspaceDraft.value = "";
+  closeWorkspaceRowActions();
+}
+
+function closeWorkspaceRowActions() {
+  contextWorkspace.value = "";
+  renamingWorkspace.value = "";
+  workspaceRenameDraft.value = "";
+  deleteConfirmWorkspace.value = "";
 }
 
 function openContext(script: string, event: MouseEvent) {
@@ -170,6 +316,147 @@ function animateDeleting(script: string) {
       </div>
     </div>
 
+    <div class="workspace-picker" @click="keepWorkspacePickerOpen">
+      <button
+        class="workspace-trigger"
+        type="button"
+        @click="toggleWorkspacePicker"
+      >
+        <span class="workspace-trigger-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20">
+            <path d="M4.5 6.5h11" />
+            <path d="M5.5 6.5h9v8.5h-9Z" />
+            <path d="M8 9.2h4" />
+          </svg>
+        </span>
+        <span class="workspace-trigger-label">WORKSPACE · {{ currentWorkspace || "工作区_01" }}</span>
+      </button>
+
+      <Teleport to="body">
+        <div
+          v-if="isWorkspacePickerOpen"
+          class="dialog-backdrop workspace-dialog-backdrop"
+          @click="handleWorkspaceBackdropClick"
+        >
+          <section class="create-dialog workspace-dialog" @click.stop>
+          <div class="workspace-popover-title">工作区</div>
+          <input
+            v-model="workspaceSearch"
+            class="workspace-search-input"
+            type="text"
+            placeholder="搜索工作区"
+            @keydown.esc.prevent="closeWorkspacePicker"
+          />
+
+          <div class="workspace-list">
+            <div
+              v-for="workspace in visibleWorkspaces"
+              :key="workspace.name"
+              class="workspace-item"
+              :class="{
+                active: workspace.name === currentWorkspace,
+                contextual: workspace.name === contextWorkspace,
+                renaming: workspace.name === renamingWorkspace,
+              }"
+              @click="handleWorkspaceRowClick(workspace.name)"
+              @contextmenu="openWorkspaceContext(workspace.name, $event)"
+            >
+              <template v-if="renamingWorkspace === workspace.name">
+                <input
+                  v-model="workspaceRenameDraft"
+                  class="workspace-rename-input"
+                  type="text"
+                  maxlength="120"
+                  :disabled="isRenaming"
+                  @click.stop
+                  @keydown.enter.prevent="submitRenameWorkspace"
+                  @keydown.esc.prevent="closeWorkspaceRowActions"
+                />
+                <button
+                  class="scene-action-icon"
+                  type="button"
+                  :disabled="isRenaming"
+                  @click.stop="submitRenameWorkspace"
+                  title="确认重命名"
+                  aria-label="确认重命名"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 20 20">
+                    <path d="M4 10.5 8 14.5 16 5.5" />
+                  </svg>
+                </button>
+              </template>
+              <template v-else>
+                <span class="workspace-item-main">
+                  <span class="workspace-check" aria-hidden="true">{{ workspace.name === currentWorkspace ? "✓" : "" }}</span>
+                  <span class="workspace-name">{{ workspace.name }}</span>
+                </span>
+                <span class="workspace-count">{{ workspace.sceneCount ?? 0 }} 个场景</span>
+                <span
+                  v-if="workspace.name === contextWorkspace"
+                  class="workspace-actions"
+                  @click.stop
+                >
+                  <button
+                    class="scene-action-icon"
+                    type="button"
+                    :disabled="isRenaming || isDeleting"
+                    @click.stop="startRenameWorkspace(workspace.name)"
+                    title="重命名"
+                    aria-label="重命名"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 20 20">
+                      <path d="M4 14.5V16h1.5l8.7-8.7-1.5-1.5L4 14.5Z" />
+                      <path d="M11.9 4.7 13.4 3.2 16.8 6.6 15.3 8.1" />
+                    </svg>
+                  </button>
+                  <button
+                    class="scene-action-icon"
+                    :class="{ danger: deleteConfirmWorkspace === workspace.name }"
+                    type="button"
+                    :disabled="isRenaming || isDeleting || workspace.name === currentWorkspace"
+                    @click.stop="requestDeleteWorkspace(workspace.name)"
+                    :title="deleteConfirmWorkspace === workspace.name ? '确认删除' : '删除'"
+                    :aria-label="deleteConfirmWorkspace === workspace.name ? '确认删除' : '删除'"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 20 20">
+                      <path d="M6.5 5.5h7" />
+                      <path d="M8 5.5V4.4h4v1.1" />
+                      <path d="M7 7.5v6" />
+                      <path d="M10 7.5v6" />
+                      <path d="M13 7.5v6" />
+                      <path d="M5.5 5.5 6.2 15a1 1 0 0 0 1 .9h5.6a1 1 0 0 0 1-.9l.7-9.5" />
+                    </svg>
+                  </button>
+                </span>
+              </template>
+            </div>
+          </div>
+
+          <div class="workspace-create-shell">
+            <input
+              v-if="isCreatingWorkspace"
+              v-model="newWorkspaceDraft"
+              class="workspace-create-input"
+              type="text"
+              placeholder="输入工作区名称……"
+              maxlength="120"
+              @keydown.enter.prevent="submitCreateWorkspace"
+              @keydown.esc.prevent="cancelCreateWorkspace"
+            />
+            <button
+              v-else
+              class="workspace-create-button"
+              type="button"
+              @click="startCreateWorkspace"
+            >
+              ＋ 新建工作区
+            </button>
+          </div>
+          </section>
+        </div>
+      </Teleport>
+    </div>
+
     <button class="create-button" type="button" @click="emit('create')">
       <span class="create-icon">+</span>
       <span>新建场景</span>
@@ -177,7 +464,6 @@ function animateDeleting(script: string) {
 
     <div class="sidebar-body">
       <TransitionGroup name="scene-list-transition" tag="nav" class="scene-list" aria-label="Scripts">
-        <div class="scene-list-title">历史</div>
         <div
           v-for="script in visibleScripts"
           :key="script.name"

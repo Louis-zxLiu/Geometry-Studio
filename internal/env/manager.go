@@ -4,9 +4,12 @@ import (
 	"os"
 
 	"plotkitycat/internal/paths"
+	"plotkitycat/internal/workspaces"
 )
 
-type Manager struct{}
+type Manager struct {
+	workspaces *workspaces.Manager
+}
 
 type Progress struct {
 	Stage   string `json:"stage"`
@@ -14,23 +17,18 @@ type Progress struct {
 	Percent int    `json:"percent"`
 }
 
-func NewManager() *Manager {
-	return &Manager{}
+func NewManager(workspaceManager *workspaces.Manager) *Manager {
+	return &Manager{workspaces: workspaceManager}
 }
 
 func (m *Manager) EnsureReady(onProgress func(Progress)) error {
-	scriptsDir, err := paths.ScriptsDir()
-	if err != nil {
-		return err
-	}
-
 	reportProgress(onProgress, Progress{
 		Stage:   "preparing",
 		Message: "Preparing workspace",
 		Percent: 6,
 	})
 
-	if err := os.MkdirAll(scriptsDir, 0o755); err != nil {
+	if err := m.workspaces.EnsureReady(); err != nil {
 		return err
 	}
 

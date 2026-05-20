@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"plotkitycat/internal/paths"
+	"plotkitycat/internal/workspaces"
 )
 
 const (
@@ -33,10 +33,12 @@ type NoteDocument struct {
 	Markdown string
 }
 
-type Store struct{}
+type Store struct {
+	workspaces *workspaces.Manager
+}
 
-func NewStore() *Store {
-	return &Store{}
+func NewStore(workspaceManager *workspaces.Manager) *Store {
+	return &Store{workspaces: workspaceManager}
 }
 
 func (s *Store) ListScripts() ([]string, error) {
@@ -302,7 +304,7 @@ func (s *Store) SceneDir(sceneName string) (string, error) {
 }
 
 func (s *Store) ensureScriptsDir() (string, error) {
-	dir, err := paths.ScriptsDir()
+	dir, err := s.workspaces.CurrentDir()
 	if err != nil {
 		return "", err
 	}

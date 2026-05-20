@@ -10,6 +10,7 @@ import (
 	"plotkitycat/internal/files"
 	"plotkitycat/internal/runner"
 	"plotkitycat/internal/subscription"
+	"plotkitycat/internal/workspaces"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -22,18 +23,21 @@ type App struct {
 	fileStore           *files.Store
 	runner              *runner.Runner
 	subscriptionService *subscription.Service
+	workspaceManager    *workspaces.Manager
 }
 
 func NewApp() *App {
 	deviceService := device.NewService()
 	subscriptionService := subscription.NewService(deviceService)
+	workspaceManager := workspaces.NewManager()
 	return &App{
 		aiService:           ai.NewService(subscriptionService),
 		deviceService:       deviceService,
-		envManager:          env.NewManager(),
-		fileStore:           files.NewStore(),
-		runner:              runner.New(),
+		envManager:          env.NewManager(workspaceManager),
+		fileStore:           files.NewStore(workspaceManager),
+		runner:              runner.New(workspaceManager),
 		subscriptionService: subscriptionService,
+		workspaceManager:    workspaceManager,
 	}
 }
 

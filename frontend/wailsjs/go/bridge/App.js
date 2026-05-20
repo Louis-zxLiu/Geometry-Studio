@@ -14,8 +14,16 @@ export function CreateScript(arg1) {
   return window['go']['bridge']['App']['CreateScript'](arg1);
 }
 
+export function CreateWorkspace(arg1) {
+  return window['go']['bridge']['App']['CreateWorkspace'](arg1);
+}
+
 export function DeleteScript(arg1) {
   return window['go']['bridge']['App']['DeleteScript'](arg1);
+}
+
+export function DeleteWorkspace(arg1) {
+  return window['go']['bridge']['App']['DeleteWorkspace'](arg1);
 }
 
 export function ExportScenePackage(arg1) {
@@ -74,6 +82,10 @@ export function RenameScript(arg1, arg2) {
   return window['go']['bridge']['App']['RenameScript'](arg1, arg2);
 }
 
+export function RenameWorkspace(arg1, arg2) {
+  return window['go']['bridge']['App']['RenameWorkspace'](arg1, arg2);
+}
+
 export function SaveAndRun(arg1, arg2) {
   return window['go']['bridge']['App']['SaveAndRun'](arg1, arg2);
 }
@@ -88,4 +100,8 @@ export function SaveScriptNote(arg1, arg2) {
 
 export function StopCurrentRun() {
   return window['go']['bridge']['App']['StopCurrentRun']();
+}
+
+export function SwitchWorkspace(arg1) {
+  return window['go']['bridge']['App']['SwitchWorkspace'](arg1);
 }
