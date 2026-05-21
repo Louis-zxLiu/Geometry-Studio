@@ -69,8 +69,9 @@ const theme = proxyRefs(useTheme());
           />
 
           <EnvironmentIndicator
-            :status="workspace.environmentStatus"
             :is-running="workspace.isRunning"
+            :ai-busy="workspace.isAIGenerating"
+            :ai-label="workspace.aiStatusLabel"
           />
         </section>
 

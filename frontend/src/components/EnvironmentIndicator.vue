@@ -1,26 +1,31 @@
 <script setup lang="ts">
 defineProps<{
-  status: {
-    ready: boolean;
-    summary: string;
-    missing: string[];
-  };
   isRunning: boolean;
+  aiBusy: boolean;
+  aiLabel: string;
 }>();
 </script>
 
 <template>
   <footer
     class="environment-bar"
-    :class="{ ready: status.ready, missing: !status.ready, running: isRunning }"
+    :class="{
+      ready: !aiBusy,
+      running: isRunning,
+      'ai-working': aiBusy,
+    }"
   >
     <span
       class="environment-pulse"
-      :class="{ ready: status.ready, missing: !status.ready, running: isRunning }"
+      :class="{
+        ready: !aiBusy,
+        running: isRunning,
+        'ai-working': aiBusy,
+      }"
       aria-hidden="true"
     />
     <strong class="environment-title">
-      {{ isRunning ? "Running" : status.summary }}
+      {{ aiBusy ? aiLabel : isRunning ? "Running" : "Ready" }}
     </strong>
   </footer>
 </template>

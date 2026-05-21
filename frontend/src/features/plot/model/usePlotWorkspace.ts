@@ -1,18 +1,12 @@
 import { onMounted, onUnmounted, ref } from "vue";
-import { EventsOn } from "../../../../wailsjs/runtime/runtime";
 import {
   GetSubscriptionStatus,
   OpenSubscriptionPurchase,
 } from "../../../../wailsjs/go/bridge/App";
 import {
-  generateCodeFromSelection,
-} from "../../ai/services/aiBridgeCompat";
-import {
   createAISettingsStorage,
 } from "../../ai/services/aiSettingsStorage";
 import type {
-  AINoteActionRequest,
-  AINoteSelectionPayload,
   AIProviderSettings,
   AISubscriptionStatus,
 } from "../../ai/services/aiTypes";
@@ -22,11 +16,15 @@ import { createRuntimeRepository } from "../../runtime/services/runtimeRepositor
 import { useRuntimeState } from "../../runtime/model/useRuntimeState";
 import { createScriptRepository } from "../../scripts/services/scriptRepository";
 import { useScriptWorkspaceMachine } from "../../scripts/model/useScriptWorkspaceMachine";
+import { useAIActivityStatus } from "./useAIActivityStatus";
+import { useAINoteGeneration } from "./useAINoteGeneration";
+import { useCodeStreaming } from "./useCodeStreaming";
+import { usePackageTransfer } from "./usePackageTransfer";
+import { useWorkspaceLifecycle } from "./useWorkspaceLifecycle";
 
 export function usePlotWorkspace() {
   const aiSettingsStorage = createAISettingsStorage();
   const isRunning = ref(false);
-  const isAIGenerating = ref(false);
   const isAISettingsDialogOpen = ref(false);
   const aiSettings = ref<AIProviderSettings>(aiSettingsStorage.load());
   const subscriptionStatus = ref<AISubscriptionStatus>({
@@ -39,9 +37,6 @@ export function usePlotWorkspace() {
     model: "",
     baseUrl: "",
   });
-  const isPackageTransferDialogOpen = ref(false);
-  const packageTransferMessage = ref("");
-  const packageTransferPendingAction = ref<"" | "import" | "export">("");
   const isSettingsDialogOpen = ref(false);
   const runtime = useRuntimeState();
   const runtimeRepository = createRuntimeRepository();
@@ -55,119 +50,35 @@ export function usePlotWorkspace() {
     scriptWorkspace.currentFile,
     runErrorDialog.openRunErrorDialog,
   );
-
-  let cleanupEvents: Array<() => void> = [];
-
-  async function initializeApp() {
-    try {
-      const snapshot = await runtimeRepository.initializeApp();
-      runtime.applyEnvironmentStatus(snapshot.environment);
-      scriptWorkspace.applyWorkspaceSnapshot(snapshot.workspace);
-      noteWorkspace.hydrateFromScriptDocument(snapshot.workspace.document ?? {});
-      await scriptWorkspace.restoreLastSelection();
-      await refreshSubscriptionStatus(false);
-      runtime.finishInitialization("Runtime ready");
-    } catch (error) {
-      const message = getErrorMessage(error);
-      runErrorDialog.openRunErrorDialog(message);
-      runtime.failInitialization(message);
-    }
-  }
-
-  async function loadEnvironmentStatus() {
-    try {
-      const status = await runtimeRepository.getEnvironmentStatus();
-      runtime.applyEnvironmentStatus(status);
-    } catch (error) {
-      runtime.applyEnvironmentStatus({
-        ready: false,
-        code: "load_failed",
-        severity: "error",
-        summary: getErrorMessage(error),
-        recommendedAction: "",
-        items: [],
-        missing: [],
-        canRebuild: false,
-        runtimeArchiveExists: false,
-      });
-    }
-  }
-
-  function bindRuntimeEvents() {
-    cleanupEvents = [
-      EventsOn("env:status", (...payload) => {
-        const data = payload[0] as
-          | {
-              ready?: boolean;
-              code?: string;
-              severity?: string;
-              summary?: string;
-              recommendedAction?: string;
-              missing?: string[];
-              items?: Array<Record<string, unknown>>;
-              canRebuild?: boolean;
-              runtimeArchiveExists?: boolean;
-            }
-          | undefined;
-        runtime.applyEnvironmentStatus(data);
-      }),
-      EventsOn("env:progress", (...payload) => {
-        const data = payload[0] as
-          | { percent?: number; message?: string }
-          | undefined;
-        runtime.applyProgress(data);
-      }),
-      EventsOn("run:started", () => {
-        isRunning.value = true;
-      }),
-      EventsOn("run:finished", () => {
-        isRunning.value = false;
-      }),
-      EventsOn("run:stopped", () => {
-        isRunning.value = false;
-      }),
-      EventsOn("run:failed", (...payload) => {
-        const data = payload[0] as
-          | { error?: string; errorType?: string; traceback?: string }
-          | undefined;
-        isRunning.value = false;
-        runErrorDialog.openRunErrorDialog(
-          data?.traceback ?? data?.error ?? "Python 进程异常退出",
-        );
-      }),
-      EventsOn("app:error", (...payload) => {
-        const data = payload[0] as { message?: string } | undefined;
-        runtime.applyEnvironmentStatus({
-          ready: false,
-          code: "app_error",
-          severity: "error",
-          summary: data?.message ?? "未知错误",
-          recommendedAction: "",
-          items: [],
-          missing: [],
-          canRebuild: false,
-          runtimeArchiveExists: false,
-        });
-        runErrorDialog.openRunErrorDialog(data?.message ?? "未知错误");
-      }),
-    ];
-  }
-
-  function openPackageTransferDialog() {
-    packageTransferMessage.value = "";
-    isPackageTransferDialogOpen.value = true;
-  }
+  const aiActivity = useAIActivityStatus();
+  const codeStreaming = useCodeStreaming(scriptWorkspace.codeContent);
+  const aiGeneration = useAINoteGeneration({
+    aiActivity,
+    aiSettings,
+    codeContent: scriptWorkspace.codeContent,
+    currentFile: scriptWorkspace.currentFile,
+    isRunning,
+    onError: runErrorDialog.openRunErrorDialog,
+    streamGeneratedCode: codeStreaming.streamGeneratedCode,
+  });
+  const packageTransfer = usePackageTransfer({
+    noteWorkspace,
+    onError: runErrorDialog.openRunErrorDialog,
+    scriptRepository,
+    scriptWorkspace,
+  });
+  const lifecycle = useWorkspaceLifecycle({
+    isRunning,
+    noteWorkspace,
+    onError: runErrorDialog.openRunErrorDialog,
+    refreshSubscriptionStatus,
+    runtime,
+    runtimeRepository,
+    scriptWorkspace,
+  });
 
   function toggleNotePanel() {
     noteWorkspace.togglePanel();
-  }
-
-  function closePackageTransferDialog() {
-    if (packageTransferPendingAction.value !== "") {
-      return;
-    }
-
-    isPackageTransferDialogOpen.value = false;
   }
 
   function openSettings() {
@@ -192,91 +103,6 @@ export function usePlotWorkspace() {
     isSettingsDialogOpen.value = false;
   }
 
-  async function rebuildRuntime() {
-    if (runtime.isRebuilding.value || isRunning.value) {
-      return;
-    }
-
-    runtime.isRebuilding.value = true;
-    runtime.isInitializing.value = true;
-    runtime.initProgressPercent.value = 0;
-    runtime.initProgressMessage.value = "Preparing runtime rebuild";
-
-    try {
-      const status = await runtimeRepository.rebuildRuntime();
-      runtime.applyEnvironmentStatus(status);
-      runtime.finishInitialization(status.summary ?? "Runtime rebuilt");
-    } catch (error) {
-      const message = getErrorMessage(error);
-      runtime.failInitialization(message);
-      runErrorDialog.openRunErrorDialog(message);
-    } finally {
-      runtime.isRebuilding.value = false;
-    }
-  }
-
-  async function stopCurrentRun() {
-    try {
-      await runtimeRepository.stopCurrentRun();
-    } catch (error) {
-      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
-    }
-  }
-
-  async function exportCurrentScenePackage() {
-    if (!scriptWorkspace.currentFile.value || packageTransferPendingAction.value !== "") {
-      return;
-    }
-
-    packageTransferPendingAction.value = "export";
-    packageTransferMessage.value = "";
-
-    try {
-      await scriptWorkspace.saveCurrentScript();
-      await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
-      const result = await scriptRepository.exportScenePackage(scriptWorkspace.currentFile.value);
-      if (result?.path) {
-        packageTransferMessage.value = `已导出到 ${result.path}`;
-      }
-    } catch (error) {
-      const message = getErrorMessage(error);
-      packageTransferMessage.value = message;
-      runErrorDialog.openRunErrorDialog(message);
-    } finally {
-      packageTransferPendingAction.value = "";
-    }
-  }
-
-  async function importScenePackage() {
-    if (packageTransferPendingAction.value !== "") {
-      return;
-    }
-
-    packageTransferPendingAction.value = "import";
-    packageTransferMessage.value = "";
-
-    try {
-      await scriptWorkspace.saveCurrentScript();
-      await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
-      const result = await scriptRepository.importScenePackage();
-      if (result?.cancelled) {
-        return;
-      }
-
-      if (result?.workspace) {
-        scriptWorkspace.applyWorkspaceSnapshot(result.workspace);
-        noteWorkspace.hydrateFromScriptDocument(result.workspace.document ?? {});
-        packageTransferMessage.value = `已导入场景 ${result.workspace.currentFile ?? ""}`.trim();
-      }
-    } catch (error) {
-      const message = getErrorMessage(error);
-      packageTransferMessage.value = message;
-      runErrorDialog.openRunErrorDialog(message);
-    } finally {
-      packageTransferPendingAction.value = "";
-    }
-  }
-
   async function switchWorkspace(name: string) {
     await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     await scriptWorkspace.switchWorkspace(name);
@@ -297,38 +123,9 @@ export function usePlotWorkspace() {
     await scriptWorkspace.deleteWorkspace(name);
   }
 
-  async function runAINoteAction(request: AINoteActionRequest) {
-    if (
-      !scriptWorkspace.currentFile.value ||
-      isRunning.value ||
-      isAIGenerating.value ||
-      !request.selection.items.length
-    ) {
-      return;
-    }
-
-    isAIGenerating.value = true;
-
-    try {
-      const result = await generateCodeFromSelection({
-        kind: request.kind,
-        sceneName: scriptWorkspace.currentFile.value,
-        currentCode: scriptWorkspace.codeContent.value,
-        settings: aiSettings.value,
-        selection: request.selection,
-      });
-
-      await streamGeneratedCode(result.code);
-    } catch (error) {
-      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
-    } finally {
-      isAIGenerating.value = false;
-    }
-  }
-
   async function refreshSubscriptionStatus(force: boolean) {
     try {
-      subscriptionStatus.value = await GetSubscriptionStatus(force);
+      subscriptionStatus.value = normalizeSubscriptionStatus(await GetSubscriptionStatus(force));
     } catch (error) {
       subscriptionStatus.value = {
         ...subscriptionStatus.value,
@@ -351,42 +148,22 @@ export function usePlotWorkspace() {
     await refreshSubscriptionStatus(true);
   }
 
-  async function streamGeneratedCode(generatedCode: string) {
-    const normalizedGeneratedCode = normalizeGeneratedCode(generatedCode);
-    if (!normalizedGeneratedCode) {
-      return;
-    }
-
-    const prefix = buildGenerationPrefix(scriptWorkspace.codeContent.value);
-    scriptWorkspace.codeContent.value = prefix;
-    const lines = normalizedGeneratedCode.split("\n");
-    for (let index = 0; index < lines.length; index += 1) {
-      if (index > 0) {
-        scriptWorkspace.codeContent.value += "\n";
-      }
-
-      scriptWorkspace.codeContent.value += lines[index];
-      await wait(index === 0 ? 170 : 95);
-    }
-  }
-
   onMounted(() => {
-    bindRuntimeEvents();
-    void loadEnvironmentStatus();
-    void initializeApp();
+    lifecycle.mount();
   });
 
   onUnmounted(() => {
-    cleanupEvents.forEach((cleanup) => cleanup());
-    cleanupEvents = [];
+    lifecycle.unmount();
+    aiActivity.stop();
   });
 
   return {
     aiSettings,
+    aiStatusLabel: aiActivity.aiStatusLabel,
     codeContent: scriptWorkspace.codeContent,
     closeAISettings,
     currentNoteDocument: noteWorkspace.currentDocument,
-    closePackageTransferDialog,
+    closePackageTransferDialog: packageTransfer.closePackageTransferDialog,
     closeCreateDialog: scriptWorkspace.closeCreateDialog,
     closeRunErrorDialog: runErrorDialog.closeRunErrorDialog,
     closeSettings,
@@ -405,27 +182,25 @@ export function usePlotWorkspace() {
     deleteWorkspace,
     deletingScriptName: scriptWorkspace.deletingScriptName,
     environmentStatus: runtime.environmentStatus,
-    exportCurrentScenePackage,
+    exportCurrentScenePackage: packageTransfer.exportCurrentScenePackage,
     addNoteImages: noteWorkspace.addImages,
-    generateCodeFromNoteSelection: (selection: AINoteSelectionPayload) =>
-      runAINoteAction({ kind: "visualize", selection }),
-    generateDesignFromNoteSelection: (selection: AINoteSelectionPayload) =>
-      runAINoteAction({ kind: "design", selection }),
+    generateCodeFromNoteSelection: aiGeneration.generateCodeFromNoteSelection,
+    generateDesignFromNoteSelection: aiGeneration.generateDesignFromNoteSelection,
     hasNoteContent: noteWorkspace.hasContent,
     initProgressMessage: runtime.initProgressMessage,
     initProgressPercent: runtime.initProgressPercent,
-    isAIGenerating,
+    isAIGenerating: aiActivity.isAIGenerating,
     isAISettingsDialogOpen,
     isCreateDialogOpen: scriptWorkspace.isCreateDialogOpen,
     isCreatingScript: scriptWorkspace.isCreatingScript,
     isDeletingScript: scriptWorkspace.isDeletingScript,
     isInitializing: runtime.isInitializing,
-    importScenePackage,
-    isPackageTransferDialogOpen,
+    importScenePackage: packageTransfer.importScenePackage,
+    isPackageTransferDialogOpen: packageTransfer.isPackageTransferDialogOpen,
     isRebuildingRuntime: runtime.isRebuilding,
     isRenamingScript: scriptWorkspace.isRenamingScript,
-    packageTransferMessage,
-    packageTransferPendingAction,
+    packageTransferMessage: packageTransfer.packageTransferMessage,
+    packageTransferPendingAction: packageTransfer.packageTransferPendingAction,
     purchaseSubscription,
     isRunErrorCopied: runErrorDialog.isRunErrorCopied,
     isRunErrorDialogOpen: runErrorDialog.isRunErrorDialogOpen,
@@ -434,20 +209,20 @@ export function usePlotWorkspace() {
     isNotePanelOpen: noteWorkspace.isPanelOpen,
     openCreateDialog: scriptWorkspace.openCreateDialog,
     openAISettings,
-    openPackageTransferDialog,
+    openPackageTransferDialog: packageTransfer.openPackageTransferDialog,
     openSettings,
     noteRenderBlocks: noteWorkspace.renderBlocks,
     noteSaveState: noteWorkspace.saveState,
     renameScript: scriptWorkspace.renameScript,
     renameWorkspace,
     removeNoteImage: noteWorkspace.removeImage,
-    rebuildRuntime,
+    rebuildRuntime: lifecycle.rebuildRuntime,
     runCurrentScript: scriptWorkspace.runCurrentScript,
     runErrorText: runErrorDialog.runErrorText,
     scripts: scriptWorkspace.scripts,
     selectScript: scriptWorkspace.selectScript,
     switchWorkspace,
-    stopCurrentRun,
+    stopCurrentRun: lifecycle.stopCurrentRun,
     subscriptionStatus,
     toggleNotePanel,
     typingScriptName: scriptWorkspace.typingScriptName,
@@ -468,21 +243,37 @@ function getErrorMessage(error: unknown) {
   return String(error);
 }
 
-function normalizeGeneratedCode(code: string) {
-  return code.replace(/\r\n/g, "\n").trim();
+function normalizeSubscriptionStatus(status: {
+  status?: string;
+  activated?: boolean;
+  deviceId?: string;
+  expireAt?: string;
+  lastCheckedAt?: string;
+  message?: string;
+  model?: string;
+  baseUrl?: string;
+}): AISubscriptionStatus {
+  return {
+    status: normalizeSubscriptionStatusCode(status.status),
+    activated: !!status.activated,
+    deviceId: status.deviceId ?? "",
+    expireAt: status.expireAt ?? "",
+    lastCheckedAt: status.lastCheckedAt ?? "",
+    message: status.message ?? "",
+    model: status.model ?? "",
+    baseUrl: status.baseUrl ?? "",
+  };
 }
 
-function buildGenerationPrefix(currentCode: string) {
-  const normalizedCurrentCode = currentCode.replace(/\r\n/g, "\n");
-  if (normalizedCurrentCode.trim() === "") {
-    return "";
+function normalizeSubscriptionStatusCode(status?: string): AISubscriptionStatus["status"] {
+  if (
+    status === "active" ||
+    status === "inactive" ||
+    status === "unconfigured" ||
+    status === "error"
+  ) {
+    return status;
   }
 
-  return normalizedCurrentCode.replace(/\n*$/, "") + "\n\n\n";
-}
-
-function wait(timeoutMs: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, timeoutMs);
-  });
+  return "error";
 }

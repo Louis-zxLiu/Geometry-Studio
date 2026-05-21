@@ -54,3 +54,25 @@
   background: #58745c;
   opacity: 0.9;
 }
+
+.environment-pulse.ai-working {
+  background: color-mix(in srgb, #4f7f8d, white 10%);
+  animation: environment-ai-breathe 1.8s ease-in-out infinite;
+}
+
+.environment-bar.ai-working .environment-title {
+  color: color-mix(in srgb, var(--text), var(--muted) 34%);
+}
+
+@keyframes environment-ai-breathe {
+  0%,
+  100% {
+    opacity: 0.62;
+    box-shadow: 0 0 0 0 color-mix(in srgb, #4f7f8d, transparent 78%);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 5px color-mix(in srgb, #4f7f8d, transparent 88%);
+  }
+}
