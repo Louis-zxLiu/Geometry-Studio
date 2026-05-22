@@ -23,6 +23,12 @@
 请允许我为你介绍这只可爱的，小猫！
 PlotKityCat 是一个开源的数学可视化工具，支持运行 Matplotlib 代码并生成交互式图形。集成 AI 功能，支持通过自然语言提示词生成绘图代码。软件采用便携式设计，支持优盘即插即用，方便在教室等不同环境下快速部署与演示。
 
+## 视频介绍
+
+<video src="https://github.com/Wing900/PlotKityCat/releases/download/video/PlotKityCat.1.mp4" controls="controls" style="max-width: 100%;">
+  您的浏览器不支持视频播放，请点击下载查看。
+</video>
+
 ## 开发初衷
 
 PlotKityCat 源于对 GGBPuppy 开发过程中 GGB Web API 封闭性的反思。我们转向 Matplotlib，为初高中数学可视化提供 AI-native 方案。
