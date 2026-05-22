@@ -25,9 +25,7 @@ PlotKityCat 是一个开源的数学可视化工具，支持运行 Matplotlib �
 
 ## 视频介绍
 
-[![PlotKityCat 视频介绍](https://github.com/user-attachments/assets/aa7bcbdf-38aa-4e72-a14b-ab53f225c6fc)](https://github.com/Wing900/PlotKityCat/releases/download/video/PlotKityCat.1.mp4)
-
-[点击观看完整视频](https://github.com/Wing900/PlotKityCat/releases/download/video/PlotKityCat.1.mp4)
+https://github.com/user-attachments/assets/df8167a7-d1e9-4f6a-a42d-de15596a4456
 
 ## 开发初衷
 
