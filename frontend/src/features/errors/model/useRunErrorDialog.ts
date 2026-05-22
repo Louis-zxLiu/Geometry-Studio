@@ -3,17 +3,20 @@ import { ref } from "vue";
 export function useRunErrorDialog() {
   const isRunErrorDialogOpen = ref(false);
   const isRunErrorCopied = ref(false);
+  const isRunErrorRepairable = ref(false);
   const runErrorText = ref("");
 
-  function openRunErrorDialog(errorText: string) {
+  function openRunErrorDialog(errorText: string, options?: { repairable?: boolean }) {
     runErrorText.value = asString(errorText);
     isRunErrorDialogOpen.value = true;
     isRunErrorCopied.value = false;
+    isRunErrorRepairable.value = options?.repairable ?? false;
   }
 
   function closeRunErrorDialog() {
     isRunErrorDialogOpen.value = false;
     isRunErrorCopied.value = false;
+    isRunErrorRepairable.value = false;
   }
 
   async function copyRunError() {
@@ -43,6 +46,7 @@ export function useRunErrorDialog() {
     copyRunError,
     isRunErrorCopied,
     isRunErrorDialogOpen,
+    isRunErrorRepairable,
     openRunErrorDialog,
     runErrorText,
   };

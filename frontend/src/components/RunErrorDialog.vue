@@ -3,11 +3,14 @@ const props = defineProps<{
   open: boolean;
   errorText: string;
   copied: boolean;
+  repairable?: boolean;
+  repairDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
   close: [];
   copy: [];
+  repair: [];
 }>();
 
 function close() {
@@ -16,6 +19,10 @@ function close() {
 
 function copy() {
   emit("copy");
+}
+
+function repair() {
+  emit("repair");
 }
 </script>
 
@@ -38,6 +45,16 @@ function copy() {
         <div class="create-dialog-actions">
           <button class="dialog-button secondary" type="button" @click="close">
             关闭
+          </button>
+          <div v-if="props.repairable" class="dialog-action-divider" />
+          <button
+            v-if="props.repairable"
+            class="dialog-button primary"
+            type="button"
+            :disabled="props.repairDisabled"
+            @click="repair"
+          >
+            AI修复
           </button>
         </div>
       </section>

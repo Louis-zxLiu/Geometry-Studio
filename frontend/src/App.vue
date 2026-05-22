@@ -65,6 +65,8 @@ const theme = proxyRefs(useTheme());
             :code="workspace.codeContent"
             :disabled="workspace.isAIGenerating"
             :is-streaming="workspace.isAIGenerating"
+            :animated-line-ranges="workspace.repairAnimatedLineRanges"
+            :animation-key="workspace.repairAnimationKey"
             @update:code="workspace.updateCode"
           />
 
@@ -133,8 +135,11 @@ const theme = proxyRefs(useTheme());
       :open="workspace.isRunErrorDialogOpen"
       :error-text="workspace.runErrorText"
       :copied="workspace.isRunErrorCopied"
+      :repairable="workspace.isRunErrorRepairable"
+      :repair-disabled="workspace.isAIGenerating || workspace.isRunning"
       @close="workspace.closeRunErrorDialog"
       @copy="workspace.copyRunError"
+      @repair="workspace.repairCurrentRunError"
     />
   </div>
 </template>

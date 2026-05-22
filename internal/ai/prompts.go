@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed prompts/*.txt prompts/design/*.txt
+//go:embed prompts/*.txt prompts/design/*.txt prompts/repair/*.txt
 var embeddedPrompts embed.FS
 
 type PromptRepository struct {

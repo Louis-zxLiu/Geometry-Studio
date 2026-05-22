@@ -117,6 +117,18 @@ type AIGenerationResult struct {
 	Source string `json:"source"`
 }
 
+type AIRepairRequest struct {
+	SceneName   string             `json:"sceneName"`
+	CurrentCode string             `json:"currentCode"`
+	ErrorText   string             `json:"errorText"`
+	Settings    AIProviderSettings `json:"settings"`
+}
+
+type AIRepairResult struct {
+	Patch  string `json:"patch"`
+	Source string `json:"source"`
+}
+
 type SubscriptionStatus struct {
 	Status        string `json:"status"`
 	Activated     bool   `json:"activated"`

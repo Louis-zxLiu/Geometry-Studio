@@ -35,6 +35,35 @@ func (a *App) GenerateCodeFromSelection(request AIGenerationRequest) (AIGenerati
 	}, nil
 }
 
+func (a *App) RepairCodeFromRunError(request AIRepairRequest) (AIRepairResult, error) {
+	if request.CurrentCode == "" {
+		return AIRepairResult{}, errors.New("当前代码为空，无法进行 AI 修复")
+	}
+	if request.ErrorText == "" {
+		return AIRepairResult{}, errors.New("缺少运行错误信息，无法进行 AI 修复")
+	}
+
+	result, err := a.aiService.Repair(a.ctx, ai.RepairRequest{
+		SceneName:   request.SceneName,
+		CurrentCode: request.CurrentCode,
+		ErrorText:   request.ErrorText,
+		Settings: ai.ProviderSettings{
+			Mode:  ai.ServiceMode(request.Settings.Mode),
+			URL:   request.Settings.URL,
+			Key:   request.Settings.Key,
+			Model: request.Settings.Model,
+		},
+	})
+	if err != nil {
+		return AIRepairResult{}, err
+	}
+
+	return AIRepairResult{
+		Patch:  result.Patch,
+		Source: result.Source,
+	}, nil
+}
+
 func mapAISelectionItems(items []AISelectionItem) []ai.SelectionItem {
 	mapped := make([]ai.SelectionItem, 0, len(items))
 	for _, item := range items {

@@ -85,6 +85,10 @@
   animation: editor-stream-line 220ms ease;
 }
 
+.syntax-line.repair-revealed {
+  animation: editor-repair-line 360ms ease;
+}
+
 .syntax-token {
   color: var(--text);
 }
@@ -171,6 +175,18 @@
   from {
     opacity: 0.1;
     transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes editor-repair-line {
+  from {
+    opacity: 0.08;
+    transform: translateY(5px);
   }
 
   to {

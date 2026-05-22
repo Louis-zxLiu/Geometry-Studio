@@ -10,6 +10,8 @@ import type {
   AIProviderSettings,
   AISubscriptionStatus,
 } from "../../ai/services/aiTypes";
+import { useAIRunErrorRepair } from "../../aiRepair/model/useAIRunErrorRepair";
+import type { ChangedLineRange } from "../../aiRepair/services/repairPatch";
 import { useRunErrorDialog } from "../../errors/model/useRunErrorDialog";
 import { useNoteWorkspace } from "../../notebook/model/useNoteWorkspace";
 import { createRuntimeRepository } from "../../runtime/services/runtimeRepository";
@@ -25,6 +27,8 @@ import { useWorkspaceLifecycle } from "./useWorkspaceLifecycle";
 export function usePlotWorkspace() {
   const aiSettingsStorage = createAISettingsStorage();
   const isRunning = ref(false);
+  const repairAnimatedLineRanges = ref<ChangedLineRange[]>([]);
+  const repairAnimationKey = ref(0);
   const isAISettingsDialogOpen = ref(false);
   const aiSettings = ref<AIProviderSettings>(aiSettingsStorage.load());
   const subscriptionStatus = ref<AISubscriptionStatus>({
@@ -61,6 +65,15 @@ export function usePlotWorkspace() {
     onError: runErrorDialog.openRunErrorDialog,
     streamGeneratedCode: codeStreaming.streamGeneratedCode,
   });
+  const aiRepair = useAIRunErrorRepair({
+    aiActivity,
+    aiSettings,
+    codeContent: scriptWorkspace.codeContent,
+    currentFile: scriptWorkspace.currentFile,
+    errorDialog: runErrorDialog,
+    isRunning,
+    onApplied: animateRepairRanges,
+  });
   const packageTransfer = usePackageTransfer({
     noteWorkspace,
     onError: runErrorDialog.openRunErrorDialog,
@@ -71,6 +84,7 @@ export function usePlotWorkspace() {
     isRunning,
     noteWorkspace,
     onError: runErrorDialog.openRunErrorDialog,
+    onRunError: (message) => runErrorDialog.openRunErrorDialog(message, { repairable: true }),
     refreshSubscriptionStatus,
     runtime,
     runtimeRepository,
@@ -148,6 +162,14 @@ export function usePlotWorkspace() {
     await refreshSubscriptionStatus(true);
   }
 
+  function animateRepairRanges(ranges: ChangedLineRange[]) {
+    repairAnimatedLineRanges.value = ranges;
+    repairAnimationKey.value += 1;
+    window.setTimeout(() => {
+      repairAnimatedLineRanges.value = [];
+    }, 720);
+  }
+
   onMounted(() => {
     lifecycle.mount();
   });
@@ -204,6 +226,7 @@ export function usePlotWorkspace() {
     purchaseSubscription,
     isRunErrorCopied: runErrorDialog.isRunErrorCopied,
     isRunErrorDialogOpen: runErrorDialog.isRunErrorDialogOpen,
+    isRunErrorRepairable: runErrorDialog.isRunErrorRepairable,
     isRunning,
     isSettingsDialogOpen,
     isNotePanelOpen: noteWorkspace.isPanelOpen,
@@ -217,6 +240,9 @@ export function usePlotWorkspace() {
     renameWorkspace,
     removeNoteImage: noteWorkspace.removeImage,
     rebuildRuntime: lifecycle.rebuildRuntime,
+    repairAnimationKey,
+    repairAnimatedLineRanges,
+    repairCurrentRunError: aiRepair.repairCurrentRunError,
     runCurrentScript: scriptWorkspace.runCurrentScript,
     runErrorText: runErrorDialog.runErrorText,
     scripts: scriptWorkspace.scripts,

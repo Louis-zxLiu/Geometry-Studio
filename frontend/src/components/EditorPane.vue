@@ -6,6 +6,8 @@ const props = defineProps<{
   code: string;
   disabled?: boolean;
   isStreaming?: boolean;
+  animatedLineRanges?: Array<{ startLine: number; endLine: number }>;
+  animationKey?: number;
 }>();
 
 const emit = defineEmits<{
@@ -18,6 +20,18 @@ const normalizedCode = computed(() =>
 
 const codeLines = computed(() => normalizedCode.value.split("\n"));
 const highlightedLines = computed(() => codeLines.value.map(tokenizePythonLine));
+const animatedLines = computed(() => {
+  void props.animationKey;
+  const ranges = props.animatedLineRanges ?? [];
+  const lines = new Set<number>();
+  for (const range of ranges) {
+    for (let line = range.startLine; line <= range.endLine; line += 1) {
+      lines.add(line);
+    }
+  }
+
+  return lines;
+});
 const scrollLeft = ref(0);
 const scrollTop = ref(0);
 
@@ -56,8 +70,9 @@ function syncScroll(event: Event) {
             aria-hidden="true"
           ><span
               v-for="(tokens, lineIndex) in highlightedLines"
-              :key="lineIndex"
+              :key="`${props.animationKey ?? 0}-${lineIndex}`"
               class="syntax-line"
+              :class="{ 'repair-revealed': animatedLines.has(lineIndex + 1) }"
             ><span
                 v-for="(token, tokenIndex) in tokens"
                 :key="`${lineIndex}-${tokenIndex}`"

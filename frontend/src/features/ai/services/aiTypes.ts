@@ -43,6 +43,18 @@ export type AIGenerationResult = {
   source: string;
 };
 
+export type AIRepairRequest = {
+  sceneName: string;
+  currentCode: string;
+  errorText: string;
+  settings: AIProviderSettings;
+};
+
+export type AIRepairResult = {
+  patch: string;
+  source: string;
+};
+
 export type AISubscriptionStatus = {
   status: "active" | "inactive" | "unconfigured" | "error";
   activated: boolean;

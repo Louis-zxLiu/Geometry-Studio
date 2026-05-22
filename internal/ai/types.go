@@ -1,6 +1,10 @@
 package ai
 
-import "context"
+import (
+	"context"
+
+	"plotkitycat/internal/ai/provider"
+)
 
 type ServiceMode string
 
@@ -14,6 +18,15 @@ type ProviderSettings struct {
 	URL   string
 	Key   string
 	Model string
+}
+
+func (s ProviderSettings) ToProviderSettings() provider.Settings {
+	return provider.Settings{
+		Mode:  provider.ServiceMode(s.Mode),
+		URL:   s.URL,
+		Key:   s.Key,
+		Model: s.Model,
+	}
 }
 
 type SelectionItem struct {
@@ -39,6 +52,18 @@ type GenerationRequest struct {
 
 type GenerationResult struct {
 	Code   string
+	Source string
+}
+
+type RepairRequest struct {
+	SceneName   string
+	CurrentCode string
+	ErrorText   string
+	Settings    ProviderSettings
+}
+
+type RepairResult struct {
+	Patch  string
 	Source string
 }
 

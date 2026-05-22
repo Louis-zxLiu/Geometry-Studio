@@ -4,33 +4,78 @@ import (
 	"context"
 	"path/filepath"
 
+	"plotkitycat/internal/ai/generation"
+	"plotkitycat/internal/ai/provider"
+	"plotkitycat/internal/ai/repair"
 	"plotkitycat/internal/subscription"
 )
 
 type Service struct {
-	router  *Router
-	cleaner *Cleaner
+	generation *generation.Service
+	repair     *repair.Service
 }
 
 func NewService(subscriptionService *subscription.Service) *Service {
 	prompts := NewPromptRepository(filepath.Join("internal", "ai", "prompts"))
+	router := provider.NewRouter(
+		provider.NewCustomClient(),
+		provider.NewSubscriptionClient(subscriptionService),
+	)
 	return &Service{
-		router: NewRouter(
-			NewCustomGenerator(prompts),
-			NewSubscriptionGenerator(prompts, subscriptionService),
-		),
-		cleaner: NewCleaner(),
+		generation: generation.NewService(router, prompts),
+		repair:     repair.NewService(router, prompts),
 	}
 }
 
 func (s *Service) Generate(ctx context.Context, request GenerationRequest) (GenerationResult, error) {
-	raw, err := s.router.Route(ctx, request)
+	result, err := s.generation.GenerateCode(ctx, generation.Request{
+		Kind:        generation.Kind(request.Kind),
+		SceneName:   request.SceneName,
+		CurrentCode: request.CurrentCode,
+		Settings:    request.Settings.ToProviderSettings(),
+		Selection: generation.SelectionPayload{
+			Items: mapGenerationSelectionItems(request.Selection.Items),
+		},
+	})
 	if err != nil {
 		return GenerationResult{}, err
 	}
 
 	return GenerationResult{
-		Code:   s.cleaner.ExtractCode(raw),
-		Source: string(request.Settings.Mode),
+		Code:   result.Code,
+		Source: result.Source,
 	}, nil
+}
+
+func (s *Service) Repair(ctx context.Context, request RepairRequest) (RepairResult, error) {
+	result, err := s.repair.RepairCode(ctx, repair.Request{
+		SceneName:   request.SceneName,
+		CurrentCode: request.CurrentCode,
+		ErrorText:   request.ErrorText,
+		Settings:    request.Settings.ToProviderSettings(),
+	})
+	if err != nil {
+		return RepairResult{}, err
+	}
+
+	return RepairResult{
+		Patch:  result.Patch,
+		Source: result.Source,
+	}, nil
+}
+
+func mapGenerationSelectionItems(items []SelectionItem) []generation.SelectionItem {
+	mapped := make([]generation.SelectionItem, 0, len(items))
+	for _, item := range items {
+		mapped = append(mapped, generation.SelectionItem{
+			Kind:         item.Kind,
+			Text:         item.Text,
+			Name:         item.Name,
+			Alt:          item.Alt,
+			DataURL:      item.DataURL,
+			RelativePath: item.RelativePath,
+		})
+	}
+
+	return mapped
 }

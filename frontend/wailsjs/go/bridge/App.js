@@ -86,6 +86,10 @@ export function RenameWorkspace(arg1, arg2) {
   return window['go']['bridge']['App']['RenameWorkspace'](arg1, arg2);
 }
 
+export function RepairCodeFromRunError(arg1) {
+  return window['go']['bridge']['App']['RepairCodeFromRunError'](arg1);
+}
+
 export function SaveAndRun(arg1, arg2) {
   return window['go']['bridge']['App']['SaveAndRun'](arg1, arg2);
 }
