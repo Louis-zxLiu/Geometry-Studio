@@ -1,5 +1,5 @@
 import MarkdownIt from "markdown-it";
-import markdownItKatex from "markdown-it-katex";
+import markdownItMathjax from "markdown-it-mathjax3";
 import type { NoteImage } from "../services/notebookStorage";
 
 const renderer = new MarkdownIt({
@@ -7,7 +7,7 @@ const renderer = new MarkdownIt({
   html: false,
   linkify: true,
   typographer: false,
-}).use(markdownItKatex);
+}).use(markdownItMathjax);
 
 export function renderMarkdownToHtml(markdown: string, images: NoteImage[] = []) {
   const imageMap = new Map(images.map((image) => [image.relativePath, image]));

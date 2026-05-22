@@ -13,7 +13,6 @@ import "./styles/components/dialog-enter.css";
 import "./styles/components/dialog-exit.css";
 import "./styles/components/notebook.css";
 import "./styles/components/runtime-loading.css";
-import "katex/dist/katex.min.css";
 
 installZoomGuards();
 createApp(App).mount("#app");

@@ -132,7 +132,7 @@ function submitRename() {
   }
 
   emit("rename", renamingWorkspace.value, nextName);
-  close();
+  closeRowActions();
 }
 
 function requestDelete(name?: string) {
@@ -142,7 +142,7 @@ function requestDelete(name?: string) {
 
   if (deleteConfirmWorkspace.value === name) {
     emit("delete", name);
-    close();
+    closeRowActions();
     return;
   }
 
