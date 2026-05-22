@@ -204,11 +204,11 @@ export namespace bridge {
 	export class WorkspaceInfo {
 	    name: string;
 	    sceneCount: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new WorkspaceInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -493,6 +493,7 @@ export namespace bridge {
 	        this.baseUrl = source["baseUrl"];
 	    }
 	}
-
+	
 
 }
+
