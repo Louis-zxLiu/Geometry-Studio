@@ -154,11 +154,13 @@
 
 .notebook-markdown-input {
   width: 100%;
+  height: auto;
   min-height: 42px;
   padding: 0;
   border: 0;
   outline: 0;
   resize: none;
+  overflow: hidden;
   background: transparent;
   color: var(--text);
   field-sizing: content;
@@ -190,6 +192,10 @@
 
 .notebook-markdown-rendered > *:last-child {
   margin-bottom: 0;
+}
+
+.notebook-markdown-rendered + .notebook-continue-writing {
+  margin-top: 18px;
 }
 
 .notebook-markdown-rendered h1,
@@ -336,7 +342,8 @@
 }
 
 .notebook-continue-writing {
-  justify-self: start;
+  display: inline-flex;
+  align-items: center;
   min-height: 28px;
   padding: 0;
   border: 0;

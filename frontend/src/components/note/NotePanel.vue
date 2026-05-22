@@ -41,6 +41,7 @@ const textSelection = ref<{ text: string; selectedAt: number } | null>(null);
 const selectedImageOrder = ref<Record<string, number>>({});
 const contextMenu = ref<{ x: number; y: number } | null>(null);
 let selectionOrder = 0;
+let markdownResizeFrame = 0;
 
 const markdownBlocks = computed(() =>
   props.renderBlocks.filter((block) => block.kind === "markdown"),
@@ -54,15 +55,14 @@ const contextMenuImages = computed(() =>
   collectSelectedImagesForContextMenu(props.document, textSelection.value, selectedImageOrder.value),
 );
 
-const shouldShowMarkdownInput = computed(
-  () => isEditingMarkdown.value || props.document.markdown.trim() === "",
-);
+const shouldShowMarkdownInput = computed(() => isEditingMarkdown.value);
 const selectedImagePaths = computed(
   () => new Set(Object.keys(selectedImageOrder.value)),
 );
 
 function updateMarkdown(event: Event) {
   emit("update:markdown", (event.target as HTMLTextAreaElement).value);
+  scheduleMarkdownInputResize();
 }
 
 function openFilePicker() {
@@ -105,8 +105,11 @@ function removeContextImages() {
 function focusMarkdownInput() {
   isEditingMarkdown.value = true;
   closeContextMenu();
-  window.requestAnimationFrame(() => {
-    markdownInput.value?.focus();
+  void nextTick(() => {
+    scheduleMarkdownInputResize();
+    window.requestAnimationFrame(() => {
+      markdownInput.value?.focus();
+    });
   });
 }
 
@@ -125,6 +128,7 @@ function focusMarkdownInputAtEnd() {
       return;
     }
 
+    resizeMarkdownInput();
     const end = textarea.value.length;
     textarea.focus();
     textarea.setSelectionRange(end, end);
@@ -233,6 +237,11 @@ function handleTextSelectionChange() {
   window.requestAnimationFrame(() => {
     syncTextSelection();
   });
+}
+
+function handleMarkdownFocus() {
+  isEditingMarkdown.value = true;
+  scheduleMarkdownInputResize();
 }
 
 function handlePreviewWheel(event: WheelEvent) {
@@ -382,6 +391,32 @@ function closeContextMenu() {
   contextMenu.value = null;
 }
 
+function handleWindowResize() {
+  closeContextMenu();
+  scheduleMarkdownInputResize();
+}
+
+function scheduleMarkdownInputResize() {
+  if (markdownResizeFrame) {
+    window.cancelAnimationFrame(markdownResizeFrame);
+  }
+
+  markdownResizeFrame = window.requestAnimationFrame(() => {
+    markdownResizeFrame = 0;
+    resizeMarkdownInput();
+  });
+}
+
+function resizeMarkdownInput() {
+  const textarea = markdownInput.value;
+  if (!textarea || !shouldShowMarkdownInput.value) {
+    return;
+  }
+
+  textarea.style.height = "auto";
+  textarea.style.height = `${Math.max(42, textarea.scrollHeight)}px`;
+}
+
 function ensureImageSelection(relativePath: string) {
   if (!relativePath || selectedImageOrder.value[relativePath]) {
     return;
@@ -461,12 +496,16 @@ function getCurrentInsertionIndex() {
 
 onMounted(() => {
   window.addEventListener("mousedown", handleWindowPointerDown);
-  window.addEventListener("resize", closeContextMenu);
+  window.addEventListener("resize", handleWindowResize);
+  scheduleMarkdownInputResize();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("mousedown", handleWindowPointerDown);
-  window.removeEventListener("resize", closeContextMenu);
+  window.removeEventListener("resize", handleWindowResize);
+  if (markdownResizeFrame) {
+    window.cancelAnimationFrame(markdownResizeFrame);
+  }
 });
 
 watch(
@@ -483,6 +522,20 @@ watch(
     if (busy) {
       closeContextMenu();
     }
+  },
+);
+
+watch(
+  () => props.document.markdown,
+  () => {
+    void nextTick(scheduleMarkdownInputResize);
+  },
+);
+
+watch(
+  () => [shouldShowMarkdownInput.value, props.isOpen],
+  () => {
+    void nextTick(scheduleMarkdownInputResize);
   },
 );
 </script>
@@ -564,7 +617,7 @@ watch(
               placeholder=""
               rows="1"
               :disabled="!currentFile"
-              @focus="isEditingMarkdown = true"
+              @focus="handleMarkdownFocus"
               @blur="isEditingMarkdown = false"
               @input="updateMarkdown"
               @select="handleTextSelectionChange"
@@ -577,6 +630,15 @@ watch(
               class="notebook-markdown-rendered"
               v-html="block.html"
             ></article>
+
+            <button
+              v-if="!shouldShowMarkdownInput && currentFile"
+              class="notebook-continue-writing"
+              type="button"
+              @click.stop="focusMarkdownInputAtEnd"
+            >
+              继续写点什么
+            </button>
           </div>
 
           <input
@@ -599,14 +661,6 @@ watch(
             />
           </template>
 
-          <button
-            v-if="!shouldShowMarkdownInput && currentFile"
-            class="notebook-continue-writing"
-            type="button"
-            @click="focusMarkdownInputAtEnd"
-          >
-            继续写点什么
-          </button>
         </section>
       </div>
     </div>
