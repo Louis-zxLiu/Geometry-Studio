@@ -82,6 +82,33 @@ wails dev
 wails build
 ```
 
+### 内置 Python Runtime 边界
+
+默认 runtime 只保证 PlotKityCat 的核心可视化能力，避免把通用数据科学全家桶一起打进便携包。
+
+**必须保留**
+- Python 标准库
+- NumPy
+- Matplotlib
+- SciPy
+- PyQt5
+- Matplotlib 必需依赖：Pillow、fontTools、contourpy、cycler、kiwisolver、packaging、pyparsing、python-dateutil、six 等
+
+**作为默认上限保留**
+- xarray：多维科学数据、气象/网格数据可视化
+- networkx：关系网络、知识图谱、社会网络、节点-边图
+- shapely：地理几何、区域、多边形、空间关系可视化
+
+**不要放进默认 runtime**
+- 开发/检查工具：ruff、maturin、jedi、pygments
+- 文件识别/杂项工具：magika
+- AI SDK：openai、anthropic、mistralai、cohere 等。AI 请求由 Go 后端处理，不依赖 Python SDK
+- 云服务 SDK：azure、google cloud 相关 SDK 等
+- 数据库/数据工程：duckdb、polars、dask、distributed、pymongo、psycopg2、MySQL 驱动等
+- 大型机器学习/图像处理框架：torch、tensorflow、sklearn、opencv 等，除非未来单独做扩展包
+
+如果需要更新 `resources/runtime/runtime.zip`，优先作为 GitHub Release 附件发布；不建议把大型 zip 直接提交进 Git 历史。若必须提交，需要使用 `git add -f resources/runtime/runtime.zip`。
+
 ## 致谢
 
 - [Matplotlib](https://matplotlib.org/): 本项目核心渲染引擎。
