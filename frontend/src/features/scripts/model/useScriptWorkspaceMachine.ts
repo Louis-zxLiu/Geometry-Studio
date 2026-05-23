@@ -31,8 +31,19 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
 
   function applyWorkspaceSnapshot(
     snapshot?: WorkspaceSnapshotLike,
-    options?: { preserveDirtyCurrent?: boolean },
+    options?: { preserveDirtyCurrent?: boolean; preservePreviousOnEmptySnapshot?: boolean },
   ) {
+    const snapshotScripts = snapshot?.scripts ?? [];
+    const snapshotCurrentFile = snapshot?.currentFile ?? snapshot?.document?.filename ?? "";
+    if (
+      options?.preservePreviousOnEmptySnapshot &&
+      currentFile.value !== "" &&
+      snapshotScripts.length === 0 &&
+      snapshotCurrentFile === ""
+    ) {
+      return;
+    }
+
     const nextCurrentFile = snapshot?.currentFile ?? snapshot?.document?.filename ?? "";
     const nextCode = asString(snapshot?.document?.code);
     const preserveCurrentCode =
@@ -143,6 +154,7 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
       );
       applyWorkspaceSnapshot(snapshot, {
         preserveDirtyCurrent: options?.preserveDirtyCurrent ?? true,
+        preservePreviousOnEmptySnapshot: preferredFile !== "",
       });
       return snapshot;
     } finally {

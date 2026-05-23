@@ -31,6 +31,7 @@ const emit = defineEmits<{
 
 const notebookRoot = ref<HTMLElement | null>(null);
 const notebookScroll = ref<HTMLElement | null>(null);
+const markdownSurface = ref<HTMLElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const markdownInput = ref<HTMLTextAreaElement | null>(null);
 const previewImage = ref<{ src: string; alt: string } | null>(null);
@@ -100,17 +101,6 @@ function removeContextImages() {
   });
   selectedImageOrder.value = {};
   closeContextMenu();
-}
-
-function focusMarkdownInput() {
-  isEditingMarkdown.value = true;
-  closeContextMenu();
-  void nextTick(() => {
-    scheduleMarkdownInputResize();
-    window.requestAnimationFrame(() => {
-      markdownInput.value?.focus();
-    });
-  });
 }
 
 function focusMarkdownInputAtEnd() {
@@ -262,6 +252,13 @@ function resetPreviewZoom() {
   previewScale.value = 1;
 }
 
+function handleNotebookPointerDownCapture(event: PointerEvent) {
+  if (shouldStartMarkdownEdit(event.target)) {
+    event.preventDefault();
+    focusMarkdownInputAtEnd();
+  }
+}
+
 function handleNotebookClick(event: MouseEvent) {
   const relativePath = resolveImagePathFromEventTarget(event.target);
   if (!relativePath) {
@@ -271,6 +268,34 @@ function handleNotebookClick(event: MouseEvent) {
   event.preventDefault();
   event.stopPropagation();
   toggleImageSelection(relativePath);
+}
+
+function shouldStartMarkdownEdit(target: EventTarget | null) {
+  if (!props.currentFile || shouldShowMarkdownInput.value) {
+    return false;
+  }
+
+  if (resolveImagePathFromEventTarget(target)) {
+    return false;
+  }
+
+  if (target === notebookScroll.value) {
+    return true;
+  }
+
+  if (!(target instanceof Node)) {
+    return false;
+  }
+
+  if (markdownSurface.value?.contains(target)) {
+    return true;
+  }
+
+  if (target instanceof HTMLElement) {
+    return target.classList.contains("notebook-document-flow");
+  }
+
+  return false;
 }
 
 function handleImageBlockContext(event: MouseEvent, relativePath: string) {
@@ -428,13 +453,24 @@ function ensureImageSelection(relativePath: string) {
   };
 }
 
-function handleWindowPointerDown(event: MouseEvent) {
+function handleWindowPointerDown(event: PointerEvent) {
   const target = event.target;
-  if (!(target instanceof Node) || notebookRoot.value?.contains(target)) {
+  if (!(target instanceof Node)) {
     return;
   }
 
-  closeContextMenu();
+  if (isInsideFloatingNoteUI(target)) {
+    return;
+  }
+
+  const isInsideMarkdownSurface = Boolean(markdownSurface.value?.contains(target));
+  if (isEditingMarkdown.value && !isInsideMarkdownSurface) {
+    isEditingMarkdown.value = false;
+  }
+
+  if (!notebookRoot.value?.contains(target)) {
+    closeContextMenu();
+  }
 }
 
 function clearUnavailableImageSelections() {
@@ -468,6 +504,18 @@ function resolveImagePathFromEventTarget(target: EventTarget | null) {
   return imageElement.dataset.noteImagePath ?? "";
 }
 
+function isInsideFloatingNoteUI(target: Node) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return Boolean(
+    target.closest(".notebook-context-menu") ||
+      target.closest(".notebook-image-preview") ||
+      target.closest(".notebook-preview-toolbar"),
+  );
+}
+
 function ensureTrailingWriteLine(markdown: string) {
   const normalized = markdown.replace(/\r\n/g, "\n");
   if (!normalized) {
@@ -495,13 +543,13 @@ function getCurrentInsertionIndex() {
 }
 
 onMounted(() => {
-  window.addEventListener("mousedown", handleWindowPointerDown);
+  window.addEventListener("pointerdown", handleWindowPointerDown, true);
   window.addEventListener("resize", handleWindowResize);
   scheduleMarkdownInputResize();
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("mousedown", handleWindowPointerDown);
+  window.removeEventListener("pointerdown", handleWindowPointerDown, true);
   window.removeEventListener("resize", handleWindowResize);
   if (markdownResizeFrame) {
     window.cancelAnimationFrame(markdownResizeFrame);
@@ -593,6 +641,7 @@ watch(
       <div
         ref="notebookScroll"
         class="notebook-scroll"
+        @pointerdown.capture="handleNotebookPointerDownCapture"
         @paste="handlePaste"
         @dragenter.prevent="setDragging(true)"
         @dragover.prevent="setDragging(true)"
@@ -605,9 +654,9 @@ watch(
       >
         <section class="notebook-document-flow">
           <div
+            ref="markdownSurface"
             class="notebook-markdown-surface"
             :class="{ editing: shouldShowMarkdownInput }"
-            @click="focusMarkdownInput"
           >
             <textarea
               v-show="shouldShowMarkdownInput"
@@ -618,9 +667,9 @@ watch(
               rows="1"
               :disabled="!currentFile"
               @focus="handleMarkdownFocus"
-              @blur="isEditingMarkdown = false"
               @input="updateMarkdown"
               @select="handleTextSelectionChange"
+              @click.stop
             />
 
             <article

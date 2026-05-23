@@ -99,11 +99,17 @@ func (a *App) SwitchWorkspace(name string) (WorkspaceSnapshot, error) {
 }
 
 func (a *App) CreateWorkspace(name string) (WorkspaceSnapshot, error) {
-	if _, err := a.workspaceManager.Create(name); err != nil {
+	workspace, err := a.workspaceManager.Create(name)
+	if err != nil {
 		return WorkspaceSnapshot{}, err
 	}
 
-	return a.workspaceSnapshot("")
+	sceneName, err := a.fileStore.CreateScript(workspace.Name)
+	if err != nil {
+		return WorkspaceSnapshot{}, err
+	}
+
+	return a.workspaceSnapshot(sceneName)
 }
 
 func (a *App) RenameWorkspace(oldName string, newName string) (WorkspaceSnapshot, error) {
