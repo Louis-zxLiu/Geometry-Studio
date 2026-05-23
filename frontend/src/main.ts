@@ -9,6 +9,7 @@ import "./styles/components/topbar.css";
 import "./styles/components/editor.css";
 import "./styles/components/environment.css";
 import "./styles/components/dialog.css";
+import "./styles/components/code-ai-optimize.css";
 import "./styles/components/dialog-enter.css";
 import "./styles/components/dialog-exit.css";
 import "./styles/components/notebook.css";

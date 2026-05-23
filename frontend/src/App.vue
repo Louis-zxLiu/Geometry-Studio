@@ -2,6 +2,9 @@
 import { proxyRefs } from "vue";
 import CreateScriptDialog from "./components/CreateScriptDialog.vue";
 import AISettingsDialog from "./components/AISettingsDialog.vue";
+import CodeAIOptimizeContextMenu from "./components/codeAIOptimize/CodeAIOptimizeContextMenu.vue";
+import CodeAIOptimizeDialog from "./components/codeAIOptimize/CodeAIOptimizeDialog.vue";
+import CodeAIVersionRail from "./components/codeAIOptimize/CodeAIVersionRail.vue";
 import EditorPane from "./components/EditorPane.vue";
 import EnvironmentIndicator from "./components/EnvironmentIndicator.vue";
 import PackageTransferDialog from "./components/PackageTransferDialog.vue";
@@ -67,6 +70,7 @@ const theme = proxyRefs(useTheme());
             :is-streaming="workspace.isAIGenerating"
             :animated-line-ranges="workspace.repairAnimatedLineRanges"
             :animation-key="workspace.repairAnimationKey"
+            @ai-optimize="workspace.openCodeAIOptimizeContextMenu"
             @update:code="workspace.updateCode"
           />
 
@@ -99,6 +103,27 @@ const theme = proxyRefs(useTheme());
       :pending="workspace.isCreatingScript"
       @cancel="workspace.closeCreateDialog"
       @confirm="workspace.createScript"
+    />
+
+    <CodeAIVersionRail
+      :versions="workspace.codeAIOptimizeVersions"
+      :active-id="workspace.codeAIOptimizeActiveVersionId"
+      @select="workspace.selectCodeAIOptimizeVersion"
+    />
+
+    <CodeAIOptimizeContextMenu
+      v-if="workspace.codeAIOptimizeContextMenu"
+      :position="workspace.codeAIOptimizeContextMenu"
+      :disabled="workspace.isAIGenerating || workspace.isRunning"
+      @close="workspace.closeCodeAIOptimizeContextMenu"
+      @optimize="workspace.openCodeAIOptimizeDialog"
+    />
+
+    <CodeAIOptimizeDialog
+      :open="workspace.isCodeAIOptimizeDialogOpen"
+      :pending="workspace.isAIGenerating"
+      @cancel="workspace.closeCodeAIOptimizeDialog"
+      @confirm="workspace.submitCodeAIOptimize"
     />
 
     <SettingsDialog

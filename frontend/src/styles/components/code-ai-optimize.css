@@ -1,0 +1,126 @@
+.code-ai-context-menu {
+  position: fixed;
+  z-index: 1100;
+  min-width: 104px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--line-strong), transparent 76%);
+  background: color-mix(in srgb, var(--surface), white 10%);
+  box-shadow: 0 16px 42px rgba(25, 25, 25, 0.08);
+  transform: translate(10px, 6px);
+}
+
+.code-ai-context-action {
+  width: 100%;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-align: left;
+}
+
+.code-ai-context-action:hover {
+  background: color-mix(in srgb, var(--surface-soft), white 28%);
+}
+
+.code-ai-context-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.code-ai-dialog {
+  width: min(52vw, 620px);
+  min-height: 320px;
+}
+
+.code-ai-prompt {
+  width: 100%;
+  min-height: 148px;
+  margin-top: 26px;
+  padding: 14px 18px;
+  border: 1px solid var(--dialog-line);
+  border-radius: 0;
+  outline: 0;
+  resize: vertical;
+  background: var(--dialog-input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: clamp(0.98rem, 1.24vw, 1.12rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1.7;
+}
+
+.code-ai-prompt::placeholder {
+  color: rgba(110, 110, 115, 0.52);
+}
+
+.code-ai-prompt:focus {
+  background: var(--dialog-input-focus);
+}
+
+.code-ai-version-rail {
+  position: fixed;
+  top: 112px;
+  left: 0;
+  z-index: 12;
+  display: grid;
+  gap: 10px;
+  padding: 10px 0 10px 6px;
+}
+
+.code-ai-version-mark {
+  display: flex;
+  align-items: center;
+  width: 9px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  overflow: hidden;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  transition:
+    width 180ms ease,
+    color 180ms ease;
+}
+
+.code-ai-version-mark::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 9px;
+  height: 1px;
+  background: currentColor;
+}
+
+.code-ai-version-mark span {
+  margin-left: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.code-ai-version-rail:hover .code-ai-version-mark,
+.code-ai-version-mark:focus-visible {
+  width: 82px;
+}
+
+.code-ai-version-rail:hover .code-ai-version-mark span,
+.code-ai-version-mark:focus-visible span {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.code-ai-version-mark.active {
+  color: var(--text);
+}

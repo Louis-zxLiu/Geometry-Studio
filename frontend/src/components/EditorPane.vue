@@ -11,6 +11,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  "ai-optimize": [position: { x: number; y: number }];
   "update:code": [code: string];
 }>();
 
@@ -44,10 +45,24 @@ function syncScroll(event: Event) {
   scrollLeft.value = target.scrollLeft;
   scrollTop.value = target.scrollTop;
 }
+
+function openAIOptimize(event: MouseEvent) {
+  if (props.disabled) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+  emit("ai-optimize", { x: event.clientX, y: event.clientY });
+}
 </script>
 
 <template>
-  <section class="editor-panel" :class="{ disabled: disabled, streaming: isStreaming }">
+  <section
+    class="editor-panel"
+    :class="{ disabled: disabled, streaming: isStreaming }"
+    @contextmenu.capture="openAIOptimize"
+  >
     <div class="editor-placeholder">
       <div class="code-grid">
         <div

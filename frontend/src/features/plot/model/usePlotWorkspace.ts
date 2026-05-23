@@ -13,6 +13,7 @@ import type {
 import { useAIRunErrorRepair } from "../../aiRepair/model/useAIRunErrorRepair";
 import type { ChangedLineRange } from "../../aiRepair/services/repairPatch";
 import { useRunErrorDialog } from "../../errors/model/useRunErrorDialog";
+import { useCodeAIOptimize } from "../../codeAIOptimize/model/useCodeAIOptimize";
 import { useNoteWorkspace } from "../../notebook/model/useNoteWorkspace";
 import { createRuntimeRepository } from "../../runtime/services/runtimeRepository";
 import { useRuntimeState } from "../../runtime/model/useRuntimeState";
@@ -56,6 +57,10 @@ export function usePlotWorkspace() {
   );
   const aiActivity = useAIActivityStatus();
   const codeStreaming = useCodeStreaming(scriptWorkspace.codeContent);
+  const codeAIOptimize = useCodeAIOptimize(
+    scriptWorkspace.codeContent,
+    scriptWorkspace.updateCode,
+  );
   const aiGeneration = useAINoteGeneration({
     aiActivity,
     aiSettings,
@@ -189,6 +194,11 @@ export function usePlotWorkspace() {
     closeCreateDialog: scriptWorkspace.closeCreateDialog,
     closeRunErrorDialog: runErrorDialog.closeRunErrorDialog,
     closeSettings,
+    codeAIOptimizeActiveVersionId: codeAIOptimize.activeVersionId,
+    codeAIOptimizeContextMenu: codeAIOptimize.contextMenu,
+    codeAIOptimizeVersions: codeAIOptimize.versions,
+    closeCodeAIOptimizeContextMenu: codeAIOptimize.closeContextMenu,
+    closeCodeAIOptimizeDialog: codeAIOptimize.closeDialog,
     copyRunError: async () => {
       try {
         await runErrorDialog.copyRunError();
@@ -213,6 +223,7 @@ export function usePlotWorkspace() {
     initProgressPercent: runtime.initProgressPercent,
     isAIGenerating: aiActivity.isAIGenerating,
     isAISettingsDialogOpen,
+    isCodeAIOptimizeDialogOpen: codeAIOptimize.isDialogOpen,
     isCreateDialogOpen: scriptWorkspace.isCreateDialogOpen,
     isCreatingScript: scriptWorkspace.isCreatingScript,
     isDeletingScript: scriptWorkspace.isDeletingScript,
@@ -232,6 +243,8 @@ export function usePlotWorkspace() {
     isNotePanelOpen: noteWorkspace.isPanelOpen,
     openCreateDialog: scriptWorkspace.openCreateDialog,
     openAISettings,
+    openCodeAIOptimizeContextMenu: codeAIOptimize.openContextMenu,
+    openCodeAIOptimizeDialog: codeAIOptimize.openDialog,
     openPackageTransferDialog: packageTransfer.openPackageTransferDialog,
     openSettings,
     noteRenderBlocks: noteWorkspace.renderBlocks,
@@ -247,6 +260,7 @@ export function usePlotWorkspace() {
     runErrorText: runErrorDialog.runErrorText,
     scripts: scriptWorkspace.scripts,
     selectScript: scriptWorkspace.selectScript,
+    selectCodeAIOptimizeVersion: codeAIOptimize.selectVersion,
     switchWorkspace,
     stopCurrentRun: lifecycle.stopCurrentRun,
     subscriptionStatus,
@@ -254,6 +268,7 @@ export function usePlotWorkspace() {
     typingScriptName: scriptWorkspace.typingScriptName,
     updateCode: scriptWorkspace.updateCode,
     updateAISettings,
+    submitCodeAIOptimize: codeAIOptimize.submitOptimization,
     updateNoteMarkdown: noteWorkspace.updateMarkdown,
     workspaces: scriptWorkspace.workspaces,
     workspacePhase: scriptWorkspace.workspacePhase,
