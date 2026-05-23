@@ -40,7 +40,7 @@ const emit = defineEmits<{
         <path d="m16 15 4-4" />
         <path d="m20 15-4-4" />
       </svg>
-      <span>可视化设计</span>
+      <span>生成设计方案</span>
     </button>
     <button class="notebook-context-action" type="button" @click="emit('generate')">
       <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
