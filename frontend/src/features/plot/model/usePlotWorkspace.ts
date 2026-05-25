@@ -1,12 +1,15 @@
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
   GetSubscriptionStatus,
   OpenSubscriptionPurchase,
 } from "../../../../wailsjs/go/bridge/App";
 import {
-  createAISettingsStorage,
-} from "../../ai/services/aiSettingsStorage";
+  createDefaultAISettings,
+  getAISettings,
+  saveAISettings,
+} from "../../ai/services/aiSettingsBridgeCompat";
 import type {
+  AppUpdateStatus,
   AIProviderSettings,
   AISubscriptionStatus,
 } from "../../ai/services/aiTypes";
@@ -24,14 +27,20 @@ import { useAINoteGeneration } from "./useAINoteGeneration";
 import { useCodeStreaming } from "./useCodeStreaming";
 import { usePackageTransfer } from "./usePackageTransfer";
 import { useWorkspaceLifecycle } from "./useWorkspaceLifecycle";
+import {
+  checkForUpdates,
+  downloadUpdate,
+  getUpdateStatus,
+  installUpdateAndRestart,
+  type UpdateStatusLike,
+} from "../../updates/services/updateBridgeCompat";
 
 export function usePlotWorkspace() {
-  const aiSettingsStorage = createAISettingsStorage();
   const isRunning = ref(false);
   const repairAnimatedLineRanges = ref<ChangedLineRange[]>([]);
   const repairAnimationKey = ref(0);
   const isAISettingsDialogOpen = ref(false);
-  const aiSettings = ref<AIProviderSettings>(aiSettingsStorage.load());
+  const aiSettings = ref<AIProviderSettings>(createDefaultAISettings());
   const subscriptionStatus = ref<AISubscriptionStatus>({
     status: "unconfigured",
     activated: false,
@@ -43,6 +52,14 @@ export function usePlotWorkspace() {
     baseUrl: "",
   });
   const isSettingsDialogOpen = ref(false);
+  const updateStatus = ref<AppUpdateStatus>(normalizeUpdateStatus({}));
+  const isCheckingUpdates = ref(false);
+  const isDownloadingUpdate = ref(false);
+  const isInstallingUpdate = ref(false);
+  const isUpdateInstallDialogOpen = ref(false);
+  const isUpdatePending = computed(
+    () => isCheckingUpdates.value || isDownloadingUpdate.value || isInstallingUpdate.value,
+  );
   const runtime = useRuntimeState();
   const runtimeRepository = createRuntimeRepository();
   const scriptRepository = createScriptRepository();
@@ -118,9 +135,12 @@ export function usePlotWorkspace() {
     isAISettingsDialogOpen.value = false;
   }
 
-  function updateAISettings(nextSettings: AIProviderSettings) {
-    aiSettings.value = nextSettings;
-    aiSettingsStorage.save(nextSettings);
+  async function updateAISettings(nextSettings: AIProviderSettings) {
+    try {
+      aiSettings.value = await saveAISettings(nextSettings);
+    } catch (error) {
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    }
   }
 
   function closeSettings() {
@@ -172,6 +192,94 @@ export function usePlotWorkspace() {
     await refreshSubscriptionStatus(true);
   }
 
+  async function refreshAISettings() {
+    try {
+      aiSettings.value = await getAISettings();
+    } catch (error) {
+      aiSettings.value = createDefaultAISettings();
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    }
+  }
+
+  async function refreshUpdateStatus() {
+    try {
+      updateStatus.value = normalizeUpdateStatus(await getUpdateStatus());
+    } catch (error) {
+      updateStatus.value = {
+        ...updateStatus.value,
+        message: getErrorMessage(error),
+      };
+    }
+  }
+
+  async function checkUpdates(force: boolean, quiet = false) {
+    if (isCheckingUpdates.value || isDownloadingUpdate.value || isInstallingUpdate.value) {
+      return;
+    }
+
+    isCheckingUpdates.value = true;
+    try {
+      updateStatus.value = normalizeUpdateStatus(await checkForUpdates(force));
+    } catch (error) {
+      if (!quiet) {
+        runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+      }
+    } finally {
+      isCheckingUpdates.value = false;
+    }
+  }
+
+  async function handleUpdateAction() {
+    if (updateStatus.value.readyToInstall) {
+      isUpdateInstallDialogOpen.value = true;
+      return;
+    }
+
+    if (updateStatus.value.actionLabel === "检查更新") {
+      await checkUpdates(true);
+      return;
+    }
+
+    if (isDownloadingUpdate.value || isInstallingUpdate.value) {
+      return;
+    }
+
+    isDownloadingUpdate.value = true;
+    try {
+      updateStatus.value = normalizeUpdateStatus(await downloadUpdate());
+      if (updateStatus.value.readyToInstall) {
+        isUpdateInstallDialogOpen.value = true;
+      }
+    } catch (error) {
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    } finally {
+      isDownloadingUpdate.value = false;
+    }
+  }
+
+  function closeUpdateInstallDialog() {
+    if (isInstallingUpdate.value) {
+      return;
+    }
+
+    isUpdateInstallDialogOpen.value = false;
+  }
+
+  async function installPreparedUpdate() {
+    if (isInstallingUpdate.value) {
+      return;
+    }
+
+    isInstallingUpdate.value = true;
+    try {
+      await installUpdateAndRestart();
+    } catch (error) {
+      isInstallingUpdate.value = false;
+      isUpdateInstallDialogOpen.value = false;
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    }
+  }
+
   function animateRepairRanges(ranges: ChangedLineRange[]) {
     repairAnimatedLineRanges.value = ranges;
     repairAnimationKey.value += 1;
@@ -181,6 +289,9 @@ export function usePlotWorkspace() {
   }
 
   onMounted(() => {
+    void refreshAISettings();
+    void refreshUpdateStatus();
+    void checkUpdates(false, true);
     lifecycle.mount();
   });
 
@@ -245,7 +356,11 @@ export function usePlotWorkspace() {
     isRunErrorRepairable: runErrorDialog.isRunErrorRepairable,
     isRunning,
     isSettingsDialogOpen,
+    isUpdateInstallDialogOpen,
+    isInstallingUpdate,
+    isUpdatePending,
     isNotePanelOpen: noteWorkspace.isPanelOpen,
+    handleUpdateAction,
     openCreateDialog: scriptWorkspace.openCreateDialog,
     openAISettings,
     openCodeAIOptimizeContextMenu: codeAIOptimize.openContextMenu,
@@ -269,6 +384,7 @@ export function usePlotWorkspace() {
     switchWorkspace,
     stopCurrentRun: lifecycle.stopCurrentRun,
     subscriptionStatus,
+    updateStatus,
     toggleNotePanel,
     typingScriptName: scriptWorkspace.typingScriptName,
     updateCode: scriptWorkspace.updateCode,
@@ -278,6 +394,8 @@ export function usePlotWorkspace() {
     workspaces: scriptWorkspace.workspaces,
     workspacePhase: scriptWorkspace.workspacePhase,
     refreshSubscriptionStatusManually,
+    closeUpdateInstallDialog,
+    installUpdateAndRestart: installPreparedUpdate,
   };
 }
 
@@ -322,4 +440,22 @@ function normalizeSubscriptionStatusCode(status?: string): AISubscriptionStatus[
   }
 
   return "error";
+}
+
+function normalizeUpdateStatus(status: UpdateStatusLike): AppUpdateStatus {
+  const readyToInstall = !!status.readyToInstall;
+  const updateAvailable = !!status.updateAvailable;
+
+  return {
+    currentVersion: typeof status.currentVersion === "string" ? status.currentVersion : "0.0.1",
+    latestVersion: typeof status.latestVersion === "string" ? status.latestVersion : "",
+    notes: typeof status.notes === "string" ? status.notes : "",
+    publishedAt: typeof status.publishedAt === "string" ? status.publishedAt : "",
+    lastCheckedAt: typeof status.lastCheckedAt === "string" ? status.lastCheckedAt : "",
+    message: typeof status.message === "string" ? status.message : "当前已经是最新版本",
+    updateAvailable,
+    downloaded: !!status.downloaded,
+    readyToInstall,
+    actionLabel: readyToInstall ? "立即更新" : updateAvailable ? "下载新版本" : "检查更新",
+  };
 }

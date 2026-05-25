@@ -3,6 +3,11 @@ defineProps<{
   open: boolean;
   pending: boolean;
   running: boolean;
+  update: {
+    currentVersion: string;
+    actionLabel: string;
+  };
+  updatePending: boolean;
   status: {
     ready: boolean;
     code: string;
@@ -23,6 +28,7 @@ defineProps<{
 const emit = defineEmits<{
   close: [];
   rebuild: [];
+  "check-update": [];
 }>();
 </script>
 
@@ -33,7 +39,10 @@ const emit = defineEmits<{
         <h2 id="settings-title">设置</h2>
 
         <div class="settings-runtime">
-          <strong class="settings-runtime-title">WinPython 环境</strong>
+          <div class="settings-runtime-header">
+            <strong class="settings-runtime-title">WinPython 环境</strong>
+            <span class="settings-runtime-version">当前版本 {{ update.currentVersion || "-" }}</span>
+          </div>
           <p class="settings-runtime-summary">{{ status.summary }}</p>
           <p v-if="status.recommendedAction" class="settings-runtime-summary">
             {{ status.recommendedAction }}
@@ -47,6 +56,10 @@ const emit = defineEmits<{
         </div>
 
         <div class="create-dialog-actions">
+          <button class="dialog-button secondary settings-update-button" type="button" :disabled="updatePending" @click="emit('check-update')">
+            {{ updatePending ? "处理中" : update.actionLabel }}
+          </button>
+          <div class="settings-actions-spacer"></div>
           <button
             class="dialog-button"
             type="button"

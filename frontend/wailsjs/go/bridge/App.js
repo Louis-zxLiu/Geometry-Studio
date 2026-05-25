@@ -10,6 +10,10 @@ export function BootstrapWorkspace() {
   return window['go']['bridge']['App']['BootstrapWorkspace']();
 }
 
+export function CheckForUpdates(arg1) {
+  return window['go']['bridge']['App']['CheckForUpdates'](arg1);
+}
+
 export function CreateCodeAIVersion(arg1) {
   return window['go']['bridge']['App']['CreateCodeAIVersion'](arg1);
 }
@@ -34,12 +38,20 @@ export function DeleteWorkspace(arg1) {
   return window['go']['bridge']['App']['DeleteWorkspace'](arg1);
 }
 
+export function DownloadUpdate() {
+  return window['go']['bridge']['App']['DownloadUpdate']();
+}
+
 export function ExportScenePackage(arg1) {
   return window['go']['bridge']['App']['ExportScenePackage'](arg1);
 }
 
 export function GenerateCodeFromSelection(arg1) {
   return window['go']['bridge']['App']['GenerateCodeFromSelection'](arg1);
+}
+
+export function GetAISettings() {
+  return window['go']['bridge']['App']['GetAISettings']();
 }
 
 export function GetEnvironmentStatus() {
@@ -62,12 +74,20 @@ export function GetSubscriptionStatus(arg1) {
   return window['go']['bridge']['App']['GetSubscriptionStatus'](arg1);
 }
 
+export function GetUpdateStatus() {
+  return window['go']['bridge']['App']['GetUpdateStatus']();
+}
+
 export function ImportScenePackage() {
   return window['go']['bridge']['App']['ImportScenePackage']();
 }
 
 export function InitializeApp() {
   return window['go']['bridge']['App']['InitializeApp']();
+}
+
+export function InstallUpdateAndRestart() {
+  return window['go']['bridge']['App']['InstallUpdateAndRestart']();
 }
 
 export function ListCodeAIVersions(arg1) {
@@ -104,6 +124,10 @@ export function RenameWorkspace(arg1, arg2) {
 
 export function RepairCodeFromRunError(arg1) {
   return window['go']['bridge']['App']['RepairCodeFromRunError'](arg1);
+}
+
+export function SaveAISettings(arg1) {
+  return window['go']['bridge']['App']['SaveAISettings'](arg1);
 }
 
 export function SaveAndRun(arg1, arg2) {

@@ -6,6 +6,8 @@ export function AddScriptNoteImages(arg1:string,arg2:Array<bridge.NoteImageInput
 
 export function BootstrapWorkspace():Promise<bridge.WorkspaceSnapshot>;
 
+export function CheckForUpdates(arg1:boolean):Promise<bridge.UpdateStatus>;
+
 export function CreateCodeAIVersion(arg1:bridge.CreateCodeAIVersionRequest):Promise<bridge.CodeAIVersion>;
 
 export function CreateScript(arg1:string):Promise<bridge.ScriptDocument>;
@@ -18,9 +20,13 @@ export function DeleteScript(arg1:string):Promise<bridge.WorkspaceSnapshot>;
 
 export function DeleteWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;
 
+export function DownloadUpdate():Promise<bridge.UpdateStatus>;
+
 export function ExportScenePackage(arg1:string):Promise<bridge.PackageTransferResult>;
 
 export function GenerateCodeFromSelection(arg1:bridge.AIGenerationRequest):Promise<bridge.AIGenerationResult>;
+
+export function GetAISettings():Promise<bridge.AIProviderSettings>;
 
 export function GetEnvironmentStatus():Promise<bridge.EnvironmentStatus>;
 
@@ -32,9 +38,13 @@ export function GetScriptNote(arg1:string):Promise<bridge.NoteDocument>;
 
 export function GetSubscriptionStatus(arg1:boolean):Promise<bridge.SubscriptionStatus>;
 
+export function GetUpdateStatus():Promise<bridge.UpdateStatus>;
+
 export function ImportScenePackage():Promise<bridge.ImportSceneResult>;
 
 export function InitializeApp():Promise<bridge.InitSnapshot>;
+
+export function InstallUpdateAndRestart():Promise<void>;
 
 export function ListCodeAIVersions(arg1:string):Promise<Array<bridge.CodeAIVersion>>;
 
@@ -53,6 +63,8 @@ export function RenameScript(arg1:string,arg2:string):Promise<bridge.WorkspaceSn
 export function RenameWorkspace(arg1:string,arg2:string):Promise<bridge.WorkspaceSnapshot>;
 
 export function RepairCodeFromRunError(arg1:bridge.AIRepairRequest):Promise<bridge.AIRepairResult>;
+
+export function SaveAISettings(arg1:bridge.AIProviderSettings):Promise<bridge.AIProviderSettings>;
 
 export function SaveAndRun(arg1:string,arg2:string):Promise<void>;
 

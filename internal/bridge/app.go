@@ -10,7 +10,9 @@ import (
 	"plotkitycat/internal/env"
 	"plotkitycat/internal/files"
 	"plotkitycat/internal/runner"
+	settingspkg "plotkitycat/internal/settings"
 	"plotkitycat/internal/subscription"
+	"plotkitycat/internal/updater"
 	"plotkitycat/internal/workspaces"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -24,7 +26,9 @@ type App struct {
 	envManager          *env.Manager
 	fileStore           *files.Store
 	runner              *runner.Runner
+	aiSettingsStore     *settingspkg.AIStore
 	subscriptionService *subscription.Service
+	updateService       *updater.Service
 	workspaceManager    *workspaces.Manager
 }
 
@@ -40,7 +44,9 @@ func NewApp() *App {
 		envManager:          env.NewManager(workspaceManager),
 		fileStore:           fileStore,
 		runner:              runner.New(workspaceManager),
+		aiSettingsStore:     settingspkg.NewAIStore(),
 		subscriptionService: subscriptionService,
+		updateService:       updater.NewService(),
 		workspaceManager:    workspaceManager,
 	}
 }
@@ -225,4 +231,112 @@ func (a *App) OpenSubscriptionPurchase() (SubscriptionPurchaseResult, error) {
 		DeviceID:   link.DeviceID,
 		Message:    link.Message,
 	}, nil
+}
+
+func (a *App) GetAISettings() (AIProviderSettings, error) {
+	if a.aiSettingsStore == nil {
+		return AIProviderSettings{Mode: "custom"}, nil
+	}
+
+	value, err := a.aiSettingsStore.Load()
+	if err != nil {
+		return AIProviderSettings{}, err
+	}
+
+	return AIProviderSettings{
+		Mode:  value.Mode,
+		URL:   value.URL,
+		Key:   value.Key,
+		Model: value.Model,
+	}, nil
+}
+
+func (a *App) SaveAISettings(settings AIProviderSettings) (AIProviderSettings, error) {
+	if a.aiSettingsStore == nil {
+		return settings, nil
+	}
+
+	value, err := a.aiSettingsStore.Save(settingspkg.AIProviderSettings{
+		Mode:  settings.Mode,
+		URL:   settings.URL,
+		Key:   settings.Key,
+		Model: settings.Model,
+	})
+	if err != nil {
+		return AIProviderSettings{}, err
+	}
+
+	return AIProviderSettings{
+		Mode:  value.Mode,
+		URL:   value.URL,
+		Key:   value.Key,
+		Model: value.Model,
+	}, nil
+}
+
+func (a *App) GetUpdateStatus() (UpdateStatus, error) {
+	if a.updateService == nil {
+		return UpdateStatus{}, nil
+	}
+
+	status, err := a.updateService.Status()
+	if err != nil {
+		return UpdateStatus{}, err
+	}
+
+	return mapUpdateStatus(status), nil
+}
+
+func (a *App) CheckForUpdates(force bool) (UpdateStatus, error) {
+	if a.updateService == nil {
+		return UpdateStatus{}, nil
+	}
+
+	status, err := a.updateService.Check(a.ctx, force)
+	if err != nil {
+		return UpdateStatus{}, err
+	}
+
+	return mapUpdateStatus(status), nil
+}
+
+func (a *App) DownloadUpdate() (UpdateStatus, error) {
+	if a.updateService == nil {
+		return UpdateStatus{}, nil
+	}
+
+	status, err := a.updateService.Download(a.ctx)
+	if err != nil {
+		return UpdateStatus{}, err
+	}
+
+	return mapUpdateStatus(status), nil
+}
+
+func (a *App) InstallUpdateAndRestart() error {
+	if err := a.requireContext(); err != nil {
+		return err
+	}
+	if a.runner != nil && a.runner.IsRunning() {
+		return errors.New("请先停止当前 Python 进程，再安装更新")
+	}
+	if a.updateService == nil {
+		return errors.New("更新服务未初始化")
+	}
+
+	return a.updateService.InstallAndRestart()
+}
+
+func mapUpdateStatus(status updater.Status) UpdateStatus {
+	return UpdateStatus{
+		CurrentVersion:  status.CurrentVersion,
+		LatestVersion:   status.LatestVersion,
+		Notes:           status.Notes,
+		PublishedAt:     status.PublishedAt,
+		LastCheckedAt:   status.LastCheckedAt,
+		Message:         status.Message,
+		UpdateAvailable: status.UpdateAvailable,
+		Downloaded:      status.Downloaded,
+		ReadyToInstall:  status.ReadyToInstall,
+	}
 }

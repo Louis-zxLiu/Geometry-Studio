@@ -629,6 +629,34 @@ export namespace bridge {
 	        this.baseUrl = source["baseUrl"];
 	    }
 	}
+	export class UpdateStatus {
+	    currentVersion: string;
+	    latestVersion: string;
+	    notes: string;
+	    publishedAt: string;
+	    lastCheckedAt: string;
+	    message: string;
+	    updateAvailable: boolean;
+	    downloaded: boolean;
+	    readyToInstall: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currentVersion = source["currentVersion"];
+	        this.latestVersion = source["latestVersion"];
+	        this.notes = source["notes"];
+	        this.publishedAt = source["publishedAt"];
+	        this.lastCheckedAt = source["lastCheckedAt"];
+	        this.message = source["message"];
+	        this.updateAvailable = source["updateAvailable"];
+	        this.downloaded = source["downloaded"];
+	        this.readyToInstall = source["readyToInstall"];
+	    }
+	}
 	
 
 }

@@ -91,3 +91,16 @@ export type AISubscriptionStatus = {
   model: string;
   baseUrl: string;
 };
+
+export type AppUpdateStatus = {
+  currentVersion: string;
+  latestVersion: string;
+  notes: string;
+  publishedAt: string;
+  lastCheckedAt: string;
+  message: string;
+  updateAvailable: boolean;
+  downloaded: boolean;
+  readyToInstall: boolean;
+  actionLabel: string;
+};

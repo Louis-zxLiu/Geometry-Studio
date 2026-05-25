@@ -42,6 +42,33 @@ func ConfigDir() (string, error) {
 	return filepath.Join(root, "config"), nil
 }
 
+func AISettingsPath() (string, error) {
+	dir, err := ConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(dir, "ai-settings.json"), nil
+}
+
+func UpdatesDir() (string, error) {
+	dir, err := ConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(dir, "updates"), nil
+}
+
+func UpdateStatePath() (string, error) {
+	dir, err := UpdatesDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(dir, "state.json"), nil
+}
+
 func RuntimeDir() (string, error) {
 	root, err := AppRoot()
 	if err != nil {

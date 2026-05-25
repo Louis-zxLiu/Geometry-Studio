@@ -14,6 +14,7 @@ import RuntimeLoadingScreen from "./components/RuntimeLoadingScreen.vue";
 import SettingsDialog from "./components/SettingsDialog.vue";
 import SidebarPanel from "./components/sidebar/SidebarPanel.vue";
 import TopBar from "./components/TopBar.vue";
+import UpdateRestartDialog from "./components/UpdateRestartDialog.vue";
 import { usePlotWorkspace } from "./features/plot/model/usePlotWorkspace";
 import { useTheme } from "./composables/useTheme";
 
@@ -131,7 +132,10 @@ const theme = proxyRefs(useTheme());
       :pending="workspace.isRebuildingRuntime"
       :running="workspace.isRunning"
       :status="workspace.environmentStatus"
+      :update="workspace.updateStatus"
+      :update-pending="workspace.isUpdatePending"
       @close="workspace.closeSettings"
+      @check-update="workspace.handleUpdateAction"
       @rebuild="workspace.rebuildRuntime"
     />
 
@@ -165,6 +169,14 @@ const theme = proxyRefs(useTheme());
       @close="workspace.closeRunErrorDialog"
       @copy="workspace.copyRunError"
       @repair="workspace.repairCurrentRunError"
+    />
+
+    <UpdateRestartDialog
+      :open="workspace.isUpdateInstallDialogOpen"
+      :pending="workspace.isInstallingUpdate"
+      :version="workspace.updateStatus.latestVersion"
+      @close="workspace.closeUpdateInstallDialog"
+      @confirm="workspace.installUpdateAndRestart"
     />
   </div>
 </template>

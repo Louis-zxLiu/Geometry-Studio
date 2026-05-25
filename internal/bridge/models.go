@@ -172,3 +172,15 @@ type SubscriptionPurchaseResult struct {
 	DeviceID   string `json:"deviceId"`
 	Message    string `json:"message"`
 }
+
+type UpdateStatus struct {
+	CurrentVersion  string `json:"currentVersion"`
+	LatestVersion   string `json:"latestVersion"`
+	Notes           string `json:"notes"`
+	PublishedAt     string `json:"publishedAt"`
+	LastCheckedAt   string `json:"lastCheckedAt"`
+	Message         string `json:"message"`
+	UpdateAvailable bool   `json:"updateAvailable"`
+	Downloaded      bool   `json:"downloaded"`
+	ReadyToInstall  bool   `json:"readyToInstall"`
+}
