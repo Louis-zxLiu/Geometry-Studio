@@ -74,6 +74,12 @@ const theme = proxyRefs(useTheme());
             @update:code="workspace.updateCode"
           />
 
+          <CodeAIVersionRail
+            :versions="workspace.codeAIOptimizeVersions"
+            :active-id="workspace.codeAIOptimizeActiveVersionId"
+            @select="workspace.selectCodeAIOptimizeVersion"
+          />
+
           <EnvironmentIndicator
             :is-running="workspace.isRunning"
             :ai-busy="workspace.isAIGenerating"
@@ -103,12 +109,6 @@ const theme = proxyRefs(useTheme());
       :pending="workspace.isCreatingScript"
       @cancel="workspace.closeCreateDialog"
       @confirm="workspace.createScript"
-    />
-
-    <CodeAIVersionRail
-      :versions="workspace.codeAIOptimizeVersions"
-      :active-id="workspace.codeAIOptimizeActiveVersionId"
-      @select="workspace.selectCodeAIOptimizeVersion"
     />
 
     <CodeAIOptimizeContextMenu

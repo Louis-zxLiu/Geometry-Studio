@@ -1,12 +1,13 @@
-import { computed, ref } from "vue";
+import { computed, ref, watch, type Ref } from "vue";
+import {
+  createCodeAIVersion,
+  listCodeAIVersions,
+  optimizeCode,
+} from "../../ai/services/aiBridgeCompat";
+import type { AIProviderSettings, CodeAIVersion } from "../../ai/services/aiTypes";
+import { applyRepairPatch, type ChangedLineRange } from "../../aiRepair/services/repairPatch";
 
-export type CodeAIVersion = {
-  id: string;
-  label: string;
-  note: string;
-  code: string;
-  createdAt: number;
-};
+export type { CodeAIVersion };
 
 export type CodeAIOptimizeCloseReason =
   | "outside-left-pointer"
@@ -22,7 +23,23 @@ type CloseContext = {
   target?: string;
 };
 
-export function useCodeAIOptimize(code: { value: string }, updateCode: (code: string) => void) {
+type AIActivityStatus = {
+  isAIGenerating: Ref<boolean>;
+  start: () => void;
+  stop: () => void;
+};
+
+type UseCodeAIOptimizeOptions = {
+  aiActivity: AIActivityStatus;
+  aiSettings: Ref<AIProviderSettings>;
+  codeContent: Ref<string>;
+  currentFile: Ref<string>;
+  isRunning: Ref<boolean>;
+  onApplied: (ranges: ChangedLineRange[]) => void;
+  onError: (message: string) => void;
+};
+
+export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
   const isDialogOpen = ref(false);
   const contextMenu = ref<{ x: number; y: number } | null>(null);
   const versions = ref<CodeAIVersion[]>([]);
@@ -33,6 +50,14 @@ export function useCodeAIOptimize(code: { value: string }, updateCode: (code: st
   );
 
   function openContextMenu(position: { x: number; y: number }) {
+    if (
+      options.aiActivity.isAIGenerating.value ||
+      options.isRunning.value ||
+      !options.currentFile.value
+    ) {
+      return;
+    }
+
     contextMenu.value = position;
   }
 
@@ -42,7 +67,10 @@ export function useCodeAIOptimize(code: { value: string }, updateCode: (code: st
 
   function openDialog() {
     closeContextMenu({ reason: "open-dialog" });
-    ensureInitialVersion();
+    if (!options.currentFile.value) {
+      return;
+    }
+
     isDialogOpen.value = true;
   }
 
@@ -50,17 +78,42 @@ export function useCodeAIOptimize(code: { value: string }, updateCode: (code: st
     isDialogOpen.value = false;
   }
 
-  function submitOptimization(prompt: string) {
-    const note = prompt.trim();
-    if (!note) {
+  async function submitOptimization(prompt: string) {
+    const instruction = prompt.trim();
+    if (
+      !instruction ||
+      options.aiActivity.isAIGenerating.value ||
+      options.isRunning.value ||
+      !options.currentFile.value
+    ) {
       return;
     }
 
-    ensureInitialVersion();
-    const nextVersion = createVersion(note, code.value);
-    versions.value = [...versions.value, nextVersion];
-    activeVersionId.value = nextVersion.id;
     isDialogOpen.value = false;
+    options.aiActivity.start();
+    try {
+      await ensureInitialVersion();
+      const result = await optimizeCode({
+        sceneName: options.currentFile.value,
+        currentCode: options.codeContent.value,
+        instruction,
+        settings: options.aiSettings.value,
+      });
+      const applied = applyRepairPatch(options.codeContent.value, result.patch);
+      options.codeContent.value = applied.code;
+      options.onApplied(applied.changedRanges);
+      const version = await createCodeAIVersion({
+        sceneName: options.currentFile.value,
+        note: instruction,
+        code: applied.code,
+      });
+      versions.value = [...versions.value, version];
+      activeVersionId.value = version.id;
+    } catch (error) {
+      options.onError(getErrorMessage(error));
+    } finally {
+      options.aiActivity.stop();
+    }
   }
 
   function selectVersion(id: string) {
@@ -70,29 +123,46 @@ export function useCodeAIOptimize(code: { value: string }, updateCode: (code: st
     }
 
     activeVersionId.value = version.id;
-    updateCode(version.code);
+    options.codeContent.value = version.code;
   }
 
-  function ensureInitialVersion() {
-    if (versions.value.length > 0) {
+  async function reloadVersions(sceneName = options.currentFile.value) {
+    if (!sceneName) {
+      versions.value = [];
+      activeVersionId.value = "";
       return;
     }
 
-    const version = createVersion("当前版本", code.value);
+    try {
+      const nextVersions = await listCodeAIVersions(sceneName);
+      versions.value = nextVersions;
+      activeVersionId.value = nextVersions.at(-1)?.id ?? "";
+    } catch (error) {
+      options.onError(getErrorMessage(error));
+    }
+  }
+
+  async function ensureInitialVersion() {
+    if (versions.value.length > 0 || !options.currentFile.value) {
+      return;
+    }
+
+    const version = await createCodeAIVersion({
+      sceneName: options.currentFile.value,
+      note: "初始版本",
+      code: options.codeContent.value,
+    });
     versions.value = [version];
     activeVersionId.value = version.id;
   }
 
-  function createVersion(note: string, snapshot: string): CodeAIVersion {
-    const index = versions.value.length + 1;
-    return {
-      id: `${Date.now()}-${index}`,
-      label: `版本${String(index).padStart(2, "0")}`,
-      note,
-      code: snapshot,
-      createdAt: Date.now(),
-    };
-  }
+  watch(
+    options.currentFile,
+    (sceneName) => {
+      void reloadVersions(sceneName);
+    },
+    { immediate: true },
+  );
 
   return {
     activeVersion,
@@ -103,8 +173,17 @@ export function useCodeAIOptimize(code: { value: string }, updateCode: (code: st
     isDialogOpen,
     openContextMenu,
     openDialog,
+    reloadVersions,
     selectVersion,
     submitOptimization,
     versions,
   };
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
 }

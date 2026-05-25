@@ -64,13 +64,26 @@
 }
 
 .code-ai-version-rail {
-  position: fixed;
-  top: 112px;
-  left: 0;
+  position: absolute;
+  top: 74px;
+  bottom: 54px;
+  left: 10px;
   z-index: 12;
   display: grid;
-  gap: 10px;
-  padding: 10px 0 10px 6px;
+  align-content: start;
+  gap: clamp(3px, calc(72px / max(var(--code-ai-version-count, 1), 1)), 10px);
+  width: 96px;
+  max-height: calc(100% - 128px);
+  padding: 8px 0;
+  overflow-x: visible;
+  overflow-y: auto;
+  opacity: 0.82;
+  pointer-events: none;
+  scrollbar-width: none;
+}
+
+.code-ai-version-rail::-webkit-scrollbar {
+  display: none;
 }
 
 .code-ai-version-mark {
@@ -83,10 +96,12 @@
   background: transparent;
   color: var(--muted);
   cursor: pointer;
+  opacity: 0.82;
   overflow: hidden;
   font: inherit;
   font-size: 11px;
   letter-spacing: 0.06em;
+  pointer-events: auto;
   transition:
     width 180ms ease,
     color 180ms ease;
@@ -123,4 +138,9 @@
 
 .code-ai-version-mark.active {
   color: var(--text);
+  opacity: 1;
+}
+
+.code-ai-version-rail:hover .code-ai-version-mark {
+  opacity: 0.96;
 }

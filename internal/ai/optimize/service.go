@@ -1,4 +1,4 @@
-package repair
+package optimize
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"plotkitycat/internal/ai/provider"
+	"plotkitycat/internal/ai/repair"
 )
 
 type PromptLoader interface {
@@ -25,7 +26,7 @@ func NewService(router *provider.Router, prompts PromptLoader) *Service {
 	}
 }
 
-func (s *Service) RepairCode(ctx context.Context, request Request) (Result, error) {
+func (s *Service) OptimizeCode(ctx context.Context, request Request) (Result, error) {
 	raw, err := s.router.Chat(ctx, provider.ChatRequest{
 		Settings:     request.Settings,
 		SystemPrompt: strings.TrimSpace(s.prompts.Load(resolvePromptPath(request.Settings.Mode))),
@@ -35,9 +36,9 @@ func (s *Service) RepairCode(ctx context.Context, request Request) (Result, erro
 		return Result{}, err
 	}
 
-	patch := StripFence(raw)
+	patch := repair.StripFence(raw)
 	if strings.TrimSpace(patch) == "" {
-		return Result{}, fmt.Errorf("AI 修复没有返回可用补丁")
+		return Result{}, fmt.Errorf("AI 优化没有返回可用补丁")
 	}
 
 	return Result{
@@ -52,41 +53,19 @@ func resolvePromptPath(mode provider.ServiceMode) string {
 		filename = "subscription.txt"
 	}
 
-	return filepath.Join("repair", filename)
+	return filepath.Join("optimize", filename)
 }
 
 func buildUserPrompt(request Request) string {
 	return strings.Join([]string{
 		fmt.Sprintf("场景名：%s", request.SceneName),
 		"",
-		"运行错误：",
-		strings.TrimSpace(request.ErrorText),
+		"用户微调要求：",
+		strings.TrimSpace(request.Instruction),
 		"",
 		"完整源代码：",
 		"```python",
 		request.CurrentCode,
 		"```",
 	}, "\n")
-}
-
-func StripFence(raw string) string {
-	trimmed := strings.TrimSpace(raw)
-	fenceStart := strings.Index(trimmed, "```")
-	if fenceStart < 0 {
-		return trimmed
-	}
-
-	content := trimmed[fenceStart+3:]
-	if lineBreak := strings.Index(content, "\n"); lineBreak >= 0 {
-		content = content[lineBreak+1:]
-	} else {
-		return ""
-	}
-
-	end := strings.Index(content, "```")
-	if end < 0 {
-		return strings.TrimSpace(content)
-	}
-
-	return strings.TrimSpace(content[:end])
 }

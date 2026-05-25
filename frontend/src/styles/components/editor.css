@@ -8,7 +8,12 @@
 }
 
 .editor-panel.disabled {
+  cursor: progress;
   opacity: 0.92;
+}
+
+.editor-panel.disabled * {
+  cursor: progress;
 }
 
 .editor-placeholder {

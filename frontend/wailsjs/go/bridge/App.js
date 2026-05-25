@@ -10,12 +10,20 @@ export function BootstrapWorkspace() {
   return window['go']['bridge']['App']['BootstrapWorkspace']();
 }
 
+export function CreateCodeAIVersion(arg1) {
+  return window['go']['bridge']['App']['CreateCodeAIVersion'](arg1);
+}
+
 export function CreateScript(arg1) {
   return window['go']['bridge']['App']['CreateScript'](arg1);
 }
 
 export function CreateWorkspace(arg1) {
   return window['go']['bridge']['App']['CreateWorkspace'](arg1);
+}
+
+export function DeleteCodeAIVersion(arg1, arg2) {
+  return window['go']['bridge']['App']['DeleteCodeAIVersion'](arg1, arg2);
 }
 
 export function DeleteScript(arg1) {
@@ -62,8 +70,16 @@ export function InitializeApp() {
   return window['go']['bridge']['App']['InitializeApp']();
 }
 
+export function ListCodeAIVersions(arg1) {
+  return window['go']['bridge']['App']['ListCodeAIVersions'](arg1);
+}
+
 export function OpenSubscriptionPurchase() {
   return window['go']['bridge']['App']['OpenSubscriptionPurchase']();
+}
+
+export function OptimizeCode(arg1) {
+  return window['go']['bridge']['App']['OptimizeCode'](arg1);
 }
 
 export function RebuildRuntime() {

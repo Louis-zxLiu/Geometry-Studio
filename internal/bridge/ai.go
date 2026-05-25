@@ -64,6 +64,35 @@ func (a *App) RepairCodeFromRunError(request AIRepairRequest) (AIRepairResult, e
 	}, nil
 }
 
+func (a *App) OptimizeCode(request AIOptimizeRequest) (AIOptimizeResult, error) {
+	if request.CurrentCode == "" {
+		return AIOptimizeResult{}, errors.New("当前代码为空，无法进行 AI 优化")
+	}
+	if request.Instruction == "" {
+		return AIOptimizeResult{}, errors.New("请输入想让 AI 微调的内容")
+	}
+
+	result, err := a.aiService.Optimize(a.ctx, ai.OptimizeRequest{
+		SceneName:   request.SceneName,
+		CurrentCode: request.CurrentCode,
+		Instruction: request.Instruction,
+		Settings: ai.ProviderSettings{
+			Mode:  ai.ServiceMode(request.Settings.Mode),
+			URL:   request.Settings.URL,
+			Key:   request.Settings.Key,
+			Model: request.Settings.Model,
+		},
+	})
+	if err != nil {
+		return AIOptimizeResult{}, err
+	}
+
+	return AIOptimizeResult{
+		Patch:  result.Patch,
+		Source: result.Source,
+	}, nil
+}
+
 func mapAISelectionItems(items []AISelectionItem) []ai.SelectionItem {
 	mapped := make([]ai.SelectionItem, 0, len(items))
 	for _, item := range items {

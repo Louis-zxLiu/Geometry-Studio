@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"plotkitycat/internal/ai"
+	"plotkitycat/internal/codeversions"
 	"plotkitycat/internal/device"
 	"plotkitycat/internal/env"
 	"plotkitycat/internal/files"
@@ -18,6 +19,7 @@ import (
 type App struct {
 	ctx                 context.Context
 	aiService           *ai.Service
+	codeVersionStore    *codeversions.Store
 	deviceService       *device.Service
 	envManager          *env.Manager
 	fileStore           *files.Store
@@ -30,11 +32,13 @@ func NewApp() *App {
 	deviceService := device.NewService()
 	subscriptionService := subscription.NewService(deviceService)
 	workspaceManager := workspaces.NewManager()
+	fileStore := files.NewStore(workspaceManager)
 	return &App{
 		aiService:           ai.NewService(subscriptionService),
+		codeVersionStore:    codeversions.NewStore(fileStore),
 		deviceService:       deviceService,
 		envManager:          env.NewManager(workspaceManager),
-		fileStore:           files.NewStore(workspaceManager),
+		fileStore:           fileStore,
 		runner:              runner.New(workspaceManager),
 		subscriptionService: subscriptionService,
 		workspaceManager:    workspaceManager,

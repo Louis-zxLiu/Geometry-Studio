@@ -129,6 +129,32 @@ type AIRepairResult struct {
 	Source string `json:"source"`
 }
 
+type AIOptimizeRequest struct {
+	SceneName   string             `json:"sceneName"`
+	CurrentCode string             `json:"currentCode"`
+	Instruction string             `json:"instruction"`
+	Settings    AIProviderSettings `json:"settings"`
+}
+
+type AIOptimizeResult struct {
+	Patch  string `json:"patch"`
+	Source string `json:"source"`
+}
+
+type CodeAIVersion struct {
+	ID        string `json:"id"`
+	Label     string `json:"label"`
+	Note      string `json:"note"`
+	Code      string `json:"code"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+type CreateCodeAIVersionRequest struct {
+	SceneName string `json:"sceneName"`
+	Note      string `json:"note"`
+	Code      string `json:"code"`
+}
+
 type SubscriptionStatus struct {
 	Status        string `json:"status"`
 	Activated     bool   `json:"activated"`

@@ -7,6 +7,7 @@
 }
 
 .editor-workspace-column {
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   min-width: 0;

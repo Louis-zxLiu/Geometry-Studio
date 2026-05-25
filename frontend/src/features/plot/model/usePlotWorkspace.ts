@@ -57,10 +57,15 @@ export function usePlotWorkspace() {
   );
   const aiActivity = useAIActivityStatus();
   const codeStreaming = useCodeStreaming(scriptWorkspace.codeContent);
-  const codeAIOptimize = useCodeAIOptimize(
-    scriptWorkspace.codeContent,
-    scriptWorkspace.updateCode,
-  );
+  const codeAIOptimize = useCodeAIOptimize({
+    aiActivity,
+    aiSettings,
+    codeContent: scriptWorkspace.codeContent,
+    currentFile: scriptWorkspace.currentFile,
+    isRunning,
+    onApplied: animateRepairRanges,
+    onError: runErrorDialog.openRunErrorDialog,
+  });
   const aiGeneration = useAINoteGeneration({
     aiActivity,
     aiSettings,

@@ -6,9 +6,13 @@ export function AddScriptNoteImages(arg1:string,arg2:Array<bridge.NoteImageInput
 
 export function BootstrapWorkspace():Promise<bridge.WorkspaceSnapshot>;
 
+export function CreateCodeAIVersion(arg1:bridge.CreateCodeAIVersionRequest):Promise<bridge.CodeAIVersion>;
+
 export function CreateScript(arg1:string):Promise<bridge.ScriptDocument>;
 
 export function CreateWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;
+
+export function DeleteCodeAIVersion(arg1:string,arg2:string):Promise<Array<bridge.CodeAIVersion>>;
 
 export function DeleteScript(arg1:string):Promise<bridge.WorkspaceSnapshot>;
 
@@ -32,7 +36,11 @@ export function ImportScenePackage():Promise<bridge.ImportSceneResult>;
 
 export function InitializeApp():Promise<bridge.InitSnapshot>;
 
+export function ListCodeAIVersions(arg1:string):Promise<Array<bridge.CodeAIVersion>>;
+
 export function OpenSubscriptionPurchase():Promise<bridge.SubscriptionPurchaseResult>;
+
+export function OptimizeCode(arg1:bridge.AIOptimizeRequest):Promise<bridge.AIOptimizeResult>;
 
 export function RebuildRuntime():Promise<bridge.EnvironmentStatus>;
 

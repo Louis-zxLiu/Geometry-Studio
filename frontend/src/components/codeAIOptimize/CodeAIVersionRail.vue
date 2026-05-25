@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CodeAIVersion } from "../../features/codeAIOptimize/model/useCodeAIOptimize";
 
-defineProps<{
+const props = defineProps<{
   activeId: string;
   versions: CodeAIVersion[];
 }>();
@@ -12,7 +12,12 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <aside v-if="versions.length > 0" class="code-ai-version-rail" aria-label="AI versions">
+  <aside
+    v-if="versions.length > 0"
+    class="code-ai-version-rail"
+    :style="{ '--code-ai-version-count': String(props.versions.length) }"
+    aria-label="AI versions"
+  >
     <button
       v-for="version in versions"
       :key="version.id"

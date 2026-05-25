@@ -55,6 +55,32 @@ export type AIRepairResult = {
   source: string;
 };
 
+export type AIOptimizeRequest = {
+  sceneName: string;
+  currentCode: string;
+  instruction: string;
+  settings: AIProviderSettings;
+};
+
+export type AIOptimizeResult = {
+  patch: string;
+  source: string;
+};
+
+export type CodeAIVersion = {
+  id: string;
+  label: string;
+  note: string;
+  code: string;
+  createdAt: number;
+};
+
+export type CreateCodeAIVersionRequest = {
+  sceneName: string;
+  note: string;
+  code: string;
+};
+
 export type AISubscriptionStatus = {
   status: "active" | "inactive" | "unconfigured" | "error";
   activated: boolean;

@@ -67,6 +67,18 @@ type RepairResult struct {
 	Source string
 }
 
+type OptimizeRequest struct {
+	SceneName   string
+	CurrentCode string
+	Instruction string
+	Settings    ProviderSettings
+}
+
+type OptimizeResult struct {
+	Patch  string
+	Source string
+}
+
 type SubscriptionSession struct {
 	Token    string
 	BaseURL  string

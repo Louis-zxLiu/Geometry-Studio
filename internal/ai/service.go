@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"plotkitycat/internal/ai/generation"
+	"plotkitycat/internal/ai/optimize"
 	"plotkitycat/internal/ai/provider"
 	"plotkitycat/internal/ai/repair"
 	"plotkitycat/internal/subscription"
@@ -12,6 +13,7 @@ import (
 
 type Service struct {
 	generation *generation.Service
+	optimize   *optimize.Service
 	repair     *repair.Service
 }
 
@@ -23,6 +25,7 @@ func NewService(subscriptionService *subscription.Service) *Service {
 	)
 	return &Service{
 		generation: generation.NewService(router, prompts),
+		optimize:   optimize.NewService(router, prompts),
 		repair:     repair.NewService(router, prompts),
 	}
 }
@@ -59,6 +62,23 @@ func (s *Service) Repair(ctx context.Context, request RepairRequest) (RepairResu
 	}
 
 	return RepairResult{
+		Patch:  result.Patch,
+		Source: result.Source,
+	}, nil
+}
+
+func (s *Service) Optimize(ctx context.Context, request OptimizeRequest) (OptimizeResult, error) {
+	result, err := s.optimize.OptimizeCode(ctx, optimize.Request{
+		SceneName:   request.SceneName,
+		CurrentCode: request.CurrentCode,
+		Instruction: request.Instruction,
+		Settings:    request.Settings.ToProviderSettings(),
+	})
+	if err != nil {
+		return OptimizeResult{}, err
+	}
+
+	return OptimizeResult{
 		Patch:  result.Patch,
 		Source: result.Source,
 	}, nil

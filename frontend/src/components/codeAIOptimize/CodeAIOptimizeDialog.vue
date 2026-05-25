@@ -68,7 +68,7 @@ function cancel() {
           </button>
           <span class="dialog-action-divider" aria-hidden="true"></span>
           <button class="dialog-button primary" type="button" :disabled="!prompt.trim() || pending" @click="confirm">
-            {{ pending ? "优化中" : "优化" }}
+            优化
           </button>
         </div>
       </section>
