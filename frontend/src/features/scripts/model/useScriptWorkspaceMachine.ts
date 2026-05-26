@@ -7,6 +7,7 @@ type ErrorHandler = (message: string) => void;
 type WorkspacePhase = "idle" | "syncing" | "creating" | "renaming" | "deleting";
 
 const syncIntervalMs = 2000;
+const codeAutoSaveIntervalMs = 500;
 const createVisualDelayMs = 260;
 
 export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<boolean>) {
@@ -24,6 +25,7 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
   const deletingScriptName = ref("");
 
   let syncTimer = 0;
+  let codeAutoSaveTimer = 0;
 
   const isCreatingScript = computedPhase("creating", workspacePhase);
   const isRenamingScript = computedPhase("renaming", workspacePhase);
@@ -136,6 +138,10 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
 
     await withTimeout(repository.saveScript(currentFile.value, codeContent.value), "保存文件超时");
     lastLoadedCode.value = codeContent.value;
+  }
+
+  function updateCode(code: string) {
+    codeContent.value = code;
   }
 
   async function syncWorkspace(
@@ -326,6 +332,18 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
       return;
     }
 
+    codeAutoSaveTimer = window.setInterval(() => {
+      if (workspacePhase.value !== "idle") {
+        return;
+      }
+
+      if (currentFile.value && codeContent.value !== lastLoadedCode.value) {
+        repository.saveScript(currentFile.value, codeContent.value)
+          .then(() => { lastLoadedCode.value = codeContent.value; })
+          .catch(() => {});
+      }
+    }, codeAutoSaveIntervalMs);
+
     syncTimer = window.setInterval(() => {
       if (workspacePhase.value !== "idle") {
         return;
@@ -336,12 +354,15 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
   }
 
   function stopAutoSync() {
-    if (!syncTimer) {
-      return;
+    if (codeAutoSaveTimer) {
+      window.clearInterval(codeAutoSaveTimer);
+      codeAutoSaveTimer = 0;
     }
 
-    window.clearInterval(syncTimer);
-    syncTimer = 0;
+    if (syncTimer) {
+      window.clearInterval(syncTimer);
+      syncTimer = 0;
+    }
   }
 
   onMounted(startAutoSync);
