@@ -1,4 +1,6 @@
 import { computed, ref, watch, type Ref } from "vue";
+import type { DesignCard } from "../../designCard/services/designCardTypes";
+import { formatDesignCardReference } from "../../designCard/services/designCardMarkdownCodec";
 import {
   addScriptNoteImages,
   getScriptNote,
@@ -20,7 +22,11 @@ type ErrorHandler = (message: string) => void;
 
 const saveDebounceMs = 260;
 
-export function useNoteWorkspace(currentFile: Ref<string>, onError: ErrorHandler) {
+export function useNoteWorkspace(
+  currentFile: Ref<string>,
+  onError: ErrorHandler,
+  designCards: Ref<DesignCard[]> = ref([] as DesignCard[]),
+) {
   const panelStorage = createNotePanelStorage();
   const isPanelOpen = ref(panelStorage.loadPanelState());
   const currentDocument = ref<NoteDocument>(createEmptyNoteDocument());
@@ -46,7 +52,9 @@ export function useNoteWorkspace(currentFile: Ref<string>, onError: ErrorHandler
     { immediate: true },
   );
 
-  const renderBlocks = computed(() => forwardNoteDocumentToBlocks(currentDocument.value));
+  const renderBlocks = computed(() =>
+    forwardNoteDocumentToBlocks(currentDocument.value, designCards.value),
+  );
 
   const hasContent = computed(
     () =>
@@ -73,6 +81,18 @@ export function useNoteWorkspace(currentFile: Ref<string>, onError: ErrorHandler
       markdown,
     };
     schedulePersist();
+  }
+
+  function insertDesignCardReference(payload: { cardId: string; insertAt?: number }) {
+    if (!payload.cardId) {
+      return;
+    }
+
+    updateMarkdown(insertBlockReference(
+      currentDocument.value.markdown,
+      formatDesignCardReference(payload.cardId),
+      payload.insertAt,
+    ));
   }
 
   async function addImages(payload: { files: File[]; insertAt?: number }) {
@@ -212,6 +232,7 @@ export function useNoteWorkspace(currentFile: Ref<string>, onError: ErrorHandler
     flushPendingSave,
     hasContent,
     hydrateFromScriptDocument,
+    insertDesignCardReference,
     isPanelOpen,
     removeImage,
     renderBlocks,
@@ -240,13 +261,21 @@ function insertImageReferences(markdown: string, images: NoteImage[], insertAt?:
   }
 
   const imageBlock = images.map(formatImageReference).join("\n\n");
+  return insertBlockReference(markdown, imageBlock, insertAt);
+}
+
+function insertBlockReference(markdown: string, block: string, insertAt?: number) {
+  if (!block) {
+    return markdown;
+  }
+
   if (!markdown) {
-    return imageBlock;
+    return block;
   }
 
   if (typeof insertAt !== "number" || Number.isNaN(insertAt)) {
     const trimmedMarkdown = markdown.replace(/\s+$/u, "");
-    return `${trimmedMarkdown}\n\n${imageBlock}`;
+    return `${trimmedMarkdown}\n\n${block}`;
   }
 
   const normalized = markdown.replace(/\r\n/g, "\n");
@@ -255,7 +284,7 @@ function insertImageReferences(markdown: string, images: NoteImage[], insertAt?:
   const after = normalized.slice(safeIndex);
   const prefix = before && !before.endsWith("\n") ? "\n\n" : before.endsWith("\n\n") ? "" : before ? "\n" : "";
   const suffix = after.startsWith("\n") ? "" : after ? "\n\n" : "";
-  return `${before}${prefix}${imageBlock}${suffix}${after}`;
+  return `${before}${prefix}${block}${suffix}${after}`;
 }
 
 function formatImageReference(image: NoteImage) {

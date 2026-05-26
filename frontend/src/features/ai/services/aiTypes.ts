@@ -1,5 +1,5 @@
 export type AIServiceMode = "custom" | "subscription";
-export type AIGenerationKind = "visualize" | "design";
+export type AIGenerationKind = "visualize";
 
 export type AIProviderSettings = {
   mode: AIServiceMode;

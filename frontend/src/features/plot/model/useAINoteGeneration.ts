@@ -57,17 +57,12 @@ export function useAINoteGeneration(options: AINoteGenerationOptions) {
     return runTypedAINoteAction("visualize", selection);
   }
 
-  function generateDesignFromNoteSelection(selection: AINoteSelectionPayload) {
-    return runTypedAINoteAction("design", selection);
-  }
-
   function runTypedAINoteAction(kind: AIGenerationKind, selection: AINoteSelectionPayload) {
     return runAINoteAction({ kind, selection });
   }
 
   return {
     generateCodeFromNoteSelection,
-    generateDesignFromNoteSelection,
     runAINoteAction,
   };
 }

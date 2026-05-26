@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import DesignCardInlineBlock from "../features/designCard/components/DesignCardInlineBlock.vue";
+import type { DesignCard, DesignCardPlacement } from "../features/designCard/services/designCardTypes";
 import { tokenizePythonLine } from "../lib/pythonHighlighter";
 
 const props = defineProps<{
   code: string;
+  designCards?: DesignCard[];
+  designCardPlacements?: DesignCardPlacement[];
   disabled?: boolean;
   isStreaming?: boolean;
   animatedLineRanges?: Array<{ startLine: number; endLine: number }>;
@@ -12,6 +16,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "ai-optimize": [position: { x: number; y: number }];
+  "delete-design-card": [cardId: string];
+  "move-design-card": [payload: { cardId: string; delta: number }];
+  "open-design-card": [cardId: string];
+  "optimize-design-card": [payload: { cardId: string; position: { x: number; y: number } }];
   "update:code": [code: string];
 }>();
 
@@ -21,6 +29,16 @@ const normalizedCode = computed(() =>
 
 const codeLines = computed(() => normalizedCode.value.split("\n"));
 const highlightedLines = computed(() => codeLines.value.map(tokenizePythonLine));
+const placedDesignCards = computed(() => {
+  const cardMap = new Map((props.designCards ?? []).map((card) => [card.id, card]));
+  return (props.designCardPlacements ?? [])
+    .map((placement) => ({
+      card: cardMap.get(placement.cardId),
+      placement,
+    }))
+    .filter((item): item is { card: DesignCard; placement: DesignCardPlacement } => !!item.card)
+    .sort((a, b) => a.placement.afterLine - b.placement.afterLine);
+});
 const animatedLines = computed(() => {
   void props.animationKey;
   const ranges = props.animatedLineRanges ?? [];
@@ -48,6 +66,9 @@ function syncScroll(event: Event) {
 
 function openAIOptimize(event: MouseEvent) {
   if (props.disabled) {
+    return;
+  }
+  if (event.target instanceof Element && event.target.closest(".design-card-inline-block")) {
     return;
   }
 
@@ -79,6 +100,22 @@ function openAIOptimize(event: MouseEvent) {
           </span>
         </div>
         <div class="code-editor-stack">
+          <div
+            class="design-card-placeholder-layer"
+            :style="{ transform: `translateY(-${scrollTop}px)` }"
+          >
+            <DesignCardInlineBlock
+              v-for="{ card, placement } in placedDesignCards"
+              :key="card.id"
+              class="editor-design-card"
+              :card="card"
+              :style="{ top: `${placement.afterLine * 26 + 8}px` }"
+              @delete="emit('delete-design-card', $event)"
+              @move="emit('move-design-card', $event)"
+              @open="emit('open-design-card', $event)"
+              @optimize="emit('optimize-design-card', $event)"
+            />
+          </div>
           <pre
             class="syntax-layer"
             :style="{ transform: `translate(${-scrollLeft}px, ${-scrollTop}px)` }"

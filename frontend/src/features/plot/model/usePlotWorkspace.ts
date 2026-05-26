@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   GetSubscriptionStatus,
   OpenSubscriptionPurchase,
@@ -17,6 +17,8 @@ import { useAIRunErrorRepair } from "../../aiRepair/model/useAIRunErrorRepair";
 import type { ChangedLineRange } from "../../aiRepair/services/repairPatch";
 import { useRunErrorDialog } from "../../errors/model/useRunErrorDialog";
 import { useCodeAIOptimize } from "../../codeAIOptimize/model/useCodeAIOptimize";
+import { useDesignCardWorkspace } from "../../designCard/model/useDesignCardWorkspace";
+import type { DesignCard } from "../../designCard/services/designCardTypes";
 import { useNoteWorkspace } from "../../notebook/model/useNoteWorkspace";
 import { createRuntimeRepository } from "../../runtime/services/runtimeRepository";
 import { useRuntimeState } from "../../runtime/model/useRuntimeState";
@@ -68,9 +70,11 @@ export function usePlotWorkspace() {
     runErrorDialog.openRunErrorDialog,
     isRunning,
   );
+  const designCardsForNote = ref<DesignCard[]>([]);
   const noteWorkspace = useNoteWorkspace(
     scriptWorkspace.currentFile,
     runErrorDialog.openRunErrorDialog,
+    designCardsForNote,
   );
   const aiActivity = useAIActivityStatus();
   const codeStreaming = useCodeStreaming(scriptWorkspace.codeContent);
@@ -91,6 +95,16 @@ export function usePlotWorkspace() {
     isRunning,
     onError: runErrorDialog.openRunErrorDialog,
     streamGeneratedCode: codeStreaming.streamGeneratedCode,
+  });
+  const designCardWorkspace = useDesignCardWorkspace({
+    aiActivity,
+    aiSettings,
+    codeContent: scriptWorkspace.codeContent,
+    currentFile: scriptWorkspace.currentFile,
+    isRunning,
+    noteMarkdown: computed(() => noteWorkspace.currentDocument.value.markdown),
+    onError: runErrorDialog.openRunErrorDialog,
+    updateNoteMarkdown: noteWorkspace.updateMarkdown,
   });
   const aiRepair = useAIRunErrorRepair({
     aiActivity,
@@ -296,14 +310,28 @@ export function usePlotWorkspace() {
   });
 
   onUnmounted(() => {
+    void designCardWorkspace.flushPlanSave();
     lifecycle.unmount();
     aiActivity.stop();
   });
+
+  watch(
+    designCardWorkspace.cards,
+    (cards) => {
+      designCardsForNote.value = cards;
+    },
+    { immediate: true },
+  );
 
   return {
     aiSettings,
     aiStatusLabel: aiActivity.aiStatusLabel,
     codeContent: scriptWorkspace.codeContent,
+    designCards: designCardWorkspace.cards,
+    designCardPlacements: designCardWorkspace.placements,
+    designCardContextMenu: designCardWorkspace.contextMenu,
+    designCardReviewCard: designCardWorkspace.activeCard,
+    designCardReviewSaveState: designCardWorkspace.saveState,
     closeAISettings,
     currentNoteDocument: noteWorkspace.currentDocument,
     closePackageTransferDialog: packageTransfer.closePackageTransferDialog,
@@ -333,13 +361,15 @@ export function usePlotWorkspace() {
     exportCurrentScenePackage: packageTransfer.exportCurrentScenePackage,
     addNoteImages: noteWorkspace.addImages,
     generateCodeFromNoteSelection: aiGeneration.generateCodeFromNoteSelection,
-    generateDesignFromNoteSelection: aiGeneration.generateDesignFromNoteSelection,
+    generateDesignFromNoteSelection: designCardWorkspace.generateFromNoteSelection,
     hasNoteContent: noteWorkspace.hasContent,
     initProgressMessage: runtime.initProgressMessage,
     initProgressPercent: runtime.initProgressPercent,
     isAIGenerating: aiActivity.isAIGenerating,
     isAISettingsDialogOpen,
     isCodeAIOptimizeDialogOpen: codeAIOptimize.isDialogOpen,
+    isDesignCardOptimizeDialogOpen: designCardWorkspace.isOptimizeDialogOpen,
+    isDesignCardReviewRoomOpen: designCardWorkspace.isReviewRoomOpen,
     isCreateDialogOpen: scriptWorkspace.isCreateDialogOpen,
     isCreatingScript: scriptWorkspace.isCreatingScript,
     isDeletingScript: scriptWorkspace.isDeletingScript,
@@ -365,6 +395,9 @@ export function usePlotWorkspace() {
     openAISettings,
     openCodeAIOptimizeContextMenu: codeAIOptimize.openContextMenu,
     openCodeAIOptimizeDialog: codeAIOptimize.openDialog,
+    openDesignCardReviewRoom: designCardWorkspace.openReviewRoom,
+    openDesignCardOptimizeDialog: designCardWorkspace.openOptimizeDialog,
+    openDesignCardContextMenu: designCardWorkspace.openContextMenu,
     openPackageTransferDialog: packageTransfer.openPackageTransferDialog,
     openSettings,
     noteRenderBlocks: noteWorkspace.renderBlocks,
@@ -372,6 +405,9 @@ export function usePlotWorkspace() {
     renameScript: scriptWorkspace.renameScript,
     renameWorkspace,
     removeNoteImage: noteWorkspace.removeImage,
+    insertDesignCardReferenceIntoNote: noteWorkspace.insertDesignCardReference,
+    deleteDesignCard: designCardWorkspace.deleteCard,
+    deleteDesignCardFromNote: designCardWorkspace.deleteCardFromNote,
     rebuildRuntime: lifecycle.rebuildRuntime,
     repairAnimationKey,
     repairAnimatedLineRanges,
@@ -390,6 +426,12 @@ export function usePlotWorkspace() {
     updateCode: scriptWorkspace.updateCode,
     updateAISettings,
     submitCodeAIOptimize: codeAIOptimize.submitOptimization,
+    submitDesignCardOptimize: designCardWorkspace.submitOptimization,
+    closeDesignCardContextMenu: designCardWorkspace.closeContextMenu,
+    closeDesignCardOptimizeDialog: designCardWorkspace.closeOptimizeDialog,
+    closeDesignCardReviewRoom: designCardWorkspace.closeReviewRoom,
+    moveDesignCard: designCardWorkspace.moveCard,
+    updateDesignCardPlan: designCardWorkspace.updateActivePlan,
     updateNoteMarkdown: noteWorkspace.updateMarkdown,
     workspaces: scriptWorkspace.workspaces,
     workspacePhase: scriptWorkspace.workspacePhase,

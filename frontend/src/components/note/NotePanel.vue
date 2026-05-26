@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import DesignCardInvalidBlock from "../../features/designCard/components/DesignCardInvalidBlock.vue";
+import DesignCardSvgView from "../../features/designCard/components/DesignCardSvgView.vue";
+import {
+  fromEditableDesignCardMarkdown,
+  toEditableDesignCardMarkdown,
+} from "../../features/designCard/services/designCardMarkdownCodec";
+import type { DesignCard } from "../../features/designCard/services/designCardTypes";
 import type { AINoteSelectionPayload } from "../../features/ai/services/aiTypes";
 import type { NoteRenderBlock } from "../../features/notebook/rendering/noteForwarder";
 import type { NoteDocument } from "../../features/notebook/services/notebookStorage";
@@ -14,6 +21,7 @@ import NoteImagePreview from "./NoteImagePreview.vue";
 const props = defineProps<{
   currentFile: string;
   document: NoteDocument;
+  designCards: DesignCard[];
   isOpen: boolean;
   renderBlocks: NoteRenderBlock[];
   saveState: "idle" | "saving" | "saved";
@@ -24,6 +32,9 @@ const emit = defineEmits<{
   "add-images": [payload: { files: File[]; insertAt: number }];
   "ai-generate": [selection: AINoteSelectionPayload];
   "ai-design": [selection: AINoteSelectionPayload];
+  "delete-design-card": [cardId: string];
+  "insert-design-card": [payload: { cardId: string; insertAt: number }];
+  "open-design-card": [cardId: string];
   "remove-image": [relativePath: string];
   toggle: [];
   "update:markdown": [markdown: string];
@@ -41,15 +52,13 @@ const isDragging = ref(false);
 const textSelection = ref<{ text: string; selectedAt: number } | null>(null);
 const selectedImageOrder = ref<Record<string, number>>({});
 const contextMenu = ref<{ x: number; y: number } | null>(null);
+const armedDesignCardDeleteId = ref("");
 let selectionOrder = 0;
 let markdownResizeFrame = 0;
+let designCardDeleteTimer = 0;
 
-const markdownBlocks = computed(() =>
-  props.renderBlocks.filter((block) => block.kind === "markdown"),
-);
-
-const imageBlocks = computed(() =>
-  props.renderBlocks.filter((block) => block.kind === "image"),
+const editableMarkdown = computed(() =>
+  toEditableDesignCardMarkdown(props.document.markdown, props.designCards),
 );
 
 const contextMenuImages = computed(() =>
@@ -62,7 +71,13 @@ const selectedImagePaths = computed(
 );
 
 function updateMarkdown(event: Event) {
-  emit("update:markdown", (event.target as HTMLTextAreaElement).value);
+  emit(
+    "update:markdown",
+    fromEditableDesignCardMarkdown(
+      (event.target as HTMLTextAreaElement).value,
+      props.designCards,
+    ),
+  );
   scheduleMarkdownInputResize();
 }
 
@@ -162,6 +177,16 @@ function handlePaste(event: ClipboardEvent) {
 
 function handleDrop(event: DragEvent) {
   isDragging.value = false;
+  const designCardId = event.dataTransfer?.getData("application/x-design-card-id") ?? "";
+  if (designCardId) {
+    event.preventDefault();
+    emit("insert-design-card", {
+      cardId: designCardId,
+      insertAt: getCurrentInsertionIndex(),
+    });
+    return;
+  }
+
   const files = Array.from(event.dataTransfer?.files ?? []).filter((file) =>
     file.type.startsWith("image/"),
   );
@@ -252,6 +277,22 @@ function resetPreviewZoom() {
   previewScale.value = 1;
 }
 
+function requestDesignCardDelete(cardId: string) {
+  if (armedDesignCardDeleteId.value === cardId) {
+    emit("delete-design-card", cardId);
+    armedDesignCardDeleteId.value = "";
+    return;
+  }
+
+  armedDesignCardDeleteId.value = cardId;
+  window.clearTimeout(designCardDeleteTimer);
+  designCardDeleteTimer = window.setTimeout(() => {
+    if (armedDesignCardDeleteId.value === cardId) {
+      armedDesignCardDeleteId.value = "";
+    }
+  }, 1800);
+}
+
 function handleNotebookPointerDownCapture(event: PointerEvent) {
   if (shouldStartMarkdownEdit(event.target)) {
     event.preventDefault();
@@ -276,6 +317,9 @@ function shouldStartMarkdownEdit(target: EventTarget | null) {
   }
 
   if (resolveImagePathFromEventTarget(target)) {
+    return false;
+  }
+  if (target instanceof HTMLElement && target.closest(".notebook-design-card-block, .design-card-invalid-block")) {
     return false;
   }
 
@@ -554,6 +598,7 @@ onBeforeUnmount(() => {
   if (markdownResizeFrame) {
     window.cancelAnimationFrame(markdownResizeFrame);
   }
+  window.clearTimeout(designCardDeleteTimer);
 });
 
 watch(
@@ -662,7 +707,7 @@ watch(
               v-show="shouldShowMarkdownInput"
               ref="markdownInput"
               class="notebook-markdown-input"
-              :value="document.markdown"
+              :value="editableMarkdown"
               placeholder=""
               rows="1"
               :disabled="!currentFile"
@@ -672,13 +717,41 @@ watch(
               @click.stop
             />
 
-            <article
-              v-for="block in markdownBlocks"
-              v-show="!shouldShowMarkdownInput"
-              :key="block.id"
-              class="notebook-markdown-rendered"
-              v-html="block.html"
-            ></article>
+            <template v-if="!shouldShowMarkdownInput">
+              <template v-for="block in renderBlocks" :key="block.id">
+                <article
+                  v-if="block.kind === 'markdown'"
+                  class="notebook-markdown-rendered"
+                  v-html="block.html"
+                ></article>
+                <NoteImageBlock
+                  v-else-if="block.kind === 'image'"
+                  :block="block"
+                  :selected="selectedImagePaths.has(block.image.relativePath)"
+                  @preview="openPreview"
+                  @remove="emit('remove-image', $event)"
+                  @select="toggleImageSelection"
+                  @context="handleImageBlockContext"
+                />
+                <article
+                  v-else-if="block.card"
+                  class="notebook-design-card-block"
+                  @click.stop="emit('open-design-card', block.card.id)"
+                >
+                  <DesignCardSvgView :svg="block.card.svg" />
+                  <button
+                    class="notebook-design-card-remove"
+                    :class="{ armed: armedDesignCardDeleteId === block.card.id }"
+                    type="button"
+                    :title="armedDesignCardDeleteId === block.card.id ? '再次点击确认删除' : '删除设计卡片'"
+                    @click.stop="requestDesignCardDelete(block.card.id)"
+                  >
+                    删除
+                  </button>
+                </article>
+                <DesignCardInvalidBlock v-else :card-id="block.cardId" />
+              </template>
+            </template>
 
             <button
               v-if="!shouldShowMarkdownInput && currentFile"
@@ -698,17 +771,6 @@ watch(
             multiple
             @change="pickImages"
           />
-
-          <template v-for="block in imageBlocks" :key="block.id">
-            <NoteImageBlock
-              :block="block"
-              :selected="selectedImagePaths.has(block.image.relativePath)"
-              @preview="openPreview"
-              @remove="emit('remove-image', $event)"
-              @select="toggleImageSelection"
-              @context="handleImageBlockContext"
-            />
-          </template>
 
         </section>
       </div>

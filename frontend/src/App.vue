@@ -5,6 +5,9 @@ import AISettingsDialog from "./components/AISettingsDialog.vue";
 import CodeAIOptimizeContextMenu from "./components/codeAIOptimize/CodeAIOptimizeContextMenu.vue";
 import CodeAIOptimizeDialog from "./components/codeAIOptimize/CodeAIOptimizeDialog.vue";
 import CodeAIVersionRail from "./components/codeAIOptimize/CodeAIVersionRail.vue";
+import DesignCardContextMenu from "./features/designCard/components/DesignCardContextMenu.vue";
+import DesignCardOptimizeDialog from "./features/designCard/components/DesignCardOptimizeDialog.vue";
+import DesignCardReviewRoom from "./features/designCard/components/DesignCardReviewRoom.vue";
 import EditorPane from "./components/EditorPane.vue";
 import EnvironmentIndicator from "./components/EnvironmentIndicator.vue";
 import PackageTransferDialog from "./components/PackageTransferDialog.vue";
@@ -67,11 +70,17 @@ const theme = proxyRefs(useTheme());
 
           <EditorPane
             :code="workspace.codeContent"
+            :design-cards="workspace.designCards"
+            :design-card-placements="workspace.designCardPlacements"
             :disabled="workspace.isAIGenerating"
             :is-streaming="workspace.isAIGenerating"
             :animated-line-ranges="workspace.repairAnimatedLineRanges"
             :animation-key="workspace.repairAnimationKey"
             @ai-optimize="workspace.openCodeAIOptimizeContextMenu"
+            @delete-design-card="workspace.deleteDesignCard"
+            @move-design-card="workspace.moveDesignCard"
+            @open-design-card="workspace.openDesignCardReviewRoom"
+            @optimize-design-card="workspace.openDesignCardContextMenu($event.cardId, $event.position)"
             @update:code="workspace.updateCode"
           />
 
@@ -91,6 +100,7 @@ const theme = proxyRefs(useTheme());
         <NotePanel
           :current-file="workspace.currentFile"
           :document="workspace.currentNoteDocument"
+          :design-cards="workspace.designCards"
           :is-open="workspace.isNotePanelOpen"
           :render-blocks="workspace.noteRenderBlocks"
           :save-state="workspace.noteSaveState"
@@ -99,6 +109,9 @@ const theme = proxyRefs(useTheme());
           @update:markdown="workspace.updateNoteMarkdown"
           @add-images="workspace.addNoteImages"
           @remove-image="workspace.removeNoteImage"
+          @delete-design-card="workspace.deleteDesignCardFromNote"
+          @insert-design-card="workspace.insertDesignCardReferenceIntoNote"
+          @open-design-card="workspace.openDesignCardReviewRoom"
           @ai-generate="workspace.generateCodeFromNoteSelection"
           @ai-design="workspace.generateDesignFromNoteSelection"
         />
@@ -125,6 +138,31 @@ const theme = proxyRefs(useTheme());
       :pending="workspace.isAIGenerating"
       @cancel="workspace.closeCodeAIOptimizeDialog"
       @confirm="workspace.submitCodeAIOptimize"
+    />
+
+    <DesignCardContextMenu
+      v-if="workspace.designCardContextMenu"
+      :position="workspace.designCardContextMenu"
+      :disabled="workspace.isAIGenerating || workspace.isRunning"
+      @close="workspace.closeDesignCardContextMenu"
+      @optimize="workspace.openDesignCardOptimizeDialog"
+    />
+
+    <DesignCardOptimizeDialog
+      :open="workspace.isDesignCardOptimizeDialogOpen"
+      :pending="workspace.isAIGenerating"
+      @cancel="workspace.closeDesignCardOptimizeDialog"
+      @confirm="workspace.submitDesignCardOptimize"
+    />
+
+    <DesignCardReviewRoom
+      :open="workspace.isDesignCardReviewRoomOpen"
+      :card="workspace.designCardReviewCard"
+      :pending="workspace.isAIGenerating"
+      :save-state="workspace.designCardReviewSaveState"
+      @close="workspace.closeDesignCardReviewRoom"
+      @optimize="workspace.openDesignCardOptimizeDialog"
+      @update:plan="workspace.updateDesignCardPlan"
     />
 
     <SettingsDialog
