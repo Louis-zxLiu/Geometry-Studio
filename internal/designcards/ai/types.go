@@ -1,12 +1,6 @@
-package generation
+package ai
 
 import "plotkitycat/internal/ai/provider"
-
-type Kind string
-
-const (
-	KindVisualize Kind = "visualize"
-)
 
 type SelectionItem struct {
 	Kind         string
@@ -17,18 +11,24 @@ type SelectionItem struct {
 	RelativePath string
 }
 
-type SelectionPayload struct {
-	Items []SelectionItem
+type GenerateRequest struct {
+	SceneName string
+	Selection []SelectionItem
+	Settings  provider.Settings
 }
 
-type Request struct {
+type OptimizeRequest struct {
 	SceneName   string
-	CurrentCode string
+	CardID      string
+	CurrentPlan string
+	CurrentSVG  string
+	Instruction string
 	Settings    provider.Settings
-	Selection   SelectionPayload
 }
 
 type Result struct {
-	Code   string
+	Title  string
+	Plan   string
+	SVG    string
 	Source string
 }

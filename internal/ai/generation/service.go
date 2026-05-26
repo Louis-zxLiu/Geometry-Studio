@@ -2,7 +2,6 @@ package generation
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 
 	"plotkitycat/internal/ai/prompting"
@@ -29,7 +28,7 @@ func (s *Service) GenerateCode(ctx context.Context, request Request) (Result, er
 	promptItems := mapPromptItems(request.Selection.Items)
 	raw, err := s.router.Chat(ctx, provider.ChatRequest{
 		Settings:     request.Settings,
-		SystemPrompt: prompting.BuildSystemPrompt(s.prompts.Load(resolvePromptPath(request.Settings.Mode, request.Kind))),
+		SystemPrompt: prompting.BuildSystemPrompt(s.prompts.Load(resolvePromptPath(request.Settings.Mode))),
 		UserPrompt: prompting.BuildUserPrompt(prompting.Request{
 			SceneName:   request.SceneName,
 			CurrentCode: request.CurrentCode,
@@ -47,22 +46,10 @@ func (s *Service) GenerateCode(ctx context.Context, request Request) (Result, er
 	}, nil
 }
 
-func normalizeKind(kind Kind) Kind {
-	if kind == KindDesign {
-		return KindDesign
-	}
-
-	return KindVisualize
-}
-
-func resolvePromptPath(mode provider.ServiceMode, kind Kind) string {
+func resolvePromptPath(mode provider.ServiceMode) string {
 	filename := "custom.txt"
 	if mode == provider.ModeSubscription {
 		filename = "subscription.txt"
-	}
-
-	if normalizeKind(kind) == KindDesign {
-		return filepath.Join("design", filename)
 	}
 
 	return filename

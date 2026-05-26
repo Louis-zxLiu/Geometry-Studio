@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"plotkitycat/internal/ai/generation"
@@ -31,8 +32,11 @@ func NewService(subscriptionService *subscription.Service) *Service {
 }
 
 func (s *Service) Generate(ctx context.Context, request GenerationRequest) (GenerationResult, error) {
+	if request.Kind != GenerationKindVisualize {
+		return GenerationResult{}, fmt.Errorf("design card 已改为独立后端链路，请使用专用接口")
+	}
+
 	result, err := s.generation.GenerateCode(ctx, generation.Request{
-		Kind:        generation.Kind(request.Kind),
 		SceneName:   request.SceneName,
 		CurrentCode: request.CurrentCode,
 		Settings:    request.Settings.ToProviderSettings(),

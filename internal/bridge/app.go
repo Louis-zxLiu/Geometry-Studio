@@ -6,6 +6,8 @@ import (
 
 	"plotkitycat/internal/ai"
 	"plotkitycat/internal/codeversions"
+	"plotkitycat/internal/designcards"
+	designai "plotkitycat/internal/designcards/ai"
 	"plotkitycat/internal/device"
 	"plotkitycat/internal/env"
 	"plotkitycat/internal/files"
@@ -22,6 +24,7 @@ type App struct {
 	ctx                 context.Context
 	aiService           *ai.Service
 	codeVersionStore    *codeversions.Store
+	designCardService   *designcards.Service
 	deviceService       *device.Service
 	envManager          *env.Manager
 	fileStore           *files.Store
@@ -37,9 +40,11 @@ func NewApp() *App {
 	subscriptionService := subscription.NewService(deviceService)
 	workspaceManager := workspaces.NewManager()
 	fileStore := files.NewStore(workspaceManager)
+	designCardStore := designcards.NewStore(fileStore)
 	return &App{
 		aiService:           ai.NewService(subscriptionService),
 		codeVersionStore:    codeversions.NewStore(fileStore),
+		designCardService:   designcards.NewService(designCardStore, designai.NewService(subscriptionService)),
 		deviceService:       deviceService,
 		envManager:          env.NewManager(workspaceManager),
 		fileStore:           fileStore,

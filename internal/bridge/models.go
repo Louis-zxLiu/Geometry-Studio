@@ -141,6 +141,43 @@ type AIOptimizeResult struct {
 	Source string `json:"source"`
 }
 
+type AIDesignCardGenerationRequest struct {
+	SceneName string             `json:"sceneName"`
+	Settings  AIProviderSettings `json:"settings"`
+	Selection AISelectionPayload `json:"selection"`
+}
+
+type AIDesignCardOptimizeRequest struct {
+	SceneName   string             `json:"sceneName"`
+	CardID      string             `json:"cardId"`
+	Instruction string             `json:"instruction"`
+	Settings    AIProviderSettings `json:"settings"`
+}
+
+type DesignCard struct {
+	ID        string `json:"id"`
+	CreatedAt int64  `json:"createdAt"`
+	UpdatedAt int64  `json:"updatedAt"`
+	Title     string `json:"title"`
+	Order     int    `json:"order"`
+	Plan      string `json:"plan"`
+	SVG       string `json:"svg"`
+}
+
+type DesignCardVersion struct {
+	ID        string `json:"id"`
+	Label     string `json:"label"`
+	Note      string `json:"note"`
+	Plan      string `json:"plan"`
+	SVG       string `json:"svg"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+type AIDesignCardResult struct {
+	Card   DesignCard `json:"card"`
+	Source string     `json:"source"`
+}
+
 type CodeAIVersion struct {
 	ID        string `json:"id"`
 	Label     string `json:"label"`
