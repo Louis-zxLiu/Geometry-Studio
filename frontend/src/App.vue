@@ -7,7 +7,7 @@ import CodeAIOptimizeDialog from "./components/codeAIOptimize/CodeAIOptimizeDial
 import CodeAIVersionRail from "./components/codeAIOptimize/CodeAIVersionRail.vue";
 import DesignCardOptimizeDialog from "./features/designCard/components/DesignCardOptimizeDialog.vue";
 import DesignCardReviewRoom from "./features/designCard/components/DesignCardReviewRoom.vue";
-import EditorPane from "./components/EditorPane.vue";
+import EditorPane from "./components/editor/EditorPane.vue";
 import EnvironmentIndicator from "./components/EnvironmentIndicator.vue";
 import PackageTransferDialog from "./components/PackageTransferDialog.vue";
 import NotePanel from "./components/note/NotePanel.vue";
