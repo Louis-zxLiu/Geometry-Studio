@@ -27,9 +27,10 @@ output :
       from matplotlib.widgets import Slider, Button, CheckButtons
       from matplotlib.patches import Polygon
 
-      # 有拖拽默认不开启抗锯齿，若无则开启，必写
+      # 请在有交互时关闭抗锯齿
       mpl.rcParams['lines.antialiased'] = False
       mpl.rcParams['patch.antialiased'] = False
+      # 默认参数，请遵守
       mpl.rcParams["axes3d.mouserotationstyle"] = "azel"
 
       # 字体必须遵守
