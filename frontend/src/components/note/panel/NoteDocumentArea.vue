@@ -76,28 +76,34 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
 
         <template v-if="!shouldShowMarkdownInput">
           <template v-for="block in renderBlocks" :key="block.id">
-            <article
-              v-if="block.kind === 'markdown'"
-              class="notebook-markdown-rendered"
-              v-html="block.html"
-            ></article>
-            <NoteImageBlock
-              v-else-if="block.kind === 'image'"
-              :block="block"
-              :selected="selectedImagePaths.has(block.image.relativePath)"
-              @preview="(src, alt) => emit('image-preview', src, alt)"
-              @remove="emit('image-remove', $event)"
-              @select="emit('image-select', $event)"
-              @context="(event, relativePath) => emit('image-context', event, relativePath)"
-            />
-            <NoteDesignCardBlock
-              v-else-if="block.card"
-              :card="block.card"
-              :armed="armedDesignCardDeleteId === block.card.id"
-              @delete="emit('delete-design-card', $event)"
-              @open="emit('open-design-card', $event)"
-            />
-            <DesignCardInvalidBlock v-else :card-id="block.cardId" />
+            <div
+              class="notebook-render-block"
+              :data-note-insert-before="block.startIndex"
+              :data-note-insert-after="block.endIndex"
+            >
+              <article
+                v-if="block.kind === 'markdown'"
+                class="notebook-markdown-rendered"
+                v-html="block.html"
+              ></article>
+              <NoteImageBlock
+                v-else-if="block.kind === 'image'"
+                :block="block"
+                :selected="selectedImagePaths.has(block.image.relativePath)"
+                @preview="(src, alt) => emit('image-preview', src, alt)"
+                @remove="emit('image-remove', $event)"
+                @select="emit('image-select', $event)"
+                @context="(event, relativePath) => emit('image-context', event, relativePath)"
+              />
+              <NoteDesignCardBlock
+                v-else-if="block.card"
+                :card="block.card"
+                :armed="armedDesignCardDeleteId === block.card.id"
+                @delete="emit('delete-design-card', $event)"
+                @open="emit('open-design-card', $event)"
+              />
+              <DesignCardInvalidBlock v-else :card-id="block.cardId" />
+            </div>
           </template>
         </template>
 

@@ -8,20 +8,26 @@ import { renderMarkdownToHtml } from "./markdownRenderer";
 
 export type NoteRenderBlock =
   | {
+      endIndex: number;
       id: string;
       kind: "markdown";
       html: string;
+      startIndex: number;
     }
   | {
+      endIndex: number;
       id: string;
       kind: "image";
       image: NoteImage;
+      startIndex: number;
     }
   | {
       card: DesignCard | null;
       cardId: string;
+      endIndex: number;
       id: string;
       kind: "design-card";
+      startIndex: number;
     };
 
 export function forwardNoteDocumentToBlocks(
@@ -38,9 +44,11 @@ export function forwardNoteDocumentToBlocks(
     if (segment.kind === "markdown") {
       if (segment.markdown.trim() !== "") {
         blocks.push({
+          endIndex: segment.endIndex,
           id: `markdown-${index}`,
           kind: "markdown",
           html: renderMarkdownToHtml(segment.markdown, document.images),
+          startIndex: segment.startIndex,
         });
       }
       return;
@@ -49,8 +57,10 @@ export function forwardNoteDocumentToBlocks(
     blocks.push({
       card: cardMap.get(segment.cardId) ?? null,
       cardId: segment.cardId,
+      endIndex: segment.endIndex,
       id: `design-card-${segment.cardId}-${index}`,
       kind: "design-card",
+      startIndex: segment.startIndex,
     });
   });
 
@@ -60,9 +70,11 @@ export function forwardNoteDocumentToBlocks(
     }
 
     blocks.push({
+      endIndex: markdown.length,
       id: image.relativePath || image.name,
       kind: "image",
       image,
+      startIndex: markdown.length,
     });
   });
 
@@ -70,7 +82,7 @@ export function forwardNoteDocumentToBlocks(
 }
 
 function normalizeMarkdown(markdown: string) {
-  return markdown.replace(/\r\n/g, "\n").trim();
+  return markdown.replace(/\r\n/g, "\n");
 }
 
 function collectReferencedImagePaths(markdown: string) {
@@ -88,12 +100,12 @@ function collectReferencedImagePaths(markdown: string) {
 
 function splitMarkdownByDesignCards(markdown: string) {
   const segments: Array<
-    | { kind: "markdown"; markdown: string }
-    | { cardId: string; kind: "design-card" }
+    | { endIndex: number; kind: "markdown"; markdown: string; startIndex: number }
+    | { cardId: string; endIndex: number; kind: "design-card"; startIndex: number }
   > = [];
   const referenceIDs = extractDesignCardReferenceIDs(markdown);
   if (!referenceIDs.length) {
-    return [{ kind: "markdown" as const, markdown }];
+    return [{ endIndex: markdown.length, kind: "markdown" as const, markdown, startIndex: 0 }];
   }
 
   let cursor = 0;
@@ -102,16 +114,31 @@ function splitMarkdownByDesignCards(markdown: string) {
     const matchIndex = match.index ?? 0;
     const before = markdown.slice(cursor, matchIndex);
     if (before) {
-      segments.push({ kind: "markdown", markdown: before });
+      segments.push({
+        endIndex: matchIndex,
+        kind: "markdown",
+        markdown: before,
+        startIndex: cursor,
+      });
     }
 
-    segments.push({ cardId: match[1], kind: "design-card" });
+    segments.push({
+      cardId: match[1],
+      endIndex: matchIndex + match[0].length,
+      kind: "design-card",
+      startIndex: matchIndex,
+    });
     cursor = matchIndex + match[0].length;
   }
 
   const after = markdown.slice(cursor);
   if (after) {
-    segments.push({ kind: "markdown", markdown: after });
+    segments.push({
+      endIndex: markdown.length,
+      kind: "markdown",
+      markdown: after,
+      startIndex: cursor,
+    });
   }
 
   return segments;

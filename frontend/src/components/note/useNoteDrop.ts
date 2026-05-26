@@ -3,6 +3,7 @@ import { readDesignCardDragData } from "../../features/designCard/services/desig
 
 type NoteDropOptions = {
   getCurrentInsertionIndex: () => number;
+  getDropInsertionIndex: (event: DragEvent) => number;
   onAddImages: (payload: { files: File[]; insertAt: number }) => void;
   onInsertDesignCard: (payload: { cardId: string; insertAt: number; source?: "editor" | "note" }) => void;
 };
@@ -48,7 +49,7 @@ export function useNoteDrop(options: NoteDropOptions) {
       event.preventDefault();
       options.onInsertDesignCard({
         cardId: designCardDragData.cardId,
-        insertAt: options.getCurrentInsertionIndex(),
+        insertAt: options.getDropInsertionIndex(event),
         source: designCardDragData.source,
       });
       return;
@@ -64,7 +65,7 @@ export function useNoteDrop(options: NoteDropOptions) {
     event.preventDefault();
     options.onAddImages({
       files,
-      insertAt: options.getCurrentInsertionIndex(),
+      insertAt: options.getDropInsertionIndex(event),
     });
   }
 

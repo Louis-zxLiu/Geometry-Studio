@@ -1,6 +1,9 @@
 import { computed, ref, watch, type Ref } from "vue";
 import type { DesignCard } from "../../designCard/services/designCardTypes";
-import { formatDesignCardReference } from "../../designCard/services/designCardMarkdownCodec";
+import {
+  extractDesignCardReferenceIDs,
+  formatDesignCardReference,
+} from "../../designCard/services/designCardMarkdownCodec";
 import {
   addScriptNoteImages,
   getScriptNote,
@@ -92,10 +95,21 @@ export function useNoteWorkspace(
       return;
     }
 
-    updateMarkdown(insertBlockReference(
-      currentDocument.value.markdown,
-      formatDesignCardReference(payload.cardId),
+    const markdown = currentDocument.value.markdown;
+    const hasReference = extractDesignCardReferenceIDs(markdown).includes(payload.cardId);
+    if (payload.source !== "note" && hasReference) {
+      return;
+    }
+
+    const withoutExistingReference = removeDesignCardReferences(
+      markdown,
+      payload.cardId,
       payload.insertAt,
+    );
+    updateMarkdown(insertBlockReference(
+      withoutExistingReference.markdown,
+      formatDesignCardReference(payload.cardId),
+      withoutExistingReference.insertAt,
     ));
   }
 
@@ -316,6 +330,34 @@ function removeImageReference(markdown: string, relativePath: string) {
     .filter((line) => !imagePattern.test(line));
 
   return collapseBlankLines(filteredLines.join("\n")).trim();
+}
+
+function removeDesignCardReferences(markdown: string, cardId: string, insertAt?: number) {
+  const reference = formatDesignCardReference(cardId);
+  let nextMarkdown = "";
+  let cursor = 0;
+  let nextInsertAt = insertAt;
+  let removed = false;
+
+  for (;;) {
+    const index = markdown.indexOf(reference, cursor);
+    if (index === -1) {
+      nextMarkdown += markdown.slice(cursor);
+      break;
+    }
+
+    nextMarkdown += markdown.slice(cursor, index);
+    removed = true;
+    if (typeof nextInsertAt === "number" && index < nextInsertAt) {
+      nextInsertAt = Math.max(0, nextInsertAt - reference.length);
+    }
+    cursor = index + reference.length;
+  }
+
+  return {
+    insertAt: nextInsertAt,
+    markdown: removed ? collapseBlankLines(nextMarkdown).trim() : markdown,
+  };
 }
 
 function collapseBlankLines(markdown: string) {

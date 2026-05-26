@@ -106,6 +106,7 @@ const {
 
 const noteDrop = useNoteDrop({
   getCurrentInsertionIndex,
+  getDropInsertionIndex,
   onAddImages: (payload) => emit("add-images", payload),
   onInsertDesignCard: (payload) => emit("insert-design-card", payload),
 });
@@ -176,6 +177,43 @@ const {
 
 function openFilePicker() {
   fileInput.value?.click();
+}
+
+function getDropInsertionIndex(event: DragEvent) {
+  const block = resolveDropBlock(event);
+  if (!block) {
+    return getCurrentInsertionIndex();
+  }
+
+  const before = Number(block.dataset.noteInsertBefore);
+  const after = Number(block.dataset.noteInsertAfter);
+  if (!Number.isFinite(before) || !Number.isFinite(after)) {
+    return getCurrentInsertionIndex();
+  }
+
+  const rect = block.getBoundingClientRect();
+  return event.clientY < rect.top + rect.height / 2 ? before : after;
+}
+
+function resolveDropBlock(event: DragEvent) {
+  if (event.target instanceof Element) {
+    const block = event.target.closest<HTMLElement>("[data-note-insert-before][data-note-insert-after]");
+    if (block) {
+      return block;
+    }
+  }
+
+  const root = markdownSurface.value;
+  if (!root) {
+    return null;
+  }
+
+  const blocks = Array.from(
+    root.querySelectorAll<HTMLElement>("[data-note-insert-before][data-note-insert-after]"),
+  );
+  return blocks.find((block) => event.clientY < block.getBoundingClientRect().bottom)
+    ?? blocks[blocks.length - 1]
+    ?? null;
 }
 
 useNotePanelEffects({

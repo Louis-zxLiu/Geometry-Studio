@@ -196,6 +196,10 @@
   backdrop-filter: blur(28px);
 }
 
+.design-card-optimize-backdrop {
+  z-index: 1200;
+}
+
 .design-card-review-zen {
   position: relative;
   width: 100vw;

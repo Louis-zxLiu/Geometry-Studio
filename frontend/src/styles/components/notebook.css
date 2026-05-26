@@ -153,6 +153,10 @@
   cursor: text;
 }
 
+.notebook-render-block + .notebook-render-block {
+  margin-top: 24px;
+}
+
 .notebook-markdown-input {
   width: 100%;
   height: auto;

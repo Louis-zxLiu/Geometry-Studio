@@ -19,6 +19,10 @@ export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
     if (!hasDesignCardDragData(event.dataTransfer)) {
       return false;
     }
+    const dragData = readDesignCardDragData(event.dataTransfer);
+    if (dragData?.source === "note") {
+      return false;
+    }
 
     event.preventDefault();
     options.isDraggingOver.value = true;
@@ -31,7 +35,7 @@ export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
 
   function handleDrop(event: DragEvent, view: EditorView) {
     const dragData = readDesignCardDragData(event.dataTransfer);
-    if (!dragData) {
+    if (!dragData || dragData.source !== "editor") {
       return false;
     }
 
@@ -63,6 +67,10 @@ export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
     if (!hasDesignCardDragData(event.dataTransfer)) {
       return;
     }
+    const dragData = readDesignCardDragData(event.dataTransfer);
+    if (dragData?.source === "note") {
+      return;
+    }
 
     event.preventDefault();
     options.isDraggingOver.value = true;
@@ -73,7 +81,7 @@ export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
 
   function handleSurfaceDrop(event: DragEvent) {
     const dragData = readDesignCardDragData(event.dataTransfer);
-    if (!dragData) {
+    if (!dragData || dragData.source !== "editor") {
       return;
     }
     if (event.target instanceof Element && event.target.closest(".cm-content, .cm-editor")) {
