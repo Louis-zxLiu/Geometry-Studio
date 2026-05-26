@@ -10,8 +10,10 @@ withDefaults(defineProps<{
   armed: boolean;
   card: DesignCard;
   dragSource?: DesignCardDragSource;
+  selectionLabel?: string;
 }>(), {
   dragSource: "note",
+  selectionLabel: "",
 });
 
 const emit = defineEmits<{
@@ -33,6 +35,9 @@ function startDrag(event: DragEvent, cardId: string, source: DesignCardDragSourc
     draggable="true"
     @dragstart="startDrag($event, card.id, dragSource)"
   >
+    <span v-if="selectionLabel" class="notebook-design-card-selection-text">
+      {{ selectionLabel }}
+    </span>
     <DesignCardStaticSvgView :svg="card.svg" />
     <button
       class="notebook-design-card-action notebook-design-card-remove"

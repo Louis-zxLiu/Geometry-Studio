@@ -61,6 +61,7 @@ const {
 } = imageSelection;
 
 const contextSelection = useNoteContextSelection({
+  designCards: () => props.designCards,
   document: () => props.document,
   selectedImageOrder,
   markdownInput,

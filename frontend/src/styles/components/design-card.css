@@ -27,6 +27,21 @@
   box-shadow: 0 2px 18px color-mix(in srgb, var(--text), transparent 94%);
 }
 
+.notebook-design-card-selection-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  color: transparent;
+  font-size: 1px;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  user-select: text;
+}
+
 .design-card-inline-block::after,
 .notebook-design-card-block::after {
   content: "";

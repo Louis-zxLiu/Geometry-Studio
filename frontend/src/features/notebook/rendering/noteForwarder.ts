@@ -24,6 +24,7 @@ export type NoteRenderBlock =
   | {
       card: DesignCard | null;
       cardId: string;
+      displayIndex: number;
       endIndex: number;
       id: string;
       kind: "design-card";
@@ -38,6 +39,7 @@ export function forwardNoteDocumentToBlocks(
   const markdown = normalizeMarkdown(document.markdown);
   const referencedPaths = collectReferencedImagePaths(markdown);
   const cardMap = new Map(designCards.map((card) => [card.id, card]));
+  const cardIndex = new Map(designCards.map((card, index) => [card.id, index + 1]));
   const markdownSegments = splitMarkdownByDesignCards(markdown);
 
   markdownSegments.forEach((segment, index) => {
@@ -57,6 +59,7 @@ export function forwardNoteDocumentToBlocks(
     blocks.push({
       card: cardMap.get(segment.cardId) ?? null,
       cardId: segment.cardId,
+      displayIndex: cardIndex.get(segment.cardId) ?? 0,
       endIndex: segment.endIndex,
       id: `design-card-${segment.cardId}-${index}`,
       kind: "design-card",

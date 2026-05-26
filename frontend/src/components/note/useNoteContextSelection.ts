@@ -4,9 +4,11 @@ import {
   buildAINoteSelectionPayload,
   collectSelectedImagesForContextMenu,
 } from "../../features/notebook/selection/noteSelection";
+import type { DesignCard } from "../../features/designCard/services/designCardTypes";
 import type { NoteDocument } from "../../features/notebook/services/notebookStorage";
 
 type NoteContextSelectionOptions = {
+  designCards: () => DesignCard[];
   document: () => NoteDocument;
   selectedImageOrder: Ref<Record<string, number>>;
   markdownInput: Ref<HTMLTextAreaElement | null>;
@@ -62,6 +64,7 @@ export function useNoteContextSelection(options: NoteContextSelectionOptions) {
       options.document(),
       textSelection.value,
       options.selectedImageOrder.value,
+      options.designCards(),
     );
   }
 

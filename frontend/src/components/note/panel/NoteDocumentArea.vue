@@ -99,6 +99,7 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
                 v-else-if="block.card"
                 :card="block.card"
                 :armed="armedDesignCardDeleteId === block.card.id"
+                :selection-label="block.displayIndex ? `[design-card-${String(block.displayIndex).padStart(2, '0')}]` : ''"
                 @delete="emit('delete-design-card', $event)"
                 @open="emit('open-design-card', $event)"
               />

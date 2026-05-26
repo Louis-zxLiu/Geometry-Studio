@@ -2,6 +2,8 @@ import type {
   AINoteSelectionItem,
   AINoteSelectionPayload,
 } from "../../ai/services/aiTypes";
+import type { DesignCard } from "../../designCard/services/designCardTypes";
+import { parseDesignCardPlaceholder } from "../../designCard/services/designCardMarkdownCodec";
 import type { NoteDocument, NoteImage } from "../services/notebookStorage";
 
 export type OrderedTextSelection = {
@@ -17,6 +19,7 @@ export function buildAINoteSelectionPayload(
   document: NoteDocument,
   textSelection: OrderedTextSelection | null,
   selectedImageOrder: OrderedImageSelection,
+  designCards: DesignCard[] = [],
 ): AINoteSelectionPayload | null {
   const orderedItems: OrderedSelectionItem[] = [];
   const addedImagePaths = new Set<string>();
@@ -38,7 +41,7 @@ export function buildAINoteSelectionPayload(
     } else {
       orderedItems.push({
         kind: "text",
-        text: textSelection.text,
+        text: expandDesignCardReferences(textSelection.text, designCards),
         selectedAt: textSelection.selectedAt,
       });
     }
@@ -68,6 +71,41 @@ export function buildAINoteSelectionPayload(
   return {
     items: orderedItems.map(({ selectedAt: _selectedAt, ...item }) => item),
   };
+}
+
+function expandDesignCardReferences(text: string, designCards: DesignCard[]) {
+  if (!text || designCards.length === 0) {
+    return text;
+  }
+
+  const cardsById = new Map(designCards.map((card) => [card.id, card]));
+  const cardsByDisplayIndex = new Map(designCards.map((card, index) => [index + 1, card]));
+  return text
+    .replace(/:::design-card\{id="([^"]+)"\}/g, (match, cardId: string) => {
+      const card = cardsById.get(cardId);
+      return card ? formatDesignCardSelectionText(card, getDesignCardDisplayIndex(designCards, card)) : match;
+    })
+    .replace(/\[design-card-(\d{2,})]/g, (match: string) => {
+      const displayIndex = parseDesignCardPlaceholder(match);
+      const card = cardsByDisplayIndex.get(displayIndex);
+      return card ? formatDesignCardSelectionText(card, displayIndex) : match;
+    });
+}
+
+function formatDesignCardSelectionText(card: DesignCard, displayIndex: number) {
+  const label = displayIndex > 0
+    ? `设计卡片 ${String(displayIndex).padStart(2, "0")}`
+    : "设计卡片";
+  return [
+    `[${label}]`,
+    card.title ? `标题:\n${card.title}` : "",
+    `设计说明:\n${card.plan || "无"}`,
+    `SVG:\n${card.svg || "无"}`,
+  ].filter(Boolean).join("\n\n");
+}
+
+function getDesignCardDisplayIndex(cards: DesignCard[], card: DesignCard) {
+  return cards.findIndex((item) => item.id === card.id) + 1;
 }
 
 export function collectSelectedImagesForContextMenu(
