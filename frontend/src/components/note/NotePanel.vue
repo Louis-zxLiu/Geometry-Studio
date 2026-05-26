@@ -321,7 +321,7 @@ function shouldStartMarkdownEdit(target: EventTarget | null) {
   if (resolveImagePathFromEventTarget(target)) {
     return false;
   }
-  if (target instanceof HTMLElement && target.closest(".notebook-design-card-block, .design-card-invalid-block")) {
+  if (target instanceof Element && target.closest(".notebook-design-card-block, .design-card-invalid-block")) {
     return false;
   }
 

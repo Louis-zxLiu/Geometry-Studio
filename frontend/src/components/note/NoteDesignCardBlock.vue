@@ -1,23 +1,37 @@
 <script setup lang="ts">
+import {
+  writeDesignCardDragData,
+  type DesignCardDragSource,
+} from "../../features/designCard/services/designCardDragData";
 import type { DesignCard } from "../../features/designCard/services/designCardTypes";
 import DesignCardStaticSvgView from "../../features/designCard/components/DesignCardStaticSvgView.vue";
 
-defineProps<{
+withDefaults(defineProps<{
   armed: boolean;
   card: DesignCard;
-}>();
+  dragSource?: DesignCardDragSource;
+}>(), {
+  dragSource: "note",
+});
 
 const emit = defineEmits<{
   delete: [cardId: string];
   open: [cardId: string];
 }>();
+
+function startDrag(event: DragEvent, cardId: string, source: DesignCardDragSource) {
+  writeDesignCardDragData(event.dataTransfer, { cardId, source });
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+  }
+}
 </script>
 
 <template>
   <article
     class="notebook-design-card-block"
-    @click.stop="emit('open', card.id)"
-    @pointerdown.stop
+    draggable="true"
+    @dragstart="startDrag($event, card.id, dragSource)"
   >
     <DesignCardStaticSvgView :svg="card.svg" />
     <button
