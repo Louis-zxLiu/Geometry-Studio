@@ -1,0 +1,184 @@
+.workspace-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
+  min-height: 0;
+  height: 100%;
+  transition: grid-template-columns 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.editor-workspace-column {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  background: var(--workspace-bg);
+}
+
+.workspace-body.notebook-collapsed {
+  grid-template-columns: minmax(0, 1fr) 34px;
+  transition-delay: 120ms;
+}
+
+.notebook-pane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid color-mix(in srgb, var(--line-strong), transparent 74%);
+  background: var(--notebook-bg);
+  transition:
+    background-color 360ms ease,
+    border-color 360ms ease;
+}
+
+.notebook-pane.collapsed {
+  background: var(--notebook-bg);
+}
+
+.notebook-spine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 34px;
+  height: 100%;
+  padding-top: 26px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 220ms ease,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.notebook-spine:hover {
+  color: var(--text);
+}
+
+.notebook-spine-icon {
+  width: 18px;
+  height: 18px;
+  transition:
+    opacity 220ms ease,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.notebook-pane.collapsed .notebook-spine-icon {
+  opacity: 0.78;
+  transform: translateX(1px);
+}
+
+.notebook-panel-shell {
+  position: absolute;
+  inset: 0;
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  background: var(--notebook-bg);
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity 260ms ease 150ms,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1) 80ms;
+}
+
+.notebook-pane.collapsed .notebook-panel-shell {
+  opacity: 0;
+  transform: translateX(14px);
+  transition:
+    opacity 170ms ease,
+    transform 240ms cubic-bezier(0.4, 0, 1, 1);
+  pointer-events: none;
+}
+
+.notebook-attach-button {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: color-mix(in srgb, var(--muted), transparent 8%);
+  cursor: pointer;
+}
+
+.notebook-attach-button:hover {
+  color: var(--text);
+}
+
+.notebook-attach-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.notebook-scroll {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 70px 42px 34px 44px;
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity 260ms ease 170ms,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1) 120ms;
+}
+
+.notebook-pane.collapsed .notebook-scroll {
+  opacity: 0;
+  transform: translateX(8px);
+  transition:
+    opacity 140ms ease,
+    transform 180ms ease;
+}
+
+.notebook-document-flow {
+  display: grid;
+  gap: 24px;
+  min-height: 100%;
+  align-content: start;
+}
+
+.notebook-markdown-surface {
+  min-height: 42px;
+  cursor: text;
+}
+
+.notebook-markdown-surface.editing {
+  cursor: text;
+}
+
+.notebook-render-block + .notebook-render-block {
+  margin-top: 24px;
+}
+
+.notebook-markdown-input {
+  width: 100%;
+  height: auto;
+  min-height: 42px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text);
+  field-sizing: content;
+  font-family: "SimSun", "Songti SC", "STSong", serif;
+  font-size: 16px;
+  line-height: 1.95;
+  letter-spacing: 0;
+}
+
+.notebook-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

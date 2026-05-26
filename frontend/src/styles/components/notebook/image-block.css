@@ -1,0 +1,61 @@
+.notebook-image-block {
+  position: relative;
+  width: min(66.666%, 520px);
+  margin: 0 auto;
+  cursor: pointer;
+}
+
+.notebook-image-block.selected::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  border: 1px solid color-mix(in srgb, var(--text), transparent 72%);
+  pointer-events: none;
+}
+
+.notebook-image {
+  display: block;
+  width: 100%;
+  border-radius: 0;
+  object-fit: cover;
+}
+
+.notebook-image-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.notebook-image-block:hover .notebook-image-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.notebook-image-action {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.84);
+  color: color-mix(in srgb, var(--text), transparent 30%);
+  cursor: pointer;
+}
+
+.notebook-image-action:hover {
+  color: var(--text);
+}
+
+.notebook-image-action.danger:hover {
+  color: #b74848;
+}
+
+.notebook-image-action svg {
+  width: 16px;
+  height: 16px;
+}

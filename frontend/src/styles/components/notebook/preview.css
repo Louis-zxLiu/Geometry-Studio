@@ -1,0 +1,64 @@
+.notebook-image-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 54px;
+  background: rgba(20, 20, 20, 0.72);
+}
+
+.notebook-preview-toolbar {
+  position: fixed;
+  top: 28px;
+  left: 30px;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.notebook-preview-control {
+  min-width: 42px;
+  height: 34px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f8f8f8;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.notebook-preview-control:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.notebook-preview-image {
+  display: block;
+  max-width: min(86vw, 1120px);
+  max-height: 84vh;
+  object-fit: contain;
+  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.28);
+  transform-origin: center center;
+  transition: transform 120ms ease;
+}
+
+.notebook-preview-close {
+  position: fixed;
+  top: 28px;
+  right: 30px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #f8f8f8;
+  cursor: pointer;
+}
+
+.notebook-preview-close:hover {
+  color: #ffffff;
+}
+
+.notebook-preview-close svg {
+  width: 20px;
+  height: 20px;
+}
