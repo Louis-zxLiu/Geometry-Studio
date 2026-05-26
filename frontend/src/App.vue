@@ -81,6 +81,7 @@ const theme = proxyRefs(useTheme());
             @move-design-card="workspace.moveDesignCard"
             @open-design-card="workspace.openDesignCardReviewRoom"
             @optimize-design-card="workspace.openDesignCardContextMenu($event.cardId, $event.position)"
+            @place-design-card="workspace.setDesignCardPlacement($event.cardId, $event.afterLine)"
             @update:code="workspace.updateCode"
           />
 

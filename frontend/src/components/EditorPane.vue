@@ -20,6 +20,7 @@ const emit = defineEmits<{
   "move-design-card": [payload: { cardId: string; delta: number }];
   "open-design-card": [cardId: string];
   "optimize-design-card": [payload: { cardId: string; position: { x: number; y: number } }];
+  "place-design-card": [payload: { cardId: string; afterLine: number }];
   "update:code": [code: string];
 }>();
 
@@ -76,6 +77,29 @@ function openAIOptimize(event: MouseEvent) {
   event.stopPropagation();
   emit("ai-optimize", { x: event.clientX, y: event.clientY });
 }
+
+function handleDragOver(event: DragEvent) {
+  if (!event.dataTransfer?.types.includes("application/x-design-card-id")) {
+    return;
+  }
+
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+}
+
+function handleDrop(event: DragEvent) {
+  const cardId = event.dataTransfer?.getData("application/x-design-card-id") ?? "";
+  if (!cardId) {
+    return;
+  }
+
+  event.preventDefault();
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const lineHeight = parseFloat(window.getComputedStyle(target).lineHeight) || 26;
+  const afterLine = Math.max(0, Math.round((event.clientY - rect.top + scrollTop.value) / lineHeight));
+  emit("place-design-card", { cardId, afterLine });
+}
 </script>
 
 <template>
@@ -99,7 +123,11 @@ function openAIOptimize(event: MouseEvent) {
             {{ index + 1 }}
           </span>
         </div>
-        <div class="code-editor-stack">
+        <div
+          class="code-editor-stack"
+          @dragover="handleDragOver"
+          @drop="handleDrop"
+        >
           <div
             class="design-card-placeholder-layer"
             :style="{ transform: `translateY(-${scrollTop}px)` }"

@@ -431,6 +431,7 @@ export function usePlotWorkspace() {
     closeDesignCardOptimizeDialog: designCardWorkspace.closeOptimizeDialog,
     closeDesignCardReviewRoom: designCardWorkspace.closeReviewRoom,
     moveDesignCard: designCardWorkspace.moveCard,
+    setDesignCardPlacement: designCardWorkspace.setCardPlacement,
     updateDesignCardPlan: designCardWorkspace.updateActivePlan,
     updateNoteMarkdown: noteWorkspace.updateMarkdown,
     workspaces: scriptWorkspace.workspaces,

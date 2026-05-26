@@ -3,6 +3,7 @@ import type {
   AIDesignCardOptimizeRequest,
   AIDesignCardResult,
   DesignCard,
+  DesignCardPlacement,
   DesignCardVersion,
 } from "./designCardTypes";
 
@@ -13,6 +14,7 @@ type BridgeAppCompat = {
   ) => Promise<AIDesignCardResult>;
   GetDesignCard?: (sceneName: string, cardId: string) => Promise<DesignCard>;
   ListDesignCards?: (sceneName: string) => Promise<DesignCard[]>;
+  ListDesignCardPlacements?: (sceneName: string) => Promise<DesignCardPlacement[]>;
   ListDesignCardVersions?: (
     sceneName: string,
     cardId: string,
@@ -20,6 +22,10 @@ type BridgeAppCompat = {
   OptimizeDesignCard?: (
     request: AIDesignCardOptimizeRequest,
   ) => Promise<AIDesignCardResult>;
+  SaveDesignCardPlacements?: (
+    sceneName: string,
+    placements: DesignCardPlacement[],
+  ) => Promise<DesignCardPlacement[]>;
   UpdateDesignCardPlan?: (
     sceneName: string,
     cardId: string,
@@ -56,6 +62,27 @@ export async function listDesignCards(sceneName: string): Promise<DesignCard[]> 
   }
 
   return [];
+}
+
+export async function listDesignCardPlacements(sceneName: string): Promise<DesignCardPlacement[]> {
+  const bridgeApp = getBridgeApp();
+  if (typeof bridgeApp.ListDesignCardPlacements === "function") {
+    return (await bridgeApp.ListDesignCardPlacements(sceneName)).map(normalizePlacement);
+  }
+
+  return [];
+}
+
+export async function saveDesignCardPlacements(
+  sceneName: string,
+  placements: DesignCardPlacement[],
+): Promise<DesignCardPlacement[]> {
+  const bridgeApp = getBridgeApp();
+  if (typeof bridgeApp.SaveDesignCardPlacements === "function") {
+    return (await bridgeApp.SaveDesignCardPlacements(sceneName, placements)).map(normalizePlacement);
+  }
+
+  throw new Error("当前运行中的后端版本还不支持保存设计卡片位置，请重启应用后再试");
 }
 
 export async function getDesignCard(sceneName: string, cardId: string): Promise<DesignCard> {
@@ -125,6 +152,15 @@ function normalizeDesignCard(card: Partial<DesignCard> | null | undefined): Desi
     order: Number(card?.order ?? 0),
     plan: String(card?.plan ?? ""),
     svg: String(card?.svg ?? ""),
+  };
+}
+
+function normalizePlacement(
+  placement: Partial<DesignCardPlacement> | null | undefined,
+): DesignCardPlacement {
+  return {
+    cardId: String(placement?.cardId ?? ""),
+    afterLine: Math.max(0, Number(placement?.afterLine ?? 0)),
   };
 }
 

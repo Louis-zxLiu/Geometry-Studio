@@ -30,6 +30,10 @@ export function DeleteCodeAIVersion(arg1, arg2) {
   return window['go']['bridge']['App']['DeleteCodeAIVersion'](arg1, arg2);
 }
 
+export function DeleteDesignCard(arg1, arg2) {
+  return window['go']['bridge']['App']['DeleteDesignCard'](arg1, arg2);
+}
+
 export function DeleteScript(arg1) {
   return window['go']['bridge']['App']['DeleteScript'](arg1);
 }
@@ -50,8 +54,16 @@ export function GenerateCodeFromSelection(arg1) {
   return window['go']['bridge']['App']['GenerateCodeFromSelection'](arg1);
 }
 
+export function GenerateDesignCardFromSelection(arg1) {
+  return window['go']['bridge']['App']['GenerateDesignCardFromSelection'](arg1);
+}
+
 export function GetAISettings() {
   return window['go']['bridge']['App']['GetAISettings']();
+}
+
+export function GetDesignCard(arg1, arg2) {
+  return window['go']['bridge']['App']['GetDesignCard'](arg1, arg2);
 }
 
 export function GetEnvironmentStatus() {
@@ -94,12 +106,28 @@ export function ListCodeAIVersions(arg1) {
   return window['go']['bridge']['App']['ListCodeAIVersions'](arg1);
 }
 
+export function ListDesignCardPlacements(arg1) {
+  return window['go']['bridge']['App']['ListDesignCardPlacements'](arg1);
+}
+
+export function ListDesignCardVersions(arg1, arg2) {
+  return window['go']['bridge']['App']['ListDesignCardVersions'](arg1, arg2);
+}
+
+export function ListDesignCards(arg1) {
+  return window['go']['bridge']['App']['ListDesignCards'](arg1);
+}
+
 export function OpenSubscriptionPurchase() {
   return window['go']['bridge']['App']['OpenSubscriptionPurchase']();
 }
 
 export function OptimizeCode(arg1) {
   return window['go']['bridge']['App']['OptimizeCode'](arg1);
+}
+
+export function OptimizeDesignCard(arg1) {
+  return window['go']['bridge']['App']['OptimizeDesignCard'](arg1);
 }
 
 export function RebuildRuntime() {
@@ -134,6 +162,10 @@ export function SaveAndRun(arg1, arg2) {
   return window['go']['bridge']['App']['SaveAndRun'](arg1, arg2);
 }
 
+export function SaveDesignCardPlacements(arg1, arg2) {
+  return window['go']['bridge']['App']['SaveDesignCardPlacements'](arg1, arg2);
+}
+
 export function SaveScript(arg1, arg2) {
   return window['go']['bridge']['App']['SaveScript'](arg1, arg2);
 }
@@ -148,4 +180,8 @@ export function StopCurrentRun() {
 
 export function SwitchWorkspace(arg1) {
   return window['go']['bridge']['App']['SwitchWorkspace'](arg1);
+}
+
+export function UpdateDesignCardPlan(arg1, arg2, arg3) {
+  return window['go']['bridge']['App']['UpdateDesignCardPlan'](arg1, arg2, arg3);
 }

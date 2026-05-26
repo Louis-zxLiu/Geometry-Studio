@@ -173,6 +173,11 @@ type DesignCardVersion struct {
 	CreatedAt int64  `json:"createdAt"`
 }
 
+type DesignCardPlacement struct {
+	CardID    string `json:"cardId"`
+	AfterLine int    `json:"afterLine"`
+}
+
 type AIDesignCardResult struct {
 	Card   DesignCard `json:"card"`
 	Source string     `json:"source"`

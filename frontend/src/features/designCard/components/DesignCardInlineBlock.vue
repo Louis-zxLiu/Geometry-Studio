@@ -68,12 +68,6 @@ function requestDelete(cardId: string) {
     <DesignCardSvgView :svg="card.svg" />
 
     <footer class="design-card-inline-actions" @click.stop>
-      <button type="button" title="上移一行" @click="emit('move', { cardId: card.id, delta: -1 })">
-        ↑
-      </button>
-      <button type="button" title="下移一行" @click="emit('move', { cardId: card.id, delta: 1 })">
-        ↓
-      </button>
       <button type="button" @click="emit('optimize', { cardId: card.id, position: { x: $event.clientX, y: $event.clientY } })">
         AI优化
       </button>

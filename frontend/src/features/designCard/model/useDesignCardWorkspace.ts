@@ -3,11 +3,12 @@ import type { AINoteSelectionPayload, AIProviderSettings } from "../../ai/servic
 import {
   deleteDesignCard,
   generateDesignCardFromSelection,
+  listDesignCardPlacements,
   listDesignCards,
   optimizeDesignCard,
+  saveDesignCardPlacements,
   updateDesignCardPlan,
 } from "../services/designCardBridgeCompat";
-import { createDesignCardPlacementStorage } from "../services/designCardPlacementStorage";
 import { formatDesignCardReference } from "../services/designCardMarkdownCodec";
 import type { DesignCard, DesignCardPlacement } from "../services/designCardTypes";
 
@@ -31,7 +32,6 @@ type DesignCardWorkspaceOptions = {
 const planSaveDebounceMs = 420;
 
 export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
-  const placementStorage = createDesignCardPlacementStorage();
   const cards = ref<DesignCard[]>([]);
   const placements = ref<DesignCardPlacement[]>([]);
   const activeCardId = ref("");
@@ -46,14 +46,12 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
   const activeCard = computed(
     () => cards.value.find((card) => card.id === activeCardId.value) ?? null,
   );
-  const sortedCards = computed(() =>
-    [...cards.value].sort((a, b) => (a.order === b.order ? a.id.localeCompare(b.id) : a.order - b.order)),
-  );
+  const sortedCards = computed(() => sortCards(cards.value));
   const isOptimizeDialogOpen = computed(() => optimizeDialogCardId.value !== "");
 
   watch(
-    [options.currentFile, options.codeContent],
-    ([sceneName]) => {
+    options.currentFile,
+    (sceneName) => {
       if (!sceneName) {
         cards.value = [];
         placements.value = [];
@@ -67,6 +65,10 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     { immediate: true },
   );
 
+  watch(options.codeContent, () => {
+    clampPlacementsToCode();
+  });
+
   async function loadCards(sceneName: string, token = ++loadingToken) {
     try {
       const nextCards = await listDesignCards(sceneName);
@@ -75,7 +77,7 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
       }
 
       cards.value = sortCards(nextCards);
-      syncPlacements();
+      await loadPlacements(sceneName);
     } catch (error) {
       if (token === loadingToken) {
         options.onError(getErrorMessage(error));
@@ -101,7 +103,7 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
         selection,
       });
       upsertCard(result.card);
-      placeCardAtEnd(result.card.id);
+      await placeCardAtEnd(result.card.id);
       openReviewRoom(result.card.id);
     } catch (error) {
       options.onError(getErrorMessage(error));
@@ -196,7 +198,7 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     }
   }
 
-  async function removeCard(cardId: string, options?: { removeNoteReferences?: boolean }) {
+  async function removeCard(cardId: string, removeOptions?: { removeNoteReferences?: boolean }) {
     if (!options.currentFile.value || !cardId) {
       return;
     }
@@ -205,11 +207,11 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
       await deleteDesignCard(options.currentFile.value, cardId);
       cards.value = cards.value.filter((card) => card.id !== cardId);
       placements.value = placements.value.filter((placement) => placement.cardId !== cardId);
-      placementStorage.save(options.currentFile.value, placements.value);
+      await persistPlacements(placements.value);
       if (activeCardId.value === cardId) {
         activeCardId.value = "";
       }
-      if (options?.removeNoteReferences) {
+      if (removeOptions?.removeNoteReferences) {
         removeCardReferencesFromNote(cardId);
       }
     } catch (error) {
@@ -241,21 +243,35 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
         ? { ...placement, afterLine: Math.max(0, Math.min(lineCount, placement.afterLine + delta)) }
         : placement,
     );
-    placementStorage.save(options.currentFile.value, placements.value);
+    void persistPlacements(placements.value);
   }
 
-  function syncPlacements() {
+  function setCardPlacement(cardId: string, afterLine: number) {
+    if (!cards.value.some((card) => card.id === cardId)) {
+      return;
+    }
+
     const lineCount = getCodeLineCount(options.codeContent.value);
-    placements.value = placementStorage.load(options.currentFile.value, sortedCards.value, lineCount);
-    placementStorage.save(options.currentFile.value, placements.value);
+    const nextPlacement = { cardId, afterLine: clampLine(afterLine, lineCount) };
+    const nextPlacements = placements.value.filter((placement) => placement.cardId !== cardId);
+    nextPlacements.push(nextPlacement);
+    placements.value = mergePlacements(cards.value, nextPlacements, lineCount);
+    void persistPlacements(placements.value);
   }
 
-  function placeCardAtEnd(cardId: string) {
+  async function loadPlacements(sceneName: string) {
+    const lineCount = getCodeLineCount(options.codeContent.value);
+    const savedPlacements = await listDesignCardPlacements(sceneName);
+    placements.value = mergePlacements(sortedCards.value, savedPlacements, lineCount);
+    await persistPlacements(placements.value);
+  }
+
+  async function placeCardAtEnd(cardId: string) {
     const lineCount = getCodeLineCount(options.codeContent.value);
     const nextPlacements = placements.value.filter((placement) => placement.cardId !== cardId);
     nextPlacements.push({ cardId, afterLine: lineCount });
     placements.value = nextPlacements;
-    placementStorage.save(options.currentFile.value, nextPlacements);
+    await persistPlacements(nextPlacements);
   }
 
   function schedulePlanSave(cardId: string, plan: string) {
@@ -300,7 +316,34 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     const nextCards = cards.value.filter((item) => item.id !== card.id);
     nextCards.push(card);
     cards.value = sortCards(nextCards);
-    syncPlacements();
+    placements.value = mergePlacements(
+      cards.value,
+      placements.value,
+      getCodeLineCount(options.codeContent.value),
+    );
+  }
+
+  async function persistPlacements(placementsToSave: DesignCardPlacement[]) {
+    if (!options.currentFile.value) {
+      return;
+    }
+
+    try {
+      placements.value = await saveDesignCardPlacements(
+        options.currentFile.value,
+        placementsToSave,
+      );
+    } catch (error) {
+      options.onError(getErrorMessage(error));
+    }
+  }
+
+  function clampPlacementsToCode() {
+    const lineCount = getCodeLineCount(options.codeContent.value);
+    placements.value = placements.value.map((placement) => ({
+      ...placement,
+      afterLine: Math.max(0, Math.min(lineCount, placement.afterLine)),
+    }));
   }
 
   return {
@@ -324,12 +367,39 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     placements,
     saveState,
     submitOptimization,
+    setCardPlacement,
     updateActivePlan,
   };
 }
 
 function sortCards(cards: DesignCard[]) {
-  return [...cards].sort((a, b) => (a.order === b.order ? a.id.localeCompare(b.id) : a.order - b.order));
+  return [...cards].sort((a, b) =>
+    a.order === b.order ? a.id.localeCompare(b.id) : a.order - b.order,
+  );
+}
+
+function mergePlacements(
+  cards: DesignCard[],
+  savedPlacements: DesignCardPlacement[],
+  lineCount: number,
+) {
+  const savedByCard = new Map(
+    savedPlacements
+      .filter((placement) => placement.cardId)
+      .map((placement) => [placement.cardId, placement]),
+  );
+
+  return cards.map((card) => {
+    const saved = savedByCard.get(card.id);
+    return {
+      cardId: card.id,
+      afterLine: clampLine(saved?.afterLine ?? lineCount, lineCount),
+    };
+  });
+}
+
+function clampLine(line: number, lineCount: number) {
+  return Math.max(0, Math.min(Number.isFinite(line) ? line : lineCount, lineCount));
 }
 
 function getCodeLineCount(code: string) {

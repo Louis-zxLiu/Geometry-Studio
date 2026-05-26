@@ -16,6 +16,8 @@ export function CreateWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;
 
 export function DeleteCodeAIVersion(arg1:string,arg2:string):Promise<Array<bridge.CodeAIVersion>>;
 
+export function DeleteDesignCard(arg1:string,arg2:string):Promise<void>;
+
 export function DeleteScript(arg1:string):Promise<bridge.WorkspaceSnapshot>;
 
 export function DeleteWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;
@@ -26,7 +28,11 @@ export function ExportScenePackage(arg1:string):Promise<bridge.PackageTransferRe
 
 export function GenerateCodeFromSelection(arg1:bridge.AIGenerationRequest):Promise<bridge.AIGenerationResult>;
 
+export function GenerateDesignCardFromSelection(arg1:bridge.AIDesignCardGenerationRequest):Promise<bridge.AIDesignCardResult>;
+
 export function GetAISettings():Promise<bridge.AIProviderSettings>;
+
+export function GetDesignCard(arg1:string,arg2:string):Promise<bridge.DesignCard>;
 
 export function GetEnvironmentStatus():Promise<bridge.EnvironmentStatus>;
 
@@ -48,9 +54,17 @@ export function InstallUpdateAndRestart():Promise<void>;
 
 export function ListCodeAIVersions(arg1:string):Promise<Array<bridge.CodeAIVersion>>;
 
+export function ListDesignCardPlacements(arg1:string):Promise<Array<bridge.DesignCardPlacement>>;
+
+export function ListDesignCardVersions(arg1:string,arg2:string):Promise<Array<bridge.DesignCardVersion>>;
+
+export function ListDesignCards(arg1:string):Promise<Array<bridge.DesignCard>>;
+
 export function OpenSubscriptionPurchase():Promise<bridge.SubscriptionPurchaseResult>;
 
 export function OptimizeCode(arg1:bridge.AIOptimizeRequest):Promise<bridge.AIOptimizeResult>;
+
+export function OptimizeDesignCard(arg1:bridge.AIDesignCardOptimizeRequest):Promise<bridge.AIDesignCardResult>;
 
 export function RebuildRuntime():Promise<bridge.EnvironmentStatus>;
 
@@ -68,6 +82,8 @@ export function SaveAISettings(arg1:bridge.AIProviderSettings):Promise<bridge.AI
 
 export function SaveAndRun(arg1:string,arg2:string):Promise<void>;
 
+export function SaveDesignCardPlacements(arg1:string,arg2:Array<bridge.DesignCardPlacement>):Promise<Array<bridge.DesignCardPlacement>>;
+
 export function SaveScript(arg1:string,arg2:string):Promise<void>;
 
 export function SaveScriptNote(arg1:string,arg2:string):Promise<void>;
@@ -75,3 +91,5 @@ export function SaveScriptNote(arg1:string,arg2:string):Promise<void>;
 export function StopCurrentRun():Promise<bridge.RunControlResult>;
 
 export function SwitchWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;
+
+export function UpdateDesignCardPlan(arg1:string,arg2:string,arg3:string):Promise<bridge.DesignCard>;
