@@ -1,22 +1,17 @@
 import { computed, ref, watch, type Ref } from "vue";
 import type { DesignCard } from "../../designCard/services/designCardTypes";
 import {
-  extractDesignCardReferenceIDs,
-  formatDesignCardReference,
-} from "../../designCard/services/designCardMarkdownCodec";
-import {
-  addScriptNoteImages,
   getScriptNote,
-  removeScriptNoteImage,
   saveScriptNote,
   type NoteDocumentLike,
 } from "../../scripts/services/scriptBridgeCompat";
+import { useNoteDesignCardReferences } from "./noteWorkspace/useNoteDesignCardReferences";
+import { useNoteImages } from "./noteWorkspace/useNoteImages";
 import { forwardNoteDocumentToBlocks } from "../rendering/noteForwarder";
 import {
   createEmptyNoteDocument,
   createNotePanelStorage,
   normalizeNoteDocument,
-  type NoteImage,
   type NoteDocument,
 } from "../services/notebookStorage";
 
@@ -86,102 +81,6 @@ export function useNoteWorkspace(
     schedulePersist();
   }
 
-  function insertDesignCardReference(payload: {
-    cardId: string;
-    insertAt?: number;
-    source?: "editor" | "note";
-  }) {
-    if (!payload.cardId) {
-      return;
-    }
-
-    const markdown = currentDocument.value.markdown;
-    const hasReference = extractDesignCardReferenceIDs(markdown).includes(payload.cardId);
-    if (payload.source !== "note" && hasReference) {
-      return;
-    }
-
-    const withoutExistingReference = removeDesignCardReferences(
-      markdown,
-      payload.cardId,
-      payload.insertAt,
-    );
-    updateMarkdown(insertBlockReference(
-      withoutExistingReference.markdown,
-      formatDesignCardReference(payload.cardId),
-      withoutExistingReference.insertAt,
-    ));
-  }
-
-  async function addImages(payload: { files: File[]; insertAt?: number }) {
-    const files = payload.files;
-    if (!currentFile.value || files.length === 0) {
-      return;
-    }
-
-    try {
-      await persistCurrentDocument(currentFile.value);
-      const nextImages = await Promise.all(
-        files
-          .filter((file) => file.type.startsWith("image/"))
-          .map(async (file) => ({
-            name: file.name,
-            alt: stripExtension(file.name),
-            dataUrl: await readFileAsDataUrl(file),
-          })),
-      );
-
-      if (!nextImages.length) {
-        return;
-      }
-
-      const previousDocument = currentDocument.value;
-      const previousPaths = new Set(previousDocument.images.map((image) => image.relativePath));
-      const document = normalizeNoteDocument(
-        await addScriptNoteImages(currentFile.value, nextImages),
-      );
-      const addedImages = document.images.filter(
-        (image) => image.relativePath && !previousPaths.has(image.relativePath),
-      );
-      const nextMarkdown = insertImageReferences(
-        previousDocument.markdown,
-        addedImages,
-        payload.insertAt,
-      );
-      currentDocument.value = {
-        ...document,
-        markdown: nextMarkdown,
-      };
-      await saveScriptNote(currentFile.value, nextMarkdown);
-      saveState.value = "saved";
-    } catch (error) {
-      onError(getErrorMessage(error));
-    }
-  }
-
-  async function removeImage(relativePath: string) {
-    if (!currentFile.value || !relativePath) {
-      return;
-    }
-
-    try {
-      await persistCurrentDocument(currentFile.value);
-      const previousMarkdown = currentDocument.value.markdown;
-      const document = normalizeNoteDocument(
-        await removeScriptNoteImage(currentFile.value, relativePath),
-      );
-      const nextMarkdown = removeImageReference(previousMarkdown, relativePath);
-      currentDocument.value = {
-        ...document,
-        markdown: nextMarkdown,
-      };
-      await saveScriptNote(currentFile.value, nextMarkdown);
-      saveState.value = "saved";
-    } catch (error) {
-      onError(getErrorMessage(error));
-    }
-  }
-
   function togglePanel() {
     isPanelOpen.value = !isPanelOpen.value;
     panelStorage.savePanelState(isPanelOpen.value);
@@ -244,6 +143,18 @@ export function useNoteWorkspace(
     }
   }
 
+  const { insertDesignCardReference } = useNoteDesignCardReferences({
+    currentDocument,
+    updateMarkdown,
+  });
+  const { addImages, removeImage } = useNoteImages({
+    currentDocument,
+    currentFile,
+    onError,
+    persistCurrentDocument,
+    saveState,
+  });
+
   return {
     addImages,
     currentDocument,
@@ -258,114 +169,6 @@ export function useNoteWorkspace(
     togglePanel,
     updateMarkdown,
   };
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(reader.error ?? new Error("Failed to read image"));
-    reader.readAsDataURL(file);
-  });
-}
-
-function stripExtension(filename: string) {
-  return filename.replace(/\.[^.]+$/, "");
-}
-
-function insertImageReferences(markdown: string, images: NoteImage[], insertAt?: number) {
-  if (!images.length) {
-    return markdown;
-  }
-
-  const imageBlock = images.map(formatImageReference).join("\n\n");
-  return insertBlockReference(markdown, imageBlock, insertAt);
-}
-
-function insertBlockReference(markdown: string, block: string, insertAt?: number) {
-  if (!block) {
-    return markdown;
-  }
-
-  if (!markdown) {
-    return block;
-  }
-
-  if (typeof insertAt !== "number" || Number.isNaN(insertAt)) {
-    const trimmedMarkdown = markdown.replace(/\s+$/u, "");
-    return `${trimmedMarkdown}\n\n${block}`;
-  }
-
-  const normalized = markdown.replace(/\r\n/g, "\n");
-  const safeIndex = Math.max(0, Math.min(insertAt, normalized.length));
-  const before = normalized.slice(0, safeIndex);
-  const after = normalized.slice(safeIndex);
-  const prefix = before && !before.endsWith("\n") ? "\n\n" : before.endsWith("\n\n") ? "" : before ? "\n" : "";
-  const suffix = after.startsWith("\n") ? "" : after ? "\n\n" : "";
-  return `${before}${prefix}${block}${suffix}${after}`;
-}
-
-function formatImageReference(image: NoteImage) {
-  const alt = escapeMarkdownAltText(image.alt || stripExtension(image.name) || "image");
-  return `![${alt}](<${image.relativePath}>)`;
-}
-
-function escapeMarkdownAltText(text: string) {
-  return text.replace(/[\[\]\\]/g, "\\$&");
-}
-
-function removeImageReference(markdown: string, relativePath: string) {
-  if (!markdown || !relativePath) {
-    return markdown;
-  }
-
-  const escapedPath = escapeRegExp(relativePath);
-  const imagePattern = new RegExp(
-    `^\\s*!\\[[^\\]]*\\]\\((?:<${escapedPath}>|${escapedPath})(?:\\s+"[^"]*")?\\)\\s*$`,
-    "u",
-  );
-  const filteredLines = markdown
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .filter((line) => !imagePattern.test(line));
-
-  return collapseBlankLines(filteredLines.join("\n")).trim();
-}
-
-function removeDesignCardReferences(markdown: string, cardId: string, insertAt?: number) {
-  const reference = formatDesignCardReference(cardId);
-  let nextMarkdown = "";
-  let cursor = 0;
-  let nextInsertAt = insertAt;
-  let removed = false;
-
-  for (;;) {
-    const index = markdown.indexOf(reference, cursor);
-    if (index === -1) {
-      nextMarkdown += markdown.slice(cursor);
-      break;
-    }
-
-    nextMarkdown += markdown.slice(cursor, index);
-    removed = true;
-    if (typeof nextInsertAt === "number" && index < nextInsertAt) {
-      nextInsertAt = Math.max(0, nextInsertAt - reference.length);
-    }
-    cursor = index + reference.length;
-  }
-
-  return {
-    insertAt: nextInsertAt,
-    markdown: removed ? collapseBlankLines(nextMarkdown).trim() : markdown,
-  };
-}
-
-function collapseBlankLines(markdown: string) {
-  return markdown.replace(/\n{3,}/g, "\n\n");
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function getErrorMessage(error: unknown) {
