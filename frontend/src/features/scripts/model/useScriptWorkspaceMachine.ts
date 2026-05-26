@@ -1,17 +1,25 @@
-import { computed, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
+import { ref, watch, type Ref } from "vue";
 import { createScriptRepository } from "../services/scriptRepository";
 import { createScriptSelectionStorage } from "../services/scriptSelectionStorage";
-import type { WorkspaceInfoLike, WorkspaceSnapshotLike } from "../services/scriptBridgeCompat";
-
-type ErrorHandler = (message: string) => void;
-type WorkspacePhase = "idle" | "syncing" | "creating" | "renaming" | "deleting";
-
-const syncIntervalMs = 2000;
-const codeAutoSaveIntervalMs = 500;
-const createVisualDelayMs = 260;
+import type {
+  ScriptWorkspaceRepository,
+  WorkspaceInfoLike,
+  WorkspaceSnapshotLike,
+} from "./scriptWorkspaceTypes";
+import { useScriptAutoSync } from "./useScriptAutoSync";
+import { useScriptFileActions } from "./useScriptFileActions";
+import { useWorkspaceActions } from "./useWorkspaceActions";
+import {
+  asString,
+  computedPhase,
+  getErrorMessage,
+  withTimeout,
+  type ErrorHandler,
+  type WorkspacePhase,
+} from "./scriptWorkspaceUtils";
 
 export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<boolean>) {
-  const repository = createScriptRepository();
+  const repository = createScriptRepository() as ScriptWorkspaceRepository;
   const selectionStorage = createScriptSelectionStorage();
   const scripts = ref<string[]>([]);
   const workspaces = ref<WorkspaceInfoLike[]>([]);
@@ -20,12 +28,6 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
   const codeContent = ref("");
   const lastLoadedCode = ref("");
   const workspacePhase = ref<WorkspacePhase>("idle");
-  const isCreateDialogOpen = ref(false);
-  const typingScriptName = ref("");
-  const deletingScriptName = ref("");
-
-  let syncTimer = 0;
-  let codeAutoSaveTimer = 0;
 
   const isCreatingScript = computedPhase("creating", workspacePhase);
   const isRenamingScript = computedPhase("renaming", workspacePhase);
@@ -64,86 +66,6 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
     }
   }
 
-  async function selectScript(filename: string) {
-    if (filename === currentFile.value) {
-      return;
-    }
-
-    try {
-      await saveCurrentScript();
-      const document = await repository.getScriptContent(filename);
-      currentFile.value = document.filename ?? filename;
-      codeContent.value = asString(document.code);
-      lastLoadedCode.value = codeContent.value;
-    } catch (error) {
-      onError(getErrorMessage(error));
-    }
-  }
-
-  async function createScript(filename: string) {
-    const nextFilename = filename.trim();
-    if (!nextFilename || workspacePhase.value !== "idle") {
-      return;
-    }
-
-    isCreateDialogOpen.value = false;
-    workspacePhase.value = "creating";
-
-    try {
-      const document = await withTimeout(repository.createScript(nextFilename), "创建文件超时");
-      await wait(createVisualDelayMs);
-      const snapshot = await syncWorkspace(document.filename ?? nextFilename);
-      const createdName = document.filename ?? nextFilename;
-      typingScriptName.value = createdName;
-      window.setTimeout(() => {
-        if (typingScriptName.value === createdName) {
-          typingScriptName.value = "";
-        }
-      }, getTypingDuration(createdName));
-      currentFile.value = createdName;
-      codeContent.value = asString(document.code);
-      lastLoadedCode.value = codeContent.value;
-      if (snapshot?.currentFile) {
-        currentFile.value = snapshot.currentFile;
-        codeContent.value = asString(snapshot.document?.code);
-        lastLoadedCode.value = codeContent.value;
-      }
-    } catch (error) {
-      onError(getErrorMessage(error));
-    } finally {
-      workspacePhase.value = "idle";
-    }
-  }
-
-  function openCreateDialog() {
-    if (workspacePhase.value !== "idle") {
-      return;
-    }
-
-    isCreateDialogOpen.value = true;
-  }
-
-  function closeCreateDialog() {
-    isCreateDialogOpen.value = false;
-  }
-
-  function updateCode(code: string) {
-    codeContent.value = code;
-  }
-
-  async function saveCurrentScript() {
-    if (!currentFile.value) {
-      return;
-    }
-
-    await withTimeout(repository.saveScript(currentFile.value, codeContent.value), "保存文件超时");
-    lastLoadedCode.value = codeContent.value;
-  }
-
-  function updateCode(code: string) {
-    codeContent.value = code;
-  }
-
   async function syncWorkspace(
     preferredFile = currentFile.value,
     options?: { preserveDirtyCurrent?: boolean },
@@ -170,203 +92,37 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
     }
   }
 
-  async function restoreLastSelection() {
-    const savedFilename = selectionStorage.load();
-    if (!savedFilename || savedFilename === currentFile.value) {
-      return;
-    }
+  useScriptAutoSync({
+    codeContent,
+    currentFile,
+    lastLoadedCode,
+    onAutoSaveError: (error) => onError(getErrorMessage(error)),
+    repository,
+    syncWorkspace,
+    workspacePhase,
+  });
 
-    try {
-      await syncWorkspace(savedFilename, { preserveDirtyCurrent: false });
-    } catch (error) {
-      onError(getErrorMessage(error));
-    }
-  }
+  const scriptFileActions = useScriptFileActions({
+    applyWorkspaceSnapshot,
+    codeContent,
+    currentFile,
+    isRunning,
+    lastLoadedCode,
+    onError,
+    repository,
+    selectionStorage,
+    syncWorkspace,
+    workspacePhase,
+  });
 
-  async function renameScript(oldFilename: string, nextFilename: string) {
-    const targetName = nextFilename.trim();
-    if (!oldFilename || !targetName || workspacePhase.value !== "idle") {
-      return;
-    }
-
-    workspacePhase.value = "renaming";
-
-    try {
-      if (oldFilename === currentFile.value) {
-        await saveCurrentScript();
-      }
-
-      const snapshot = await withTimeout(
-        repository.renameScript(oldFilename, targetName),
-        "重命名文件超时",
-      );
-      applyWorkspaceSnapshot(snapshot);
-    } catch (error) {
-      onError(getErrorMessage(error));
-    } finally {
-      workspacePhase.value = "idle";
-    }
-  }
-
-  async function deleteScript(filename: string) {
-    if (!filename || workspacePhase.value !== "idle") {
-      return;
-    }
-
-    workspacePhase.value = "deleting";
-    deletingScriptName.value = filename;
-
-    try {
-      await wait(getDeletingDuration(filename));
-      const nextPreferred = currentFile.value === filename ? "" : currentFile.value;
-      const snapshot = await withTimeout(repository.deleteScript(filename), "删除文件超时");
-      applyWorkspaceSnapshot(snapshot);
-      if (!snapshot.currentFile && nextPreferred) {
-        await syncWorkspace(nextPreferred, { preserveDirtyCurrent: true });
-      }
-    } catch (error) {
-      deletingScriptName.value = "";
-      onError(getErrorMessage(error));
-    } finally {
-      window.setTimeout(() => {
-        if (deletingScriptName.value === filename) {
-          deletingScriptName.value = "";
-        }
-      }, 60);
-      workspacePhase.value = "idle";
-    }
-  }
-
-  async function switchWorkspace(name: string) {
-    const targetName = name.trim();
-    if (!targetName || targetName === currentWorkspace.value || workspacePhase.value !== "idle") {
-      return;
-    }
-
-    workspacePhase.value = "syncing";
-
-    try {
-      await saveCurrentScript();
-      const snapshot = await withTimeout(repository.switchWorkspace(targetName), "切换工作区超时");
-      applyWorkspaceSnapshot(snapshot, { preserveDirtyCurrent: false });
-    } catch (error) {
-      onError(getErrorMessage(error));
-    } finally {
-      workspacePhase.value = "idle";
-    }
-  }
-
-  async function createWorkspace(name: string) {
-    const targetName = name.trim();
-    if (!targetName || workspacePhase.value !== "idle") {
-      return;
-    }
-
-    workspacePhase.value = "creating";
-
-    try {
-      await saveCurrentScript();
-      const snapshot = await withTimeout(repository.createWorkspace(targetName), "创建工作区超时");
-      applyWorkspaceSnapshot(snapshot, { preserveDirtyCurrent: false });
-    } catch (error) {
-      onError(getErrorMessage(error));
-    } finally {
-      workspacePhase.value = "idle";
-    }
-  }
-
-  async function renameWorkspace(oldName: string, newName: string) {
-    const targetName = newName.trim();
-    if (!oldName || !targetName || workspacePhase.value !== "idle") {
-      return;
-    }
-
-    workspacePhase.value = "renaming";
-
-    try {
-      await saveCurrentScript();
-      const snapshot = await withTimeout(
-        repository.renameWorkspace(oldName, targetName),
-        "重命名工作区超时",
-      );
-      applyWorkspaceSnapshot(snapshot, { preserveDirtyCurrent: false });
-    } catch (error) {
-      onError(getErrorMessage(error));
-    } finally {
-      workspacePhase.value = "idle";
-    }
-  }
-
-  async function deleteWorkspace(name: string) {
-    if (!name || workspacePhase.value !== "idle") {
-      return;
-    }
-
-    workspacePhase.value = "deleting";
-
-    try {
-      const snapshot = await withTimeout(repository.deleteWorkspace(name), "删除工作区超时");
-      applyWorkspaceSnapshot(snapshot, { preserveDirtyCurrent: false });
-    } catch (error) {
-      onError(getErrorMessage(error));
-    } finally {
-      workspacePhase.value = "idle";
-    }
-  }
-
-  async function runCurrentScript() {
-    if (!currentFile.value || isRunning.value) {
-      return;
-    }
-
-    try {
-      await repository.saveAndRun(currentFile.value, codeContent.value);
-    } catch (error) {
-      isRunning.value = false;
-      onError(getErrorMessage(error));
-    }
-  }
-
-  function startAutoSync() {
-    if (syncTimer) {
-      return;
-    }
-
-    codeAutoSaveTimer = window.setInterval(() => {
-      if (workspacePhase.value !== "idle") {
-        return;
-      }
-
-      if (currentFile.value && codeContent.value !== lastLoadedCode.value) {
-        repository.saveScript(currentFile.value, codeContent.value)
-          .then(() => { lastLoadedCode.value = codeContent.value; })
-          .catch(() => {});
-      }
-    }, codeAutoSaveIntervalMs);
-
-    syncTimer = window.setInterval(() => {
-      if (workspacePhase.value !== "idle") {
-        return;
-      }
-
-      void syncWorkspace(currentFile.value, { preserveDirtyCurrent: true });
-    }, syncIntervalMs);
-  }
-
-  function stopAutoSync() {
-    if (codeAutoSaveTimer) {
-      window.clearInterval(codeAutoSaveTimer);
-      codeAutoSaveTimer = 0;
-    }
-
-    if (syncTimer) {
-      window.clearInterval(syncTimer);
-      syncTimer = 0;
-    }
-  }
-
-  onMounted(startAutoSync);
-  onUnmounted(stopAutoSync);
+  const workspaceActions = useWorkspaceActions({
+    applyWorkspaceSnapshot,
+    currentWorkspace,
+    onError,
+    repository,
+    saveCurrentScript: scriptFileActions.saveCurrentScript,
+    workspacePhase,
+  });
 
   watch(currentFile, (filename) => {
     selectionStorage.save(filename);
@@ -374,74 +130,32 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
 
   return {
     applyWorkspaceSnapshot,
-    closeCreateDialog,
+    closeCreateDialog: scriptFileActions.closeCreateDialog,
     codeContent,
-    createWorkspace,
-    createScript,
+    createWorkspace: workspaceActions.createWorkspace,
+    createScript: scriptFileActions.createScript,
     currentFile,
     currentWorkspace,
-    deleteScript,
-    deleteWorkspace,
-    deletingScriptName,
-    isCreateDialogOpen,
+    deleteScript: scriptFileActions.deleteScript,
+    deleteWorkspace: workspaceActions.deleteWorkspace,
+    deletingScriptName: scriptFileActions.deletingScriptName,
+    isCreateDialogOpen: scriptFileActions.isCreateDialogOpen,
     isCreatingScript,
     isDeletingScript,
     isRenamingScript,
-    openCreateDialog,
-    renameScript,
-    renameWorkspace,
-    restoreLastSelection,
-    runCurrentScript,
-    saveCurrentScript,
+    openCreateDialog: scriptFileActions.openCreateDialog,
+    renameScript: scriptFileActions.renameScript,
+    renameWorkspace: workspaceActions.renameWorkspace,
+    restoreLastSelection: scriptFileActions.restoreLastSelection,
+    runCurrentScript: scriptFileActions.runCurrentScript,
+    saveCurrentScript: scriptFileActions.saveCurrentScript,
     scripts,
-    selectScript,
-    switchWorkspace,
+    selectScript: scriptFileActions.selectScript,
+    switchWorkspace: workspaceActions.switchWorkspace,
     syncWorkspace,
-    typingScriptName,
-    updateCode,
+    typingScriptName: scriptFileActions.typingScriptName,
+    updateCode: scriptFileActions.updateCode,
     workspaces,
     workspacePhase,
   };
-}
-
-function computedPhase(target: WorkspacePhase, workspacePhase: Ref<WorkspacePhase>) {
-  return computed(() => workspacePhase.value === target);
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
-}
-
-function asString(value: unknown) {
-  return typeof value === "string" ? value : String(value ?? "");
-}
-
-function withTimeout<T>(promise: Promise<T>, message: string, timeoutMs = 8000): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timeout = window.setTimeout(() => {
-      reject(new Error(message));
-    }, timeoutMs);
-
-    promise
-      .then(resolve, reject)
-      .finally(() => window.clearTimeout(timeout));
-  });
-}
-
-function wait(timeoutMs: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, timeoutMs);
-  });
-}
-
-function getTypingDuration(filename: string) {
-  return Math.max(600, filename.length * 85);
-}
-
-function getDeletingDuration(filename: string) {
-  return Math.max(620, filename.length * 62);
 }
