@@ -1,20 +1,24 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import DesignCardInvalidBlock from "../../features/designCard/components/DesignCardInvalidBlock.vue";
+import { ref } from "vue";
 import type { DesignCard } from "../../features/designCard/services/designCardTypes";
 import type { AINoteSelectionPayload } from "../../features/ai/services/aiTypes";
 import type { NoteRenderBlock } from "../../features/notebook/rendering/noteForwarder";
 import type { NoteDocument } from "../../features/notebook/services/notebookStorage";
-import NoteContextMenu from "./NoteContextMenu.vue";
-import NoteDesignCardBlock from "./NoteDesignCardBlock.vue";
-import NoteImageBlock from "./NoteImageBlock.vue";
-import NoteImagePreview from "./NoteImagePreview.vue";
+import NoteDocumentArea from "./panel/NoteDocumentArea.vue";
+import NoteFloatingOverlays from "./panel/NoteFloatingOverlays.vue";
+import NotePanelShell from "./panel/NotePanelShell.vue";
+import { useNoteAIActions } from "./useNoteAIActions";
+import { useNoteContextActions } from "./useNoteContextActions";
 import { useNoteContextSelection } from "./useNoteContextSelection";
 import { useNoteDesignCardDelete } from "./useNoteDesignCardDelete";
+import { resolveImagePathFromEventTarget } from "./useNoteDomTargets";
 import { useNoteDrop } from "./useNoteDrop";
 import { useNoteImagePreview } from "./useNoteImagePreview";
 import { useNoteImageSelection } from "./useNoteImageSelection";
 import { useNoteMarkdownEditing } from "./useNoteMarkdownEditing";
+import { useNotePanelEffects } from "./useNotePanelEffects";
+import { useNotePanelWindow } from "./useNotePanelWindow";
+import { useNoteSelectionOrder } from "./useNoteSelectionOrder";
 
 const props = defineProps<{
   currentFile: string;
@@ -43,8 +47,8 @@ const notebookScroll = ref<HTMLElement | null>(null);
 const markdownSurface = ref<HTMLElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const markdownInput = ref<HTMLTextAreaElement | null>(null);
-let selectionOrder = 0;
 
+const { nextSelectionOrder } = useNoteSelectionOrder();
 const imagePreview = useNoteImagePreview();
 
 const imageSelection = useNoteImageSelection(() => props.document, nextSelectionOrder);
@@ -129,340 +133,119 @@ const {
   requestDesignCardDelete,
 } = useNoteDesignCardDelete((cardId) => emit("delete-design-card", cardId));
 
+const {
+  handleImageBlockContext,
+  previewContextImage,
+  removeContextImages,
+  toggleImageSelection,
+} = useNoteContextActions({
+  clearImageSelection,
+  closeContextMenu,
+  contextMenuImages,
+  ensureImageSelection,
+  handleContextMenu,
+  openPreview,
+  removeImage: (relativePath) => emit("remove-image", relativePath),
+  toggleImageSelection: imageSelection.toggleImageSelection,
+});
+
+const {
+  runAIDesign,
+  runAIGeneration,
+} = useNoteAIActions({
+  buildSelectionPayload,
+  closeContextMenu,
+  onDesign: (selection) => emit("ai-design", selection),
+  onGenerate: (selection) => emit("ai-generate", selection),
+});
+
+const {
+  handleNotebookClick,
+  handleNotebookPointerDownCapture,
+  handleWindowPointerDown,
+  handleWindowResize,
+} = useNotePanelWindow({
+  closeContextMenu,
+  focusMarkdownInputAtEnd,
+  maybeStopEditingFromPointerDown,
+  notebookRoot,
+  scheduleMarkdownInputResize,
+  shouldStartMarkdownEdit,
+  toggleImageSelection,
+});
+
 function openFilePicker() {
   fileInput.value?.click();
 }
 
-function previewContextImage() {
-  const image = contextMenuImages.value[0];
-  if (!image) {
-    return;
-  }
-
-  openPreview(image.dataUrl, image.alt || image.name);
-  closeContextMenu();
-}
-
-function removeContextImages() {
-  const images = contextMenuImages.value;
-  if (!images.length) {
-    return;
-  }
-
-  images.forEach((image) => {
-    emit("remove-image", image.relativePath);
-  });
-  clearImageSelection();
-  closeContextMenu();
-}
-
-function toggleImageSelection(relativePath: string) {
-  closeContextMenu();
-  imageSelection.toggleImageSelection(relativePath);
-}
-
-function handleNotebookPointerDownCapture(event: PointerEvent) {
-  if (shouldStartMarkdownEdit(event.target)) {
-    event.preventDefault();
-    focusMarkdownInputAtEnd();
-  }
-}
-
-function handleNotebookClick(event: MouseEvent) {
-  const relativePath = resolveImagePathFromEventTarget(event.target);
-  if (!relativePath) {
-    return;
-  }
-
-  event.preventDefault();
-  event.stopPropagation();
-  toggleImageSelection(relativePath);
-}
-
-function handleImageBlockContext(event: MouseEvent, relativePath: string) {
-  ensureImageSelection(relativePath);
-  handleContextMenu(event);
-}
-
-function runAIGeneration() {
-  runAIAction("generate");
-}
-
-function runAIDesign() {
-  runAIAction("design");
-}
-
-function runAIAction(kind: "generate" | "design") {
-  const selection = buildSelectionPayload();
-  if (!selection) {
-    closeContextMenu();
-    return;
-  }
-
-  if (kind === "design") {
-    emit("ai-design", selection);
-  } else {
-    emit("ai-generate", selection);
-  }
-  closeContextMenu();
-}
-
-
-function handleWindowResize() {
-  closeContextMenu();
-  scheduleMarkdownInputResize();
-}
-
-function handleWindowPointerDown(event: PointerEvent) {
-  const target = event.target;
-  if (!(target instanceof Node)) {
-    return;
-  }
-
-  if (isInsideFloatingNoteUI(target)) {
-    return;
-  }
-
-  maybeStopEditingFromPointerDown(target);
-
-  if (!notebookRoot.value?.contains(target)) {
-    closeContextMenu();
-  }
-}
-
-function nextSelectionOrder() {
-  selectionOrder += 1;
-  return selectionOrder;
-}
-
-function resolveImagePathFromEventTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
-    return "";
-  }
-
-  const imageElement = target.closest("[data-note-image-path]");
-  if (!(imageElement instanceof HTMLElement)) {
-    return "";
-  }
-
-  return imageElement.dataset.noteImagePath ?? "";
-}
-
-function isInsideFloatingNoteUI(target: Node) {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  return Boolean(
-    target.closest(".notebook-context-menu") ||
-      target.closest(".notebook-image-preview") ||
-      target.closest(".notebook-preview-toolbar"),
-  );
-}
-
-onMounted(() => {
-  window.addEventListener("pointerdown", handleWindowPointerDown, true);
-  window.addEventListener("resize", handleWindowResize);
-  scheduleMarkdownInputResize();
+useNotePanelEffects({
+  aiBusy: () => props.aiBusy,
+  cancelMarkdownInputResize,
+  clearDesignCardDeleteTimer,
+  clearUnavailableImageSelections,
+  closeContextMenu,
+  document: () => props.document,
+  handleWindowPointerDown,
+  handleWindowResize,
+  isOpen: () => props.isOpen,
+  scheduleMarkdownInputResize,
+  shouldShowMarkdownInput,
 });
-
-onBeforeUnmount(() => {
-  window.removeEventListener("pointerdown", handleWindowPointerDown, true);
-  window.removeEventListener("resize", handleWindowResize);
-  cancelMarkdownInputResize();
-  clearDesignCardDeleteTimer();
-});
-
-watch(
-  () => props.document.images,
-  () => {
-    clearUnavailableImageSelections();
-  },
-  { deep: true },
-);
-
-watch(
-  () => props.aiBusy,
-  (busy) => {
-    if (busy) {
-      closeContextMenu();
-    }
-  },
-);
-
-watch(
-  () => props.document.markdown,
-  () => {
-    void nextTick(scheduleMarkdownInputResize);
-  },
-);
-
-watch(
-  () => [shouldShowMarkdownInput.value, props.isOpen],
-  () => {
-    void nextTick(scheduleMarkdownInputResize);
-  },
-);
 </script>
 
 <template>
-  <aside ref="notebookRoot" class="notebook-pane" :class="{ collapsed: !isOpen }">
-    <button
-      class="notebook-spine"
-      type="button"
-      :title="isOpen ? '收起笔记区' : '展开笔记区'"
-      :aria-label="isOpen ? '收起笔记区' : '展开笔记区'"
-      @click="emit('toggle')"
-    >
-      <svg class="notebook-spine-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          v-if="isOpen"
-          d="m14 7-5 5 5 5"
-          fill="none"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.7"
-        />
-        <path
-          v-else
-          d="m10 7 5 5-5 5"
-          fill="none"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.7"
-        />
-      </svg>
-    </button>
+  <NotePanelShell
+    v-model:notebook-root="notebookRoot"
+    :is-open="isOpen"
+    @attach="openFilePicker"
+    @toggle="emit('toggle')"
+  >
+    <NoteDocumentArea
+      v-model:notebook-scroll="notebookScroll"
+      v-model:markdown-surface="markdownSurface"
+      v-model:markdown-input="markdownInput"
+      v-model:file-input="fileInput"
+      :armed-design-card-delete-id="armedDesignCardDeleteId"
+      :current-file="currentFile"
+      :editable-markdown="editableMarkdown"
+      :render-blocks="renderBlocks"
+      :selected-image-paths="selectedImagePaths"
+      :should-show-markdown-input="shouldShowMarkdownInput"
+      @delete-design-card="requestDesignCardDelete"
+      @drag-state="setDragging"
+      @drop="handleDrop"
+      @focus-markdown="handleMarkdownFocus"
+      @image-context="handleImageBlockContext"
+      @image-preview="openPreview"
+      @image-remove="emit('remove-image', $event)"
+      @image-select="toggleImageSelection"
+      @input-markdown="updateMarkdown"
+      @open-design-card="emit('open-design-card', $event)"
+      @paste="handlePaste"
+      @pick-images="pickImages"
+      @pointerdown-capture="handleNotebookPointerDownCapture"
+      @select-text="handleTextSelectionChange"
+      @surface-click="handleNotebookClick"
+      @surface-context="handleContextMenu"
+      @write-more="focusMarkdownInputAtEnd"
+    />
 
-    <div v-show="isOpen" class="notebook-panel-shell">
-      <button
-        class="notebook-attach-button"
-        type="button"
-        title="添加图片"
-        aria-label="添加图片"
-        @click="openFilePicker"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M8 12.5 13.5 7a3.2 3.2 0 1 1 4.5 4.5l-7.6 7.6a4.4 4.4 0 0 1-6.2-6.2l8-8"
-            fill="none"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.6"
-          />
-        </svg>
-      </button>
-      <div
-        ref="notebookScroll"
-        class="notebook-scroll"
-        @pointerdown.capture="handleNotebookPointerDownCapture"
-        @paste="handlePaste"
-        @dragenter.prevent="setDragging(true)"
-        @dragover.prevent="setDragging(true)"
-        @dragleave.prevent="setDragging(false)"
-        @drop="handleDrop"
-        @click="handleNotebookClick"
-        @contextmenu="handleContextMenu"
-        @mouseup="handleTextSelectionChange"
-        @keyup="handleTextSelectionChange"
-      >
-        <section class="notebook-document-flow">
-          <div
-            ref="markdownSurface"
-            class="notebook-markdown-surface"
-            :class="{ editing: shouldShowMarkdownInput }"
-          >
-            <textarea
-              v-show="shouldShowMarkdownInput"
-              ref="markdownInput"
-              class="notebook-markdown-input"
-              :value="editableMarkdown"
-              placeholder=""
-              rows="1"
-              :disabled="!currentFile"
-              @focus="handleMarkdownFocus"
-              @input="updateMarkdown"
-              @select="handleTextSelectionChange"
-              @click.stop
-            />
-
-            <template v-if="!shouldShowMarkdownInput">
-              <template v-for="block in renderBlocks" :key="block.id">
-                <article
-                  v-if="block.kind === 'markdown'"
-                  class="notebook-markdown-rendered"
-                  v-html="block.html"
-                ></article>
-                <NoteImageBlock
-                  v-else-if="block.kind === 'image'"
-                  :block="block"
-                  :selected="selectedImagePaths.has(block.image.relativePath)"
-                  @preview="openPreview"
-                  @remove="emit('remove-image', $event)"
-                  @select="toggleImageSelection"
-                  @context="handleImageBlockContext"
-                />
-                <NoteDesignCardBlock
-                  v-else-if="block.card"
-                  :card="block.card"
-                  :armed="armedDesignCardDeleteId === block.card.id"
-                  @delete="requestDesignCardDelete"
-                  @open="emit('open-design-card', $event)"
-                />
-                <DesignCardInvalidBlock v-else :card-id="block.cardId" />
-              </template>
-            </template>
-
-            <button
-              v-if="!shouldShowMarkdownInput && currentFile"
-              class="notebook-continue-writing"
-              type="button"
-              @click.stop="focusMarkdownInputAtEnd"
-            >
-              继续写点什么
-            </button>
-          </div>
-
-          <input
-            ref="fileInput"
-            class="notebook-file-input"
-            type="file"
-            accept="image/*"
-            multiple
-            @change="pickImages"
-          />
-
-        </section>
-      </div>
-    </div>
-
-    <Teleport to="body">
-      <Transition name="floating-menu" appear>
-        <NoteContextMenu
-          v-if="contextMenu && !aiBusy"
-          :position="contextMenu"
-          :images="contextMenuImages"
-          @preview="previewContextImage"
-          @design="runAIDesign"
-          @generate="runAIGeneration"
-          @remove="removeContextImages"
-        />
-      </Transition>
-
-      <Transition name="preview-dialog" appear>
-        <NoteImagePreview
-          v-if="previewImage"
-          :image="previewImage"
-          :scale="previewScale"
-          @close="closePreview"
-          @wheel="handlePreviewWheel"
-          @zoom="zoomPreview"
-          @reset="resetPreviewZoom"
-        />
-      </Transition>
-    </Teleport>
-  </aside>
+    <template #overlays>
+      <NoteFloatingOverlays
+        :ai-busy="aiBusy"
+        :context-menu="contextMenu"
+        :context-menu-images="contextMenuImages"
+        :preview-image="previewImage"
+        :preview-scale="previewScale"
+        @close-preview="closePreview"
+        @design="runAIDesign"
+        @generate="runAIGeneration"
+        @preview-context-image="previewContextImage"
+        @remove-context-images="removeContextImages"
+        @reset-preview="resetPreviewZoom"
+        @wheel-preview="handlePreviewWheel"
+        @zoom-preview="zoomPreview"
+      />
+    </template>
+  </NotePanelShell>
 </template>
