@@ -383,6 +383,26 @@ function updateCardViewportWidth(view: EditorView) {
   });
 }
 
+function handleSurfaceDragOver(event: DragEvent) {
+  if (!hasDesignCardDragData(event.dataTransfer)) return;
+  event.preventDefault();
+  isDesignCardDraggingOver.value = true;
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+}
+
+function handleSurfaceDrop(event: DragEvent) {
+  const dragData = readDesignCardDragData(event.dataTransfer);
+  if (!dragData) return;
+  if (event.target instanceof Element && event.target.closest(".cm-content, .cm-editor")) return;
+  event.preventDefault();
+  isDesignCardDraggingOver.value = false;
+  const view = editorView.value;
+  if (!view) return;
+  const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+  const afterLine = pos === null ? getViewportAnchorLine(view) : view.state.doc.lineAt(pos).number;
+  emit("place-design-card", { cardId: dragData.cardId, afterLine });
+}
+
 </script>
 
 <template>
@@ -391,6 +411,11 @@ function updateCardViewportWidth(view: EditorView) {
     :class="{ disabled: disabled, streaming: isStreaming, 'dragging-design-card': isDesignCardDraggingOver }"
     @dragleave="handleDragLeave"
   >
-    <div ref="editorRoot" class="code-editor-surface" />
+    <div
+      ref="editorRoot"
+      class="code-editor-surface"
+      @dragover="handleSurfaceDragOver"
+      @drop="handleSurfaceDrop"
+    />
   </section>
 </template>

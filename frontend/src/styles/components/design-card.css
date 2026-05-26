@@ -10,7 +10,7 @@
   display: block;
   width: 100%;
   max-width: 100%;
-  margin: 0;
+  margin: 12px 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -19,7 +19,12 @@
   transition:
     opacity 160ms ease,
     transform 180ms ease,
-    filter 180ms ease;
+    filter 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.notebook-design-card-block:hover {
+  box-shadow: 0 2px 18px color-mix(in srgb, var(--text), transparent 94%);
 }
 
 .design-card-inline-block::after,
