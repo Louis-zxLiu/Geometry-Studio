@@ -19,7 +19,6 @@ const emit = defineEmits<{
   "delete-design-card": [cardId: string];
   "move-design-card": [payload: { cardId: string; delta: number }];
   "open-design-card": [cardId: string];
-  "optimize-design-card": [payload: { cardId: string; position: { x: number; y: number } }];
   "place-design-card": [payload: { cardId: string; afterLine: number }];
   "update:code": [code: string];
 }>();
@@ -141,7 +140,6 @@ function handleDrop(event: DragEvent) {
               @delete="emit('delete-design-card', $event)"
               @move="emit('move-design-card', $event)"
               @open="emit('open-design-card', $event)"
-              @optimize="emit('optimize-design-card', $event)"
             />
           </div>
           <pre

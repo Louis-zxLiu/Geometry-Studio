@@ -37,7 +37,6 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
   const activeCardId = ref("");
   const isReviewRoomOpen = computed(() => activeCardId.value !== "");
   const optimizeDialogCardId = ref("");
-  const contextMenu = ref<{ cardId: string; x: number; y: number } | null>(null);
   const saveState = ref<"idle" | "saving" | "saved">("idle");
 
   let loadingToken = 0;
@@ -118,32 +117,18 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     }
 
     activeCardId.value = cardId;
-    contextMenu.value = null;
   }
 
   function closeReviewRoom() {
     activeCardId.value = "";
   }
 
-  function openContextMenu(cardId: string, position: { x: number; y: number }) {
-    if (!cards.value.some((card) => card.id === cardId)) {
-      return;
-    }
-
-    contextMenu.value = { cardId, ...position };
-  }
-
-  function closeContextMenu() {
-    contextMenu.value = null;
-  }
-
-  function openOptimizeDialog(cardId = contextMenu.value?.cardId ?? activeCardId.value) {
+  function openOptimizeDialog(cardId = activeCardId.value) {
     if (!cardId || options.aiActivity.isAIGenerating.value) {
       return;
     }
 
     optimizeDialogCardId.value = cardId;
-    contextMenu.value = null;
   }
 
   function closeOptimizeDialog() {
@@ -349,10 +334,8 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
   return {
     activeCard,
     cards: sortedCards,
-    closeContextMenu,
     closeOptimizeDialog,
     closeReviewRoom,
-    contextMenu,
     deleteCard: removeCard,
     deleteCardFromNote: (cardId: string) => removeCard(cardId, { removeNoteReferences: true }),
     flushPlanSave,
@@ -361,7 +344,6 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     isOptimizeDialogOpen,
     isReviewRoomOpen,
     moveCard,
-    openContextMenu,
     openOptimizeDialog,
     openReviewRoom,
     placements,

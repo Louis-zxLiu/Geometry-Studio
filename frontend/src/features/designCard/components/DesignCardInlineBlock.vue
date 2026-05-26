@@ -11,7 +11,6 @@ const emit = defineEmits<{
   delete: [cardId: string];
   move: [payload: { cardId: string; delta: number }];
   open: [cardId: string];
-  optimize: [payload: { cardId: string; position: { x: number; y: number } }];
 }>();
 
 const armedDeleteId = ref("");
@@ -19,12 +18,6 @@ let deleteTimer = 0;
 
 function open(cardId: string) {
   emit("open", cardId);
-}
-
-function openContextMenu(event: MouseEvent, cardId: string) {
-  event.preventDefault();
-  event.stopPropagation();
-  emit("optimize", { cardId, position: { x: event.clientX, y: event.clientY } });
 }
 
 function startDrag(event: DragEvent, cardId: string) {
@@ -57,28 +50,34 @@ function requestDelete(cardId: string) {
     class="design-card-inline-block"
     draggable="true"
     @click.stop="open(card.id)"
-    @contextmenu="openContextMenu($event, card.id)"
     @dragstart="startDrag($event, card.id)"
   >
-    <header class="design-card-inline-header">
-      <span class="design-card-inline-title">{{ card.title || card.id }}</span>
-      <span class="design-card-inline-id">{{ card.id }}</span>
-    </header>
-
     <DesignCardSvgView :svg="card.svg" />
 
     <footer class="design-card-inline-actions" @click.stop>
-      <button type="button" @click="emit('optimize', { cardId: card.id, position: { x: $event.clientX, y: $event.clientY } })">
-        AI优化
+      <button
+        class="design-card-icon-action"
+        type="button"
+        title="放大查看"
+        @click="open(card.id)"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="5.5" />
+          <path d="m15 15 5 5" />
+        </svg>
       </button>
       <button
-        class="design-card-trash"
+        class="design-card-icon-action design-card-trash"
         :class="{ armed: armedDeleteId === card.id }"
         type="button"
         :title="armedDeleteId === card.id ? '再次点击确认删除' : '删除设计卡片'"
         @click="requestDelete(card.id)"
       >
-        删除
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 7h12" />
+          <path d="m9 7 .6-2h4.8L15 7" />
+          <path d="M8 7v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V7" />
+        </svg>
       </button>
     </footer>
   </article>

@@ -13,57 +13,29 @@
   pointer-events: auto;
 }
 
-.design-card-inline-block {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--line-strong), transparent 68%);
-  background: color-mix(in srgb, var(--surface), white 12%);
-  box-shadow: 0 14px 36px rgba(20, 20, 20, 0.08);
+.design-card-inline-block,
+.notebook-design-card-block {
+  position: relative;
+  display: block;
+  width: min(86%, 620px);
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
   cursor: pointer;
   animation: design-card-float-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.design-card-inline-header,
-.design-card-inline-actions,
-.design-card-review-header,
-.design-card-review-actions {
-  display: flex;
-  align-items: center;
-}
-
-.design-card-inline-header {
-  justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
-}
-
-.design-card-inline-title {
-  overflow: hidden;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.design-card-inline-id {
-  color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0.08em;
+.editor-design-card.design-card-inline-block {
+  width: min(520px, calc(100% - 28px));
+  margin: 0;
 }
 
 .design-card-svg-view {
-  display: grid;
-  place-items: center;
-  min-height: 140px;
+  display: block;
+  min-height: 0;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--muted), transparent 94%) 1px, transparent 1px),
-    linear-gradient(color-mix(in srgb, var(--muted), transparent 94%) 1px, transparent 1px),
-    color-mix(in srgb, var(--surface-soft), white 36%);
-  background-size: 18px 18px;
+  background: transparent;
 }
 
 .design-card-svg-view svg {
@@ -72,33 +44,81 @@
   height: auto;
 }
 
+.design-card-inline-actions,
+.notebook-design-card-action {
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 170ms ease,
+    transform 170ms ease;
+}
+
+.design-card-inline-block:hover .design-card-inline-actions,
+.design-card-inline-block:focus-within .design-card-inline-actions,
+.notebook-design-card-block:hover .notebook-design-card-action,
+.notebook-design-card-block:focus-within .notebook-design-card-action {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .design-card-inline-actions {
-  justify-content: flex-end;
-  gap: 8px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.design-card-inline-actions button,
-.design-card-context-action,
-.design-card-review-actions button {
-  min-height: 28px;
-  padding: 0 10px;
-  background: color-mix(in srgb, var(--surface-soft), white 22%);
-  color: var(--text);
+.design-card-icon-action,
+.notebook-design-card-action {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: rgba(255, 255, 255, 0.72);
+  color: color-mix(in srgb, var(--text), transparent 24%);
   cursor: pointer;
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
 }
 
-.design-card-inline-actions button:hover,
-.design-card-context-action:hover,
-.design-card-review-actions button:hover {
-  background: color-mix(in srgb, var(--surface-soft), white 38%);
+.design-card-icon-action:hover,
+.notebook-design-card-action:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text);
+}
+
+.design-card-icon-action svg,
+.notebook-design-card-action svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 1.45;
 }
 
 .design-card-trash.armed,
 .notebook-design-card-remove.armed {
   background: #b74848;
   color: #fff;
+}
+
+.notebook-design-card-remove,
+.notebook-design-card-zoom {
+  position: absolute;
+  top: 8px;
+}
+
+.notebook-design-card-remove {
+  right: 8px;
+}
+
+.notebook-design-card-zoom {
+  right: 44px;
 }
 
 .design-card-context-menu {
@@ -114,7 +134,20 @@
 
 .design-card-context-action {
   width: 100%;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   text-align: left;
+}
+
+.design-card-context-action:hover {
+  background: color-mix(in srgb, var(--surface-soft), white 28%);
 }
 
 .design-card-review-backdrop {
@@ -136,6 +169,12 @@
   box-shadow: 0 30px 110px rgba(0, 0, 0, 0.22);
 }
 
+.design-card-review-header,
+.design-card-review-actions {
+  display: flex;
+  align-items: center;
+}
+
 .design-card-review-header {
   justify-content: space-between;
   gap: 18px;
@@ -143,31 +182,44 @@
   border-bottom: 1px solid color-mix(in srgb, var(--line-strong), transparent 74%);
 }
 
-.design-card-review-header h2,
-.design-card-review-kicker {
-  margin: 0;
-}
-
-.design-card-review-kicker {
-  color: var(--muted);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-}
-
 .design-card-review-header h2 {
-  margin-top: 4px;
-  font-size: 18px;
-  font-weight: 600;
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.22rem, 1.92vw, 1.68rem);
+  font-weight: 500;
+  letter-spacing: 0.08em;
 }
 
 .design-card-review-actions {
-  gap: 10px;
+  gap: 12px;
+}
+
+.design-card-review-actions button {
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.design-card-review-actions button:hover {
+  color: color-mix(in srgb, var(--text), var(--muted) 34%);
+}
+
+.design-card-review-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .design-card-save-state {
   min-width: 42px;
   color: var(--muted);
   font-size: 12px;
+  letter-spacing: 0.06em;
 }
 
 .design-card-review-body {
@@ -207,32 +259,14 @@
   line-height: 1.8;
 }
 
-.notebook-design-card-block,
 .design-card-invalid-block {
-  position: relative;
+  display: grid;
+  gap: 4px;
   width: min(86%, 620px);
   margin: 0 auto;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--line-strong), transparent 72%);
   background: color-mix(in srgb, var(--surface), white 10%);
-  cursor: pointer;
-}
-
-.notebook-design-card-remove {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  min-height: 28px;
-  padding: 0 10px;
-  background: rgba(255, 255, 255, 0.82);
-  color: color-mix(in srgb, var(--text), transparent 28%);
-  cursor: pointer;
-  font-size: 11px;
-}
-
-.design-card-invalid-block {
-  display: grid;
-  gap: 4px;
   color: var(--muted);
   cursor: default;
 }

@@ -26,7 +26,6 @@ function updatePlan(event: Event) {
       <section class="design-card-review-room" role="dialog" aria-modal="true">
         <header class="design-card-review-header">
           <div>
-            <p class="design-card-review-kicker">审片室</p>
             <h2>{{ card.title || card.id }}</h2>
           </div>
           <div class="design-card-review-actions">

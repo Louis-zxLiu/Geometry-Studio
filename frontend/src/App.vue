@@ -5,7 +5,6 @@ import AISettingsDialog from "./components/AISettingsDialog.vue";
 import CodeAIOptimizeContextMenu from "./components/codeAIOptimize/CodeAIOptimizeContextMenu.vue";
 import CodeAIOptimizeDialog from "./components/codeAIOptimize/CodeAIOptimizeDialog.vue";
 import CodeAIVersionRail from "./components/codeAIOptimize/CodeAIVersionRail.vue";
-import DesignCardContextMenu from "./features/designCard/components/DesignCardContextMenu.vue";
 import DesignCardOptimizeDialog from "./features/designCard/components/DesignCardOptimizeDialog.vue";
 import DesignCardReviewRoom from "./features/designCard/components/DesignCardReviewRoom.vue";
 import EditorPane from "./components/EditorPane.vue";
@@ -80,7 +79,6 @@ const theme = proxyRefs(useTheme());
             @delete-design-card="workspace.deleteDesignCard"
             @move-design-card="workspace.moveDesignCard"
             @open-design-card="workspace.openDesignCardReviewRoom"
-            @optimize-design-card="workspace.openDesignCardContextMenu($event.cardId, $event.position)"
             @place-design-card="workspace.setDesignCardPlacement($event.cardId, $event.afterLine)"
             @update:code="workspace.updateCode"
           />
@@ -139,14 +137,6 @@ const theme = proxyRefs(useTheme());
       :pending="workspace.isAIGenerating"
       @cancel="workspace.closeCodeAIOptimizeDialog"
       @confirm="workspace.submitCodeAIOptimize"
-    />
-
-    <DesignCardContextMenu
-      v-if="workspace.designCardContextMenu"
-      :position="workspace.designCardContextMenu"
-      :disabled="workspace.isAIGenerating || workspace.isRunning"
-      @close="workspace.closeDesignCardContextMenu"
-      @optimize="workspace.openDesignCardOptimizeDialog"
     />
 
     <DesignCardOptimizeDialog

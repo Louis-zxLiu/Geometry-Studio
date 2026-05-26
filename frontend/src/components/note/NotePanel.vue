@@ -740,13 +740,28 @@ watch(
                 >
                   <DesignCardSvgView :svg="block.card.svg" />
                   <button
-                    class="notebook-design-card-remove"
+                    class="notebook-design-card-action notebook-design-card-remove"
                     :class="{ armed: armedDesignCardDeleteId === block.card.id }"
                     type="button"
                     :title="armedDesignCardDeleteId === block.card.id ? '再次点击确认删除' : '删除设计卡片'"
                     @click.stop="requestDesignCardDelete(block.card.id)"
                   >
-                    删除
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M6 7h12" />
+                      <path d="m9 7 .6-2h4.8L15 7" />
+                      <path d="M8 7v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V7" />
+                    </svg>
+                  </button>
+                  <button
+                    class="notebook-design-card-action notebook-design-card-zoom"
+                    type="button"
+                    title="放大查看"
+                    @click.stop="emit('open-design-card', block.card.id)"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="10.5" cy="10.5" r="5.5" />
+                      <path d="m15 15 5 5" />
+                    </svg>
                   </button>
                 </article>
                 <DesignCardInvalidBlock v-else :card-id="block.cardId" />
