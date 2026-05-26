@@ -9,6 +9,10 @@ type ScriptRepository = {
     cancelled?: boolean;
     workspace?: WorkspaceSnapshotLike;
   }>;
+  importScenePackageFromPath: (path: string) => Promise<{
+    cancelled?: boolean;
+    workspace?: WorkspaceSnapshotLike;
+  }>;
 };
 
 type ScriptWorkspace = {
@@ -103,10 +107,37 @@ export function usePackageTransfer(options: PackageTransferOptions) {
     }
   }
 
+  async function importScenePackageFromPath(path: string) {
+    if (packageTransferPendingAction.value !== "" || !path) {
+      return;
+    }
+
+    packageTransferPendingAction.value = "import";
+    packageTransferMessage.value = "";
+
+    try {
+      await options.scriptWorkspace.saveCurrentScript();
+      await options.noteWorkspace.flushPendingSave(options.scriptWorkspace.currentFile.value);
+      const result = await options.scriptRepository.importScenePackageFromPath(path);
+      if (result?.workspace) {
+        options.scriptWorkspace.applyWorkspaceSnapshot(result.workspace);
+        options.noteWorkspace.hydrateFromScriptDocument(result.workspace.document ?? {});
+        packageTransferMessage.value = `已导入场景 ${result.workspace.currentFile ?? ""}`.trim();
+      }
+    } catch (error) {
+      const message = getErrorMessage(error);
+      packageTransferMessage.value = message;
+      options.onError(message);
+    } finally {
+      packageTransferPendingAction.value = "";
+    }
+  }
+
   return {
     closePackageTransferDialog,
     exportCurrentScenePackage,
     importScenePackage,
+    importScenePackageFromPath,
     isPackageTransferDialogOpen,
     openPackageTransferDialog,
     packageTransferMessage,

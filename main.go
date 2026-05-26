@@ -46,6 +46,9 @@ func main() {
 		MinWidth:  1180,
 		MinHeight: 760,
 		Assets:    assets,
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop: true,
+		},
 		Bind: []interface{}{
 			app,
 		},

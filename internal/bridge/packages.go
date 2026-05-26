@@ -78,6 +78,27 @@ func (a *App) ImportScenePackage() (ImportSceneResult, error) {
 		return ImportSceneResult{Cancelled: true}, nil
 	}
 
+	return a.importScenePackageFromPath(archivePath)
+}
+
+func (a *App) ImportScenePackageFromPath(archivePath string) (ImportSceneResult, error) {
+	if err := a.requireContext(); err != nil {
+		return ImportSceneResult{}, err
+	}
+	if a.runner.IsRunning() {
+		return ImportSceneResult{}, errors.New("请先停止当前 Python 进程，再导入场景")
+	}
+	if strings.TrimSpace(archivePath) == "" {
+		return ImportSceneResult{}, errors.New("未选择 .pkc 场景包")
+	}
+	if !strings.EqualFold(filepath.Ext(archivePath), ".pkc") {
+		return ImportSceneResult{}, errors.New("只能导入 .pkc 场景包")
+	}
+
+	return a.importScenePackageFromPath(archivePath)
+}
+
+func (a *App) importScenePackageFromPath(archivePath string) (ImportSceneResult, error) {
 	sceneName, err := a.fileStore.ImportScenePackage(archivePath)
 	if err != nil {
 		return ImportSceneResult{}, err

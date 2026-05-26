@@ -28,6 +28,7 @@ import { useAIActivityStatus } from "./useAIActivityStatus";
 import { useAINoteGeneration } from "./useAINoteGeneration";
 import { useCodeStreaming } from "./useCodeStreaming";
 import { usePackageTransfer } from "./usePackageTransfer";
+import { usePkcDropImport } from "./usePkcDropImport";
 import { useWorkspaceLifecycle } from "./useWorkspaceLifecycle";
 import {
   checkForUpdates,
@@ -120,6 +121,9 @@ export function usePlotWorkspace() {
     onError: runErrorDialog.openRunErrorDialog,
     scriptRepository,
     scriptWorkspace,
+  });
+  usePkcDropImport({
+    onImport: packageTransfer.importScenePackageFromPath,
   });
 
   function insertDesignCardReferenceIntoNote(payload: {
