@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from "vue";
+import { computed, ref } from "vue";
 import type { DesignCard } from "../services/designCardTypes";
 import DesignCardSvgView from "./DesignCardSvgView.vue";
 
@@ -18,9 +18,7 @@ const emit = defineEmits<{
 
 const lineCount = computed(() => {
   if (!props.card?.plan) return 1;
-  // 确保末尾换行也能正确计算行数
-  const lines = props.card.plan.split("\n");
-  return lines.length;
+  return props.card.plan.split("\n").length;
 });
 
 const scrollTop = ref(0);
@@ -29,16 +27,6 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null);
 function handleScroll(event: Event) {
   scrollTop.value = (event.target as HTMLTextAreaElement).scrollTop;
 }
-
-// 自动跟踪最新行
-watch(() => props.card?.plan, () => {
-  nextTick(() => {
-    if (textareaRef.value) {
-      textareaRef.value.scrollTop = textareaRef.value.scrollHeight;
-      scrollTop.value = textareaRef.value.scrollTop;
-    }
-  });
-});
 
 function updatePlan(event: Event) {
   emit("update:plan", (event.target as HTMLTextAreaElement).value);
