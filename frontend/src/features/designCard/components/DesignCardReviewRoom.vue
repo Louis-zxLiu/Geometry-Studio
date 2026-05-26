@@ -42,7 +42,7 @@ function updatePlan(event: Event) {
             {{ saveState === "saving" ? "保存中" : saveState === "saved" ? "已保存" : "" }}
           </span>
           <button type="button" class="zen-action-link" :disabled="pending" @click="emit('optimize', card.id)">
-            AI优化
+            {{ pending ? "优化中" : "AI优化" }}
           </button>
           <button type="button" class="zen-action-link close-trigger" @click="emit('close')">
             关闭
