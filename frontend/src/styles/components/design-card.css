@@ -1,15 +1,6 @@
-.design-card-placeholder-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  will-change: transform;
-}
-
 .editor-design-card {
-  position: absolute;
-  left: 8px;
-  width: min(520px, calc(100% - 28px));
+  width: 100%;
+  max-width: 100%;
   pointer-events: auto;
 }
 
@@ -17,13 +8,18 @@
 .notebook-design-card-block {
   position: relative;
   display: block;
-  width: min(86%, 620px);
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
-  cursor: pointer;
+  cursor: grab;
   animation: design-card-float-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition:
+    opacity 160ms ease,
+    transform 180ms ease,
+    filter 180ms ease;
 }
 
 .design-card-inline-block::after,
@@ -45,21 +41,37 @@
 }
 
 .editor-design-card.design-card-inline-block {
-  width: min(520px, calc(100% - 28px));
+  width: 100%;
+  max-width: 100%;
   margin: 0;
 }
 
+.editor-design-card.design-card-dragging {
+  opacity: 0.58;
+  transform: translateY(-4px) scale(0.992);
+  filter: drop-shadow(0 16px 26px rgba(35, 35, 35, 0.1));
+  cursor: grabbing;
+}
+
+.design-card-static-svg-view,
 .design-card-svg-view {
   display: block;
+  width: 100%;
   min-height: 0;
   overflow: hidden;
   background: transparent;
 }
 
+.design-card-static-svg-view svg,
 .design-card-svg-view svg {
   display: block;
-  max-width: 100%;
+  width: 100%;
+  max-width: none;
   height: auto;
+}
+
+.design-card-static-svg-view.has-intrinsic-ratio svg {
+  height: 100%;
 }
 
 .design-card-inline-actions,
@@ -175,128 +187,170 @@
   z-index: 980;
   display: grid;
   place-items: center;
-  padding: 0;
-  background:
-    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.34), transparent 34%),
-    rgba(20, 20, 20, 0.38);
-  backdrop-filter: blur(18px) saturate(1.18);
+  background: color-mix(in srgb, var(--surface), transparent 24%);
+  backdrop-filter: blur(28px);
 }
 
-.design-card-review-room {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+.design-card-review-zen {
+  position: relative;
   width: 100vw;
   height: 100vh;
-  background: color-mix(in srgb, var(--surface), transparent 18%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
-  backdrop-filter: blur(24px) saturate(1.1);
-}
-
-.design-card-review-header,
-.design-card-review-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  padding: 32px 32px 32px 0;
+  box-sizing: border-box;
 }
 
-.design-card-review-header {
-  justify-content: space-between;
-  gap: 18px;
-  padding: 22px 30px 18px;
-  border-bottom: 1px solid color-mix(in srgb, var(--line-strong), transparent 84%);
+.design-card-zen-global-actions {
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  z-index: 100;
 }
 
-.design-card-review-header h2 {
-  margin: 0;
-  color: var(--text);
-  font-size: clamp(1.22rem, 1.92vw, 1.68rem);
-  font-weight: 500;
-  letter-spacing: 0.08em;
+.design-card-review-content {
+  display: grid;
+  grid-template-columns: 1fr 620px;
+  gap: 24px;
+  width: 100%;
+  height: 100%;
 }
 
-.design-card-review-actions {
-  gap: 12px;
+.design-card-zen-preview,
+.design-card-zen-editor {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  background: color-mix(in srgb, var(--surface), transparent 82%);
+  backdrop-filter: blur(32px);
+  overflow: hidden;
 }
 
-.design-card-review-actions button {
-  min-height: 30px;
+.design-card-zen-label {
+  position: absolute;
+  top: 16px;
+  left: 24px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.6;
+  z-index: 10;
+}
+
+.design-card-svg-view-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.design-card-svg-view-canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease-out;
+  will-change: transform;
+}
+
+.design-card-svg-view-canvas svg {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  filter: none;
+}
+
+.zen-action-link {
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--text);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
   cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  opacity: 0.5;
+  transition: opacity 180ms ease;
 }
 
-.design-card-review-actions button:hover {
-  color: color-mix(in srgb, var(--text), var(--muted) 34%);
+.zen-action-link:hover:not(:disabled) {
+  opacity: 1;
 }
 
-.design-card-review-actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.42;
+.zen-action-link.close-trigger {
+  font-weight: 400;
+  color: var(--text);
 }
 
 .design-card-save-state {
-  min-width: 42px;
-  color: var(--muted);
   font-size: 12px;
-  letter-spacing: 0.06em;
+  color: var(--muted);
+  letter-spacing: 0.1em;
 }
 
-.design-card-review-body {
+.design-card-zen-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.82fr);
-  min-height: 0;
+  grid-template-columns: 42px 1fr;
+  height: 100%;
+  padding: 0;
 }
 
-.design-card-preview-pane,
-.design-card-plan-pane {
-  min-width: 0;
-  min-height: 0;
+.design-card-zen-gutter {
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
 }
 
-.design-card-preview-pane {
-  display: grid;
-  place-items: center;
-  padding: 34px;
-  overflow: auto;
-  border-right: 1px solid color-mix(in srgb, var(--line-strong), transparent 84%);
-  background: color-mix(in srgb, var(--workspace-bg), transparent 34%);
+.zen-gutter-inner {
+  display: flex;
+  flex-direction: column;
+  padding-top: 42px;
+  will-change: transform;
 }
 
-.design-card-preview-pane .design-card-svg-view {
-  display: grid;
-  place-items: center;
-  min-height: 100%;
-  width: 100%;
-}
-
-.design-card-preview-pane .design-card-svg-view svg {
-  max-width: min(88%, 920px);
-  max-height: calc(100vh - 150px);
+.zen-line-number {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--muted);
+  opacity: 0.3;
+  text-align: left;
+  padding-left: 4px;
 }
 
 .design-card-plan-input {
   width: 100%;
   height: 100%;
-  padding: 24px;
+  padding: 40px 20px 160px 0;
   border: 0;
   outline: 0;
   resize: none;
   background: transparent;
   color: var(--text);
-  font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
-  font-size: 13px;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 15px;
   line-height: 1.8;
+  scrollbar-width: none;
+}
+
+.design-card-plan-input::-webkit-scrollbar {
+  display: none;
 }
 
 .design-card-invalid-block {
   display: grid;
   gap: 4px;
-  width: min(86%, 620px);
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--line-strong), transparent 72%);
   background: color-mix(in srgb, var(--surface), white 10%);

@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import {
+  writeDesignCardDragData,
+  type DesignCardDragSource,
+} from "../services/designCardDragData";
 import type { DesignCard } from "../services/designCardTypes";
-import DesignCardSvgView from "./DesignCardSvgView.vue";
+import DesignCardStaticSvgView from "./DesignCardStaticSvgView.vue";
 
-defineProps<{
+withDefaults(defineProps<{
   card: DesignCard;
-}>();
+  dragSource?: DesignCardDragSource;
+}>(), {
+  dragSource: "editor",
+});
 
 const emit = defineEmits<{
   delete: [cardId: string];
@@ -20,11 +27,10 @@ function open(cardId: string) {
   emit("open", cardId);
 }
 
-function startDrag(event: DragEvent, cardId: string) {
-  event.dataTransfer?.setData("application/x-design-card-id", cardId);
-  event.dataTransfer?.setData("text/plain", cardId);
+function startDrag(event: DragEvent, cardId: string, source: DesignCardDragSource) {
+  writeDesignCardDragData(event.dataTransfer, { cardId, source });
   if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.effectAllowed = "move";
   }
 }
 
@@ -50,9 +56,9 @@ function requestDelete(cardId: string) {
     class="design-card-inline-block"
     draggable="true"
     @click.stop="open(card.id)"
-    @dragstart="startDrag($event, card.id)"
+    @dragstart="startDrag($event, card.id, dragSource)"
   >
-    <DesignCardSvgView :svg="card.svg" />
+    <DesignCardStaticSvgView :svg="card.svg" />
 
     <footer class="design-card-inline-actions" @click.stop>
       <button

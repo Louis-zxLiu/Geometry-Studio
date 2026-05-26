@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import DesignCardInvalidBlock from "../../features/designCard/components/DesignCardInvalidBlock.vue";
-import DesignCardSvgView from "../../features/designCard/components/DesignCardSvgView.vue";
 import {
   fromEditableDesignCardMarkdown,
   toEditableDesignCardMarkdown,
 } from "../../features/designCard/services/designCardMarkdownCodec";
+import { readDesignCardDragData } from "../../features/designCard/services/designCardDragData";
 import type { DesignCard } from "../../features/designCard/services/designCardTypes";
 import type { AINoteSelectionPayload } from "../../features/ai/services/aiTypes";
 import type { NoteRenderBlock } from "../../features/notebook/rendering/noteForwarder";
@@ -15,6 +15,7 @@ import {
   collectSelectedImagesForContextMenu,
 } from "../../features/notebook/selection/noteSelection";
 import NoteContextMenu from "./NoteContextMenu.vue";
+import NoteDesignCardBlock from "./NoteDesignCardBlock.vue";
 import NoteImageBlock from "./NoteImageBlock.vue";
 import NoteImagePreview from "./NoteImagePreview.vue";
 
@@ -33,7 +34,7 @@ const emit = defineEmits<{
   "ai-generate": [selection: AINoteSelectionPayload];
   "ai-design": [selection: AINoteSelectionPayload];
   "delete-design-card": [cardId: string];
-  "insert-design-card": [payload: { cardId: string; insertAt: number }];
+  "insert-design-card": [payload: { cardId: string; insertAt: number; source?: "editor" | "note" }];
   "open-design-card": [cardId: string];
   "remove-image": [relativePath: string];
   toggle: [];
@@ -177,12 +178,13 @@ function handlePaste(event: ClipboardEvent) {
 
 function handleDrop(event: DragEvent) {
   isDragging.value = false;
-  const designCardId = event.dataTransfer?.getData("application/x-design-card-id") ?? "";
-  if (designCardId) {
+  const designCardDragData = readDesignCardDragData(event.dataTransfer);
+  if (designCardDragData) {
     event.preventDefault();
     emit("insert-design-card", {
-      cardId: designCardId,
+      cardId: designCardDragData.cardId,
       insertAt: getCurrentInsertionIndex(),
+      source: designCardDragData.source,
     });
     return;
   }
@@ -733,37 +735,13 @@ watch(
                   @select="toggleImageSelection"
                   @context="handleImageBlockContext"
                 />
-                <article
+                <NoteDesignCardBlock
                   v-else-if="block.card"
-                  class="notebook-design-card-block"
-                  @click.stop="emit('open-design-card', block.card.id)"
-                >
-                  <DesignCardSvgView :svg="block.card.svg" />
-                  <button
-                    class="notebook-design-card-action notebook-design-card-remove"
-                    :class="{ armed: armedDesignCardDeleteId === block.card.id }"
-                    type="button"
-                    :title="armedDesignCardDeleteId === block.card.id ? '再次点击确认删除' : '删除设计卡片'"
-                    @click.stop="requestDesignCardDelete(block.card.id)"
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M6 7h12" />
-                      <path d="m9 7 .6-2h4.8L15 7" />
-                      <path d="M8 7v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V7" />
-                    </svg>
-                  </button>
-                  <button
-                    class="notebook-design-card-action notebook-design-card-zoom"
-                    type="button"
-                    title="放大查看"
-                    @click.stop="emit('open-design-card', block.card.id)"
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <circle cx="10.5" cy="10.5" r="5.5" />
-                      <path d="m15 15 5 5" />
-                    </svg>
-                  </button>
-                </article>
+                  :card="block.card"
+                  :armed="armedDesignCardDeleteId === block.card.id"
+                  @delete="requestDesignCardDelete"
+                  @open="emit('open-design-card', $event)"
+                />
                 <DesignCardInvalidBlock v-else :card-id="block.cardId" />
               </template>
             </template>

@@ -121,6 +121,18 @@ export function usePlotWorkspace() {
     scriptRepository,
     scriptWorkspace,
   });
+
+  function insertDesignCardReferenceIntoNote(payload: {
+    cardId: string;
+    insertAt?: number;
+    source?: "editor" | "note";
+  }) {
+    noteWorkspace.insertDesignCardReference(payload);
+    if (payload.source === "editor") {
+      designCardWorkspace.removeCardPlacement(payload.cardId);
+    }
+  }
+
   const lifecycle = useWorkspaceLifecycle({
     isRunning,
     noteWorkspace,
@@ -403,7 +415,7 @@ export function usePlotWorkspace() {
     renameScript: scriptWorkspace.renameScript,
     renameWorkspace,
     removeNoteImage: noteWorkspace.removeImage,
-    insertDesignCardReferenceIntoNote: noteWorkspace.insertDesignCardReference,
+    insertDesignCardReferenceIntoNote,
     deleteDesignCard: designCardWorkspace.deleteCard,
     deleteDesignCardFromNote: designCardWorkspace.deleteCardFromNote,
     rebuildRuntime: lifecycle.rebuildRuntime,
@@ -429,6 +441,7 @@ export function usePlotWorkspace() {
     closeDesignCardReviewRoom: designCardWorkspace.closeReviewRoom,
     moveDesignCard: designCardWorkspace.moveCard,
     setDesignCardPlacement: designCardWorkspace.setCardPlacement,
+    setDesignCardAnchorLine: designCardWorkspace.setEditorAnchorLine,
     updateDesignCardPlan: designCardWorkspace.updateActivePlan,
     updateNoteMarkdown: noteWorkspace.updateMarkdown,
     workspaces: scriptWorkspace.workspaces,

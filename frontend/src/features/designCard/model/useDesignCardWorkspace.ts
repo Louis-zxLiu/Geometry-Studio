@@ -9,7 +9,10 @@ import {
   saveDesignCardPlacements,
   updateDesignCardPlan,
 } from "../services/designCardBridgeCompat";
-import { formatDesignCardReference } from "../services/designCardMarkdownCodec";
+import {
+  extractDesignCardReferenceIDs,
+  formatDesignCardReference,
+} from "../services/designCardMarkdownCodec";
 import type { DesignCard, DesignCardPlacement } from "../services/designCardTypes";
 
 type AIActivityStatus = {
@@ -38,6 +41,7 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
   const isReviewRoomOpen = computed(() => activeCardId.value !== "");
   const optimizeDialogCardId = ref("");
   const saveState = ref<"idle" | "saving" | "saved">("idle");
+  const editorAnchorLine = ref(1);
 
   let loadingToken = 0;
   let saveTimer = 0;
@@ -102,7 +106,7 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
         selection,
       });
       upsertCard(result.card);
-      await placeCardAtEnd(result.card.id);
+      await placeCardAtAnchor(result.card.id);
       openReviewRoom(result.card.id);
     } catch (error) {
       options.onError(getErrorMessage(error));
@@ -225,7 +229,7 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     const lineCount = getCodeLineCount(options.codeContent.value);
     placements.value = placements.value.map((placement) =>
       placement.cardId === cardId
-        ? { ...placement, afterLine: Math.max(0, Math.min(lineCount, placement.afterLine + delta)) }
+        ? { ...placement, afterLine: clampLine(placement.afterLine + delta, lineCount) }
         : placement,
     );
     void persistPlacements(placements.value);
@@ -240,23 +244,40 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     const nextPlacement = { cardId, afterLine: clampLine(afterLine, lineCount) };
     const nextPlacements = placements.value.filter((placement) => placement.cardId !== cardId);
     nextPlacements.push(nextPlacement);
-    placements.value = mergePlacements(cards.value, nextPlacements, lineCount);
+    placements.value = normalizePlacements(cards.value, nextPlacements, lineCount);
+    void persistPlacements(placements.value);
+  }
+
+  function removeCardPlacement(cardId: string) {
+    if (!cardId || !placements.value.some((placement) => placement.cardId === cardId)) {
+      return;
+    }
+
+    placements.value = placements.value.filter((placement) => placement.cardId !== cardId);
     void persistPlacements(placements.value);
   }
 
   async function loadPlacements(sceneName: string) {
     const lineCount = getCodeLineCount(options.codeContent.value);
     const savedPlacements = await listDesignCardPlacements(sceneName);
-    placements.value = mergePlacements(sortedCards.value, savedPlacements, lineCount);
+    placements.value = normalizePlacements(sortedCards.value, savedPlacements, lineCount, {
+      autoPlaceUnreferencedCards: true,
+      noteMarkdown: options.noteMarkdown.value,
+    });
     await persistPlacements(placements.value);
   }
 
-  async function placeCardAtEnd(cardId: string) {
+  async function placeCardAtAnchor(cardId: string) {
     const lineCount = getCodeLineCount(options.codeContent.value);
+    const afterLine = clampLine(editorAnchorLine.value, lineCount);
     const nextPlacements = placements.value.filter((placement) => placement.cardId !== cardId);
-    nextPlacements.push({ cardId, afterLine: lineCount });
+    nextPlacements.push({ cardId, afterLine });
     placements.value = nextPlacements;
     await persistPlacements(nextPlacements);
+  }
+
+  function setEditorAnchorLine(line: number) {
+    editorAnchorLine.value = clampLine(line, getCodeLineCount(options.codeContent.value));
   }
 
   function schedulePlanSave(cardId: string, plan: string) {
@@ -301,7 +322,7 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     const nextCards = cards.value.filter((item) => item.id !== card.id);
     nextCards.push(card);
     cards.value = sortCards(nextCards);
-    placements.value = mergePlacements(
+    placements.value = normalizePlacements(
       cards.value,
       placements.value,
       getCodeLineCount(options.codeContent.value),
@@ -327,7 +348,7 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     const lineCount = getCodeLineCount(options.codeContent.value);
     placements.value = placements.value.map((placement) => ({
       ...placement,
-      afterLine: Math.max(0, Math.min(lineCount, placement.afterLine)),
+      afterLine: clampLine(placement.afterLine, lineCount),
     }));
   }
 
@@ -347,9 +368,11 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     openOptimizeDialog,
     openReviewRoom,
     placements,
+    removeCardPlacement,
     saveState,
     submitOptimization,
     setCardPlacement,
+    setEditorAnchorLine,
     updateActivePlan,
   };
 }
@@ -360,28 +383,38 @@ function sortCards(cards: DesignCard[]) {
   );
 }
 
-function mergePlacements(
+function normalizePlacements(
   cards: DesignCard[],
   savedPlacements: DesignCardPlacement[],
   lineCount: number,
+  options: { autoPlaceUnreferencedCards?: boolean; noteMarkdown?: string } = {},
 ) {
-  const savedByCard = new Map(
-    savedPlacements
-      .filter((placement) => placement.cardId)
-      .map((placement) => [placement.cardId, placement]),
-  );
-
-  return cards.map((card) => {
-    const saved = savedByCard.get(card.id);
-    return {
+  if (savedPlacements.length === 0 && options.autoPlaceUnreferencedCards) {
+    const noteCardIds = new Set(extractDesignCardReferenceIDs(options.noteMarkdown ?? ""));
+    return cards.filter((card) => !noteCardIds.has(card.id)).map((card) => ({
       cardId: card.id,
-      afterLine: clampLine(saved?.afterLine ?? lineCount, lineCount),
+      afterLine: lineCount,
+    }));
+  }
+
+  const knownCardIds = new Set(cards.map((card) => card.id));
+  const seenCardIds = new Set<string>();
+
+  return savedPlacements.flatMap((saved) => {
+    if (!saved.cardId || !knownCardIds.has(saved.cardId) || seenCardIds.has(saved.cardId)) {
+      return [];
+    }
+
+    seenCardIds.add(saved.cardId);
+    return {
+      cardId: saved.cardId,
+      afterLine: clampLine(saved.afterLine, lineCount),
     };
   });
 }
 
 function clampLine(line: number, lineCount: number) {
-  return Math.max(0, Math.min(Number.isFinite(line) ? line : lineCount, lineCount));
+  return Math.max(1, Math.min(Number.isFinite(line) ? line : lineCount, Math.max(1, lineCount)));
 }
 
 function getCodeLineCount(code: string) {

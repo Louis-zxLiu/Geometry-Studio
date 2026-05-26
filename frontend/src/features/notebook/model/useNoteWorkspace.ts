@@ -83,7 +83,11 @@ export function useNoteWorkspace(
     schedulePersist();
   }
 
-  function insertDesignCardReference(payload: { cardId: string; insertAt?: number }) {
+  function insertDesignCardReference(payload: {
+    cardId: string;
+    insertAt?: number;
+    source?: "editor" | "note";
+  }) {
     if (!payload.cardId) {
       return;
     }
