@@ -23,6 +23,12 @@ output :
       import numpy as np
       from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+      # 有拖拽默认不开启抗锯齿，若无则开启，必写
+      mpl.rcParams['lines.antialiased'] = False
+      mpl.rcParams['patch.antialiased'] = False
+      # 默认拖拽视角必定写
+      mpl.rcParams["axes3d.mouserotationstyle"] = "azel"
+
       plt.rcParams['axes.unicode_minus'] = False
       plt.rcParams.update({
       "text.usetex": False,
@@ -134,7 +140,7 @@ output :
       '''
 notice : 
   - 代码需要用一对三反引号包括，不要二次使用两对三反引号```去写代码片段引起误解；
-  - 把“中文”从 $...$ 和 \text{} 中拿出来，中文和数学符号分开写，r"1. 将圆等分成 $n$ 个扇形" + "\n"
+  - 把“中文”从 $...$ 和 \text{} 中拿出来，中文和数学符号分开写，r"1. 将圆等分成 $n$ 个扇形" + "\n"，中文不支持任何的latex命令，$S_{中文}$ 是完全错误的
   - 考虑Matplotlib的常见参数和方法，不要使用可能出现幻觉的，例如matplotlib.widgets.Slider 控件没有 valcolor 这个参数。
 start : 你好，今天想画点啥嘞？
           
