@@ -4,7 +4,7 @@ import { installZoomGuards } from "./lib/zoomGuards";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/layout.css";
-import "./styles/components/sidebar.css";
+import "./styles/components/sidebar/index.css";
 import "./styles/components/topbar.css";
 import "./styles/components/editor.css";
 import "./styles/components/environment.css";
