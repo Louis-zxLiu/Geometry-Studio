@@ -81,7 +81,6 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
               :data-note-block-id="block.id"
               :data-note-insert-before="block.startIndex"
               :data-note-insert-after="block.endIndex"
-              :data-note-markdown-source="block.kind === 'markdown' ? block.markdown : undefined"
             >
               <article
                 v-if="block.kind === 'markdown'"
