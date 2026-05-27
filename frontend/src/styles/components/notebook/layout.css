@@ -157,6 +157,31 @@
   margin-top: 24px;
 }
 
+.notebook-render-block {
+  position: relative;
+}
+
+.notebook-render-block.drop-before::before,
+.notebook-render-block.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: 2px;
+  background: var(--text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--notebook-bg), transparent 18%);
+  pointer-events: none;
+}
+
+.notebook-render-block.drop-before::before {
+  top: -13px;
+}
+
+.notebook-render-block.drop-after::after {
+  bottom: -13px;
+}
+
 .notebook-markdown-input {
   width: 100%;
   height: auto;

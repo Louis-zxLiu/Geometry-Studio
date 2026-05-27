@@ -3,7 +3,6 @@ import type {
   NoteImage,
 } from "../services/notebookStorage";
 import type { DesignCard } from "../../designCard/services/designCardTypes";
-import { extractDesignCardReferenceIDs } from "../../designCard/services/designCardMarkdownCodec";
 import { renderMarkdownToHtml } from "./markdownRenderer";
 
 export type NoteRenderBlock =
@@ -11,6 +10,7 @@ export type NoteRenderBlock =
       endIndex: number;
       id: string;
       kind: "markdown";
+      markdown: string;
       html: string;
       startIndex: number;
     }
@@ -37,10 +37,10 @@ export function forwardNoteDocumentToBlocks(
 ): NoteRenderBlock[] {
   const blocks: NoteRenderBlock[] = [];
   const markdown = normalizeMarkdown(document.markdown);
-  const referencedPaths = collectReferencedImagePaths(markdown);
   const cardMap = new Map(designCards.map((card) => [card.id, card]));
   const cardIndex = new Map(designCards.map((card, index) => [card.id, index + 1]));
-  const markdownSegments = splitMarkdownByDesignCards(markdown);
+  const imageMap = new Map(document.images.map((image) => [image.relativePath, image]));
+  const markdownSegments = splitMarkdownBlocks(markdown, imageMap);
 
   markdownSegments.forEach((segment, index) => {
     if (segment.kind === "markdown") {
@@ -49,10 +49,22 @@ export function forwardNoteDocumentToBlocks(
           endIndex: segment.endIndex,
           id: `markdown-${index}`,
           kind: "markdown",
+          markdown: segment.markdown,
           html: renderMarkdownToHtml(segment.markdown, document.images),
           startIndex: segment.startIndex,
         });
       }
+      return;
+    }
+
+    if (segment.kind === "image") {
+      blocks.push({
+        endIndex: segment.endIndex,
+        id: `image-${segment.image.relativePath}-${index}`,
+        kind: "image",
+        image: segment.image,
+        startIndex: segment.startIndex,
+      });
       return;
     }
 
@@ -67,20 +79,6 @@ export function forwardNoteDocumentToBlocks(
     });
   });
 
-  document.images.forEach((image) => {
-    if (referencedPaths.has(image.relativePath)) {
-      return;
-    }
-
-    blocks.push({
-      endIndex: markdown.length,
-      id: image.relativePath || image.name,
-      kind: "image",
-      image,
-      startIndex: markdown.length,
-    });
-  });
-
   return blocks;
 }
 
@@ -88,33 +86,17 @@ function normalizeMarkdown(markdown: string) {
   return markdown.replace(/\r\n/g, "\n");
 }
 
-function collectReferencedImagePaths(markdown: string) {
-  const paths = new Set<string>();
-  const matches = markdown.matchAll(/!\[[^\]]*]\((?:<([^>]+)>|([^)]+?))(?:\s+"[^"]*")?\)/g);
-  for (const match of matches) {
-    const path = (match[1] ?? match[2] ?? "").trim();
-    if (path) {
-      paths.add(path);
-    }
-  }
-
-  return paths;
-}
-
-function splitMarkdownByDesignCards(markdown: string) {
+function splitMarkdownBlocks(markdown: string, imageMap: Map<string, NoteImage>) {
   const segments: Array<
     | { endIndex: number; kind: "markdown"; markdown: string; startIndex: number }
+    | { endIndex: number; image: NoteImage; kind: "image"; startIndex: number }
     | { cardId: string; endIndex: number; kind: "design-card"; startIndex: number }
   > = [];
-  const referenceIDs = extractDesignCardReferenceIDs(markdown);
-  if (!referenceIDs.length) {
-    return [{ endIndex: markdown.length, kind: "markdown" as const, markdown, startIndex: 0 }];
-  }
+  const blockMatches = collectBlockMatches(markdown, imageMap);
 
   let cursor = 0;
-  const pattern = /:::design-card\{id="([^"]+)"\}/g;
-  for (const match of markdown.matchAll(pattern)) {
-    const matchIndex = match.index ?? 0;
+  for (const match of blockMatches) {
+    const matchIndex = match.startIndex;
     const before = markdown.slice(cursor, matchIndex);
     if (before) {
       segments.push({
@@ -125,13 +107,22 @@ function splitMarkdownByDesignCards(markdown: string) {
       });
     }
 
-    segments.push({
-      cardId: match[1],
-      endIndex: matchIndex + match[0].length,
-      kind: "design-card",
-      startIndex: matchIndex,
-    });
-    cursor = matchIndex + match[0].length;
+    if (match.kind === "image") {
+      segments.push({
+        endIndex: match.endIndex,
+        image: match.image,
+        kind: "image",
+        startIndex: match.startIndex,
+      });
+    } else {
+      segments.push({
+        cardId: match.cardId,
+        endIndex: match.endIndex,
+        kind: "design-card",
+        startIndex: match.startIndex,
+      });
+    }
+    cursor = match.endIndex;
   }
 
   const after = markdown.slice(cursor);
@@ -145,4 +136,41 @@ function splitMarkdownByDesignCards(markdown: string) {
   }
 
   return segments;
+}
+
+function collectBlockMatches(markdown: string, imageMap: Map<string, NoteImage>) {
+  const matches: Array<
+    | { cardId: string; endIndex: number; kind: "design-card"; startIndex: number }
+    | { endIndex: number; image: NoteImage; kind: "image"; startIndex: number }
+  > = [];
+
+  const cardPattern = /:::design-card\{id="([^"]+)"\}/g;
+  for (const match of markdown.matchAll(cardPattern)) {
+    const startIndex = match.index ?? 0;
+    matches.push({
+      cardId: match[1],
+      endIndex: startIndex + match[0].length,
+      kind: "design-card",
+      startIndex,
+    });
+  }
+
+  const imagePattern = /!\[[^\]]*]\((?:<([^>]+)>|([^)]+?))(?:\s+"[^"]*")?\)/g;
+  for (const match of markdown.matchAll(imagePattern)) {
+    const path = (match[1] ?? match[2] ?? "").trim();
+    const image = imageMap.get(path);
+    if (!image) {
+      continue;
+    }
+
+    const startIndex = match.index ?? 0;
+    matches.push({
+      endIndex: startIndex + match[0].length,
+      image,
+      kind: "image",
+      startIndex,
+    });
+  }
+
+  return matches.sort((left, right) => left.startIndex - right.startIndex);
 }
