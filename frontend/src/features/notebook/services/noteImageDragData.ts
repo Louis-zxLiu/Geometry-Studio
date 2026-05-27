@@ -48,6 +48,6 @@ export function writeNoteImageDragData(
     return;
   }
 
+  // 只写自定义 MIME，不写 text/plain，避免浏览器触发原生图片拖拽通道
   dataTransfer.setData(noteImageDragMime, JSON.stringify(data));
-  dataTransfer.setData("text/plain", data.relativePath);
 }

@@ -23,7 +23,7 @@ function startDrag(event: DragEvent, block: Extract<NoteRenderBlock, { kind: "im
     startIndex: block.startIndex,
   });
   if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.effectAllowed = "copyMove";
   }
 }
 </script>
@@ -105,6 +105,7 @@ function startDrag(event: DragEvent, block: Extract<NoteRenderBlock, { kind: "im
       class="notebook-image"
       :src="block.image.dataUrl"
       :alt="block.image.alt || block.image.name"
+      draggable="false"
     />
   </figure>
 </template>

@@ -103,7 +103,7 @@ export function useNoteDrop(options: NoteDropOptions) {
     const noteImageDragData = readNoteImageDragData(event.dataTransfer);
     if (noteImageDragData) {
       event.preventDefault();
-      moveNoteImageFromDrop(event, noteImageDragData, insertionPoint, "note.drop");
+      moveNoteImageFromDrop(event, noteImageDragData, insertionPoint);
       return;
     }
 
@@ -143,7 +143,6 @@ export function useNoteDrop(options: NoteDropOptions) {
     event: DragEvent,
     noteImageDragData: NonNullable<ReturnType<typeof readNoteImageDragData>>,
     insertionPoint: NoteDropInsertionPoint,
-    scope: string,
   ) {
     const movePayload = {
       edge: insertionPoint.edge,
@@ -159,7 +158,6 @@ export function useNoteDrop(options: NoteDropOptions) {
 
   function acceptDrop(event: DragEvent, scope: string) {
     if (hasDesignCardDragData(event.dataTransfer)) {
-      const dragData = readDesignCardDragData(event.dataTransfer);
       event.preventDefault();
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = "move";
@@ -168,7 +166,6 @@ export function useNoteDrop(options: NoteDropOptions) {
     }
 
     if (hasNoteImageDragData(event.dataTransfer)) {
-      const dragData = readNoteImageDragData(event.dataTransfer);
       event.preventDefault();
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = "move";
