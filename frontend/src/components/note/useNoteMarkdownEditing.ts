@@ -37,11 +37,6 @@ export function useNoteMarkdownEditing(options: NoteMarkdownEditingOptions) {
   }
 
   function focusMarkdownInputAtEnd() {
-    const nextMarkdown = ensureTrailingWriteLine(options.document().markdown);
-    if (nextMarkdown !== options.document().markdown) {
-      options.onUpdateMarkdown(nextMarkdown);
-    }
-
     isEditingMarkdown.value = true;
     options.onCloseContextMenu();
     void nextTick(() => {
@@ -157,19 +152,3 @@ export function useNoteMarkdownEditing(options: NoteMarkdownEditingOptions) {
   };
 }
 
-function ensureTrailingWriteLine(markdown: string) {
-  const normalized = markdown.replace(/\r\n/g, "\n");
-  if (!normalized) {
-    return normalized;
-  }
-
-  if (normalized.endsWith("\n\n")) {
-    return normalized;
-  }
-
-  if (normalized.endsWith("\n")) {
-    return `${normalized}\n`;
-  }
-
-  return `${normalized}\n\n`;
-}
