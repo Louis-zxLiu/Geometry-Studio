@@ -63,51 +63,69 @@ PlotKityCat 支持优盘便携，旨在让老师将其带入教室、讲台及�
 ## 开发者指南
 
 ### 环境要求
+- **Windows**
 - **Go**: 1.21+
 - **Node.js**: 18+
 - **Wails**: v2.x
-- **Python**: 3.12+ (建议使用 WinPython 嵌入版)
 
 ### 开发启动
-```bash
-# 安装前端依赖
-cd frontend && npm install && cd ..
-
-# 运行开发模式
+```powershell
+cd frontend
+npm install
+cd ..
 wails dev
 ```
 
-### 编译打包
-```bash
-wails build
+### 版本来源
+
+应用版本唯一来源：
+
+- `version.json`
+
+### Runtime
+
+项目运行依赖便携 Python runtime：
+
+- 发布输入：`resources/runtime/runtime.zip`
+- 本地展开目录：`runtime/`
+- 临时展开目录：`runtime.tmp/`
+- 元数据文件：`runtime.version.json`
+
+准备 runtime 压缩包：
+
+```powershell
+.\tools\prepare-runtime.ps1 -SourceRuntimeDir <你的 runtime 目录>
 ```
 
-### 内置 Python Runtime 边界
+当前默认核心库：
 
-默认 runtime 只保证 PlotKityCat 的核心可视化能力，避免把通用数据科学全家桶一起打进便携包。
-
-**必须保留**
 - Python 标准库
-- NumPy
-- Matplotlib
-- SciPy
+- numpy
+- matplotlib
+- scipy
 - PyQt5
-- Matplotlib 必需依赖：Pillow、fontTools、contourpy、cycler、kiwisolver、packaging、pyparsing、python-dateutil、six 等
 
-**作为默认上限保留**
-- xarray：多维科学数据、气象/网格数据可视化
-- networkx：关系网络、知识图谱、社会网络、节点-边图
-- shapely：地理几何、区域、多边形、空间关系可视化
+### 打包入口
 
-**不要放进默认 runtime**
-- 开发/检查工具：ruff、maturin、jedi、pygments
-- 文件识别/杂项工具：magika
-- AI SDK：openai、anthropic、mistralai、cohere 等。AI 请求由 Go 后端处理，不依赖 Python SDK
-- 云服务 SDK：azure、google cloud 相关 SDK 等
-- 数据库/数据工程：duckdb、polars、dask、distributed、pymongo、psycopg2、MySQL 驱动等
-- 大型机器学习/图像处理框架：torch、tensorflow、sklearn、opencv 等，除非未来单独做扩展包
+构建 exe：
 
-如果需要更新 `resources/runtime/runtime.zip`，优先作为 GitHub Release 附件发布；不建议把大型 zip 直接提交进 Git 历史。若必须提交，需要使用 `git add -f resources/runtime/runtime.zip`。
+```powershell
+.\tools\build-versioned-app.ps1
+```
+
+生成发布 zip：
+
+```powershell
+.\tools\package-release.ps1
+```
+
+生成自动更新发布物：
+
+```powershell
+.\tools\prepare-update-release.ps1
+```
+
+更详细的开发与发布说明见 [DEVELOPMENT.md](D:/projects/PlotKityCat/DEVELOPMENT.md)。
 
 ## 致谢
 

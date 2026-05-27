@@ -4,7 +4,9 @@ dist/
 frontend/dist/
 build/bin/
 build/release/
+build/update/
 runtime/
+runtime.tmp/
 Scripts/
 *.exe
 *.dll
@@ -13,16 +15,18 @@ Scripts/
 .runtime-staging.7z
 .tools_py/
 WPy64-313110/
-packaging/downloads/
-packaging/output/
-packaging/staging/
-packaging/.tools_py/
-config/subscription.json
+packaging/
+config/
+.omo/
+nul
+USERPROFILE/
 .DS_Store
 Thumbs.db
 
-# 技术/产品文档不上传
+# Legacy root docs
 Tec.md
 PRD.md
 tec.md
 prd.md
+designcard.md
+designcard-tec.md

@@ -1,17 +1,44 @@
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$Version,
+    [string]$Version = "",
     [string]$BaseURL = "https://update.5051001.xyz/plotkitycat/releases"
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
+$versionFilePath = Join-Path $repoRoot "version.json"
 $sourceExe = Join-Path $repoRoot "build/bin/PlotKityCat.exe"
 $outputDir = Join-Path $repoRoot "build/update/$Version"
 $targetName = "PlotKityCat-$Version-windows-amd64.exe"
 $targetExe = Join-Path $outputDir $targetName
 $manifestPath = Join-Path $outputDir "manifest.json"
+
+function Get-AppVersionFromFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Missing version file: $Path"
+    }
+
+    $raw = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    $value = [string]$raw.appVersion
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        throw "version.json appVersion is empty"
+    }
+
+    return $value.Trim()
+}
+
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = Get-AppVersionFromFile -Path $versionFilePath
+    $outputDir = Join-Path $repoRoot "build/update/$Version"
+    $targetName = "PlotKityCat-$Version-windows-amd64.exe"
+    $targetExe = Join-Path $outputDir $targetName
+    $manifestPath = Join-Path $outputDir "manifest.json"
+}
 
 if (-not (Test-Path $sourceExe)) {
     throw "Missing built executable: $sourceExe"

@@ -6,11 +6,29 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$frontendPackagePath = Join-Path $repoRoot "frontend/package.json"
-$frontendPackage = Get-Content $frontendPackagePath -Raw | ConvertFrom-Json
+$versionFilePath = Join-Path $repoRoot "version.json"
+
+function Get-AppVersionFromFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Missing version file: $Path"
+    }
+
+    $raw = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    $value = [string]$raw.appVersion
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        throw "version.json appVersion is empty"
+    }
+
+    return $value.Trim()
+}
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $Version = [string]$frontendPackage.version
+    $Version = Get-AppVersionFromFile -Path $versionFilePath
 }
 
 $releaseName = "PlotKityCat-v$Version"
