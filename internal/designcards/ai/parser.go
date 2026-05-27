@@ -1,15 +1,14 @@
 package ai
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 )
 
 type rawResult struct {
-	Title string `json:"title"`
-	Plan  string `json:"plan"`
-	SVG   string `json:"svg"`
+	Title string
+	Plan  string
+	SVG   string
 }
 
 func parseResult(raw string) (rawResult, error) {
@@ -19,33 +18,44 @@ func parseResult(raw string) (rawResult, error) {
 	}
 
 	payload = stripFence(payload)
-	if !strings.HasPrefix(payload, "{") {
-		start := strings.Index(payload, "{")
-		end := strings.LastIndex(payload, "}")
-		if start >= 0 && end > start {
-			payload = payload[start : end+1]
-		}
-	}
 
-	var result rawResult
-	if err := json.Unmarshal([]byte(payload), &result); err != nil {
-		return rawResult{}, fmt.Errorf("解析 design card JSON 失败: %w", err)
-	}
+	title := extractTag(payload, "title")
+	plan := extractTag(payload, "plan")
+	svg := extractTag(payload, "svg_code")
 
-	result.Title = strings.TrimSpace(result.Title)
-	result.Plan = strings.TrimSpace(result.Plan)
-	result.SVG = strings.TrimSpace(result.SVG)
-	if result.Plan == "" {
+	if plan == "" {
 		return rawResult{}, fmt.Errorf("AI 返回的 design plan 为空")
 	}
-	if result.SVG == "" {
+	if svg == "" {
 		return rawResult{}, fmt.Errorf("AI 返回的 design svg 为空")
 	}
-	if !strings.Contains(result.SVG, "<svg") {
+	if !strings.Contains(svg, "<svg") {
 		return rawResult{}, fmt.Errorf("AI 返回的 svg 格式无效")
 	}
 
-	return result, nil
+	return rawResult{
+		Title: title,
+		Plan:  plan,
+		SVG:   svg,
+	}, nil
+}
+
+func extractTag(content, tag string) string {
+	openTag := "<" + tag + ">"
+	closeTag := "</" + tag + ">"
+
+	start := strings.Index(content, openTag)
+	if start < 0 {
+		return ""
+	}
+	start += len(openTag)
+
+	end := strings.Index(content[start:], closeTag)
+	if end < 0 {
+		return ""
+	}
+
+	return strings.TrimSpace(content[start : start+end])
 }
 
 func stripFence(raw string) string {
