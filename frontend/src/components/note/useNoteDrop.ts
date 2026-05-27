@@ -37,7 +37,6 @@ export function useNoteDrop(options: NoteDropOptions) {
   function handleHostDragEnter(event: DragEvent) {
     const accepted = acceptDrop(event, "note.dragenter");
     if (!accepted) {
-      clearDropState();
       return;
     }
 
@@ -48,7 +47,6 @@ export function useNoteDrop(options: NoteDropOptions) {
   function handleHostDragOver(event: DragEvent) {
     const accepted = acceptDrop(event, "note.dragover");
     if (!accepted) {
-      clearDropState();
       return;
     }
 
@@ -137,10 +135,6 @@ export function useNoteDrop(options: NoteDropOptions) {
   }
 
   function handleGlobalDragEnd() {
-    clearDropState();
-  }
-
-  function clearDropState() {
     isDragging.value = false;
     dropInsertionPoint.value = null;
   }
