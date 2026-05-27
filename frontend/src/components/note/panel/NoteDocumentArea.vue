@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import DesignCardInvalidBlock from "../../../features/designCard/components/DesignCardInvalidBlock.vue";
 import type { NoteRenderBlock } from "../../../features/notebook/rendering/noteForwarder";
+import type { NoteDropInsertionPoint } from "../useNoteDrop";
 import NoteDesignCardBlock from "../NoteDesignCardBlock.vue";
 import NoteImageBlock from "../NoteImageBlock.vue";
 
 defineProps<{
   armedDesignCardDeleteId: string;
   currentFile: string;
+  dropInsertionPoint: NoteDropInsertionPoint | null;
   editableMarkdown: string;
   renderBlocks: NoteRenderBlock[];
   selectedImagePaths: Set<string>;
@@ -15,8 +17,6 @@ defineProps<{
 
 const emit = defineEmits<{
   "delete-design-card": [cardId: string];
-  "drag-state": [dragging: boolean];
-  drop: [event: DragEvent];
   "focus-markdown": [];
   "image-context": [event: MouseEvent, relativePath: string];
   "image-preview": [src: string, alt: string];
@@ -45,10 +45,6 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
     class="notebook-scroll"
     @pointerdown.capture="emit('pointerdown-capture', $event)"
     @paste="emit('paste', $event)"
-    @dragenter.prevent="emit('drag-state', true)"
-    @dragover.prevent="emit('drag-state', true)"
-    @dragleave.prevent="emit('drag-state', false)"
-    @drop="emit('drop', $event)"
     @click="emit('surface-click', $event)"
     @contextmenu="emit('surface-context', $event)"
     @mouseup="emit('select-text')"
@@ -78,6 +74,11 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
           <template v-for="block in renderBlocks" :key="block.id">
             <div
               class="notebook-render-block"
+              :class="{
+                'drop-before': dropInsertionPoint?.blockId === block.id && dropInsertionPoint.edge === 'before',
+                'drop-after': dropInsertionPoint?.blockId === block.id && dropInsertionPoint.edge === 'after',
+              }"
+              :data-note-block-id="block.id"
               :data-note-insert-before="block.startIndex"
               :data-note-insert-after="block.endIndex"
             >

@@ -1,8 +1,9 @@
 .notebook-image-block {
   position: relative;
-  width: min(66.666%, 520px);
-  margin: 0 auto;
-  cursor: pointer;
+  width: 100%;
+  max-width: 100%;
+  margin: 12px 0;
+  cursor: grab;
 }
 
 .notebook-image-block.selected::after {
@@ -22,33 +23,42 @@
 
 .notebook-image-actions {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 8px;
+  right: 8px;
   display: flex;
-  gap: 8px;
+  gap: 16px;
   opacity: 0;
+  transform: translateY(4px) scale(0.96);
   pointer-events: none;
-  transition: opacity 180ms ease;
+  transition:
+    opacity 170ms ease,
+    transform 170ms ease;
 }
 
-.notebook-image-block:hover .notebook-image-actions {
+.notebook-image-block:hover .notebook-image-actions,
+.notebook-image-block:focus-within .notebook-image-actions {
   opacity: 1;
+  transform: translateY(0) scale(1);
   pointer-events: auto;
 }
 
 .notebook-image-action {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
   border-radius: 0;
-  background: rgba(255, 255, 255, 0.84);
-  color: color-mix(in srgb, var(--text), transparent 30%);
+  background: transparent;
+  color: color-mix(in srgb, var(--text), transparent 12%);
   cursor: pointer;
 }
 
 .notebook-image-action:hover {
-  color: var(--text);
+  background: transparent;
+  opacity: 0.62;
 }
 
 .notebook-image-action.danger:hover {
@@ -56,6 +66,11 @@
 }
 
 .notebook-image-action svg {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 1.45;
 }

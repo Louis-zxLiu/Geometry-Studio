@@ -32,11 +32,12 @@ export function useNoteDesignCardReferences(options: NoteDesignCardReferencesOpt
       payload.cardId,
       payload.insertAt,
     );
-    options.updateMarkdown(insertBlockReference(
+    const nextMarkdown = insertBlockReference(
       withoutExistingReference.markdown,
       formatDesignCardReference(payload.cardId),
       withoutExistingReference.insertAt,
-    ));
+    );
+    options.updateMarkdown(nextMarkdown);
   }
 
   return {

@@ -92,8 +92,49 @@ export function useNoteImages(options: NoteImagesOptions) {
     }
   }
 
+  async function moveImage(payload: {
+    edge?: "before" | "after";
+    endIndex?: number;
+    insertAt: number;
+    relativePath: string;
+    sourceBlockId?: string;
+    startIndex?: number;
+    targetBlockId?: string;
+  }) {
+    if (!options.currentFile.value || !payload.relativePath) {
+      return;
+    }
+
+    try {
+      await options.persistCurrentDocument(options.currentFile.value);
+      const previousMarkdown = options.currentDocument.value.markdown;
+      const nextMarkdown = moveImageReference(
+        previousMarkdown,
+        payload.relativePath,
+        payload.insertAt,
+        payload.startIndex,
+        payload.endIndex,
+        payload.sourceBlockId,
+        payload.targetBlockId,
+      );
+      if (nextMarkdown === previousMarkdown) {
+        return;
+      }
+
+      options.currentDocument.value = {
+        ...options.currentDocument.value,
+        markdown: nextMarkdown,
+      };
+      await saveScriptNote(options.currentFile.value, nextMarkdown);
+      options.saveState.value = "saved";
+    } catch (error) {
+      options.onError(getErrorMessage(error));
+    }
+  }
+
   return {
     addImages,
+    moveImage,
     removeImage,
   };
 }
@@ -145,4 +186,91 @@ function removeImageReference(markdown: string, relativePath: string) {
     .filter((line) => !imagePattern.test(line));
 
   return collapseBlankLines(filteredLines.join("\n")).trim();
+}
+
+function moveImageReference(
+  markdown: string,
+  relativePath: string,
+  insertAt: number,
+  startIndex?: number,
+  endIndex?: number,
+  sourceBlockId?: string,
+  targetBlockId?: string,
+) {
+  const normalized = markdown.replace(/\r\n/g, "\n");
+  const match = findImageReference(normalized, relativePath, startIndex, endIndex);
+  if (!match) {
+    return markdown;
+  }
+
+  if (sourceBlockId && targetBlockId && sourceBlockId === targetBlockId) {
+    return markdown;
+  }
+
+  if (insertAt > match.startIndex && insertAt < match.endIndex) {
+    return markdown;
+  }
+
+  const withoutReference = collapseBlankLines(removeReferenceAt(normalized, match.startIndex, match.endIndex));
+  const adjustedInsertAt = insertAt > match.startIndex
+    ? Math.max(0, insertAt - (match.endIndex - match.startIndex))
+    : insertAt;
+
+  return insertBlockReference(withoutReference, match.reference, adjustedInsertAt);
+}
+
+function removeReferenceAt(markdown: string, startIndex: number, endIndex: number) {
+  const before = markdown.slice(0, startIndex).replace(/[ \t]*$/u, "");
+  const after = markdown.slice(endIndex).replace(/^[ \t]*/u, "");
+
+  if (!before) {
+    return after.replace(/^\n{1,2}/u, "");
+  }
+  if (!after) {
+    return before.replace(/\n{1,2}$/u, "");
+  }
+
+  const beforeBreaks = before.match(/\n+$/u)?.[0].length ?? 0;
+  const afterBreaks = after.match(/^\n+/u)?.[0].length ?? 0;
+  const separator = beforeBreaks > 0 || afterBreaks > 0 ? "\n\n" : "";
+  return `${before.replace(/\n+$/u, "")}${separator}${after.replace(/^\n+/u, "")}`;
+}
+
+function findImageReference(
+  markdown: string,
+  relativePath: string,
+  startIndex?: number,
+  endIndex?: number,
+) {
+  const pathPattern = `(?:<${escapeRegExp(relativePath)}>|${escapeRegExp(relativePath)})`;
+  const inlinePattern = new RegExp(`!\\[[^\\]]*\\]\\(${pathPattern}(?:\\s+"[^"]*")?\\)`, "gu");
+
+  if (
+    typeof startIndex === "number" &&
+    typeof endIndex === "number" &&
+    startIndex >= 0 &&
+    endIndex > startIndex
+  ) {
+    const reference = markdown.slice(startIndex, endIndex);
+    if (inlinePattern.test(reference)) {
+      return {
+        endIndex,
+        reference: reference.trim(),
+        startIndex,
+      };
+    }
+  }
+
+  inlinePattern.lastIndex = 0;
+  const match = inlinePattern.exec(markdown);
+  if (!match) {
+    return null;
+  }
+
+  const start = match.index;
+  return {
+    endIndex: start + match[0].length,
+    reference: match[0],
+    startIndex: start,
+  };
 }

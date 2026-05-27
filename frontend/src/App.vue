@@ -17,11 +17,13 @@ import SettingsDialog from "./components/SettingsDialog.vue";
 import SidebarPanel from "./components/sidebar/SidebarPanel.vue";
 import TopBar from "./components/TopBar.vue";
 import UpdateRestartDialog from "./components/UpdateRestartDialog.vue";
+import { useGlobalDragDebug } from "./features/designCard/services/useGlobalDragDebug";
 import { usePlotWorkspace } from "./features/plot/model/usePlotWorkspace";
 import { useTheme } from "./composables/useTheme";
 
 const workspace = proxyRefs(usePlotWorkspace());
 const theme = proxyRefs(useTheme());
+useGlobalDragDebug();
 </script>
 
 <template>
@@ -108,6 +110,7 @@ const theme = proxyRefs(useTheme());
           @toggle="workspace.toggleNotePanel"
           @update:markdown="workspace.updateNoteMarkdown"
           @add-images="workspace.addNoteImages"
+          @move-image="workspace.moveNoteImage"
           @remove-image="workspace.removeNoteImage"
           @delete-design-card="workspace.deleteDesignCardFromNote"
           @insert-design-card="workspace.insertDesignCardReferenceIntoNote"

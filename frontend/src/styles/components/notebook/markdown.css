@@ -95,6 +95,7 @@
 }
 
 .notebook-markdown-rendered img[data-note-image-path] {
-  width: min(66.666%, 520px);
-  margin: 0 auto 1.05em;
+  width: 100%;
+  max-width: 100%;
+  margin: 12px 0;
 }

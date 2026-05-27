@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { DesignCard } from "../../features/designCard/services/designCardTypes";
+import { useDropTargetController } from "../../features/designCard/services/useDropTargetController";
 import type { AINoteSelectionPayload } from "../../features/ai/services/aiTypes";
 import type { NoteRenderBlock } from "../../features/notebook/rendering/noteForwarder";
 import type { NoteDocument } from "../../features/notebook/services/notebookStorage";
@@ -12,7 +13,10 @@ import { useNoteContextActions } from "./useNoteContextActions";
 import { useNoteContextSelection } from "./useNoteContextSelection";
 import { useNoteDesignCardDelete } from "./useNoteDesignCardDelete";
 import { resolveImagePathFromEventTarget } from "./useNoteDomTargets";
-import { useNoteDrop } from "./useNoteDrop";
+import {
+  useNoteDrop,
+  type NoteDropInsertionPoint,
+} from "./useNoteDrop";
 import { useNoteImagePreview } from "./useNoteImagePreview";
 import { useNoteImageSelection } from "./useNoteImageSelection";
 import { useNoteMarkdownEditing } from "./useNoteMarkdownEditing";
@@ -36,6 +40,15 @@ const emit = defineEmits<{
   "ai-design": [selection: AINoteSelectionPayload];
   "delete-design-card": [cardId: string];
   "insert-design-card": [payload: { cardId: string; insertAt: number; source?: "editor" | "note" }];
+  "move-image": [payload: {
+    edge: NoteDropInsertionPoint["edge"];
+    endIndex?: number;
+    insertAt: number;
+    relativePath: string;
+    sourceBlockId?: string;
+    startIndex?: number;
+    targetBlockId: string;
+  }];
   "open-design-card": [cardId: string];
   "remove-image": [relativePath: string];
   toggle: [];
@@ -107,16 +120,21 @@ const {
 
 const noteDrop = useNoteDrop({
   getCurrentInsertionIndex,
-  getDropInsertionIndex,
+  getDropInsertionPoint,
   onAddImages: (payload) => emit("add-images", payload),
   onInsertDesignCard: (payload) => emit("insert-design-card", payload),
+  onMoveImage: (payload) => emit("move-image", payload),
 });
 
 const {
-  handleDrop,
+  dropInsertionPoint,
+  handleGlobalDragEnd,
+  handleHostDragEnter,
+  handleHostDragLeave,
+  handleHostDragOver,
+  handleHostDrop,
   handlePaste,
   pickImages,
-  setDragging,
 } = noteDrop;
 
 const {
@@ -176,34 +194,49 @@ const {
   toggleImageSelection,
 });
 
+useDropTargetController({
+  host: notebookScroll,
+  onDragEnter: handleHostDragEnter,
+  onDragLeave: handleHostDragLeave,
+  onDragOver: handleHostDragOver,
+  onDrop: handleHostDrop,
+  onGlobalDragEnd: handleGlobalDragEnd,
+});
+
 function openFilePicker() {
   fileInput.value?.click();
 }
 
-function getDropInsertionIndex(event: DragEvent) {
+function getDropInsertionPoint(event: DragEvent): NoteDropInsertionPoint {
   const block = resolveDropBlock(event);
   if (!block) {
-    return getCurrentInsertionIndex();
+    return {
+      blockId: "",
+      edge: "after",
+      insertAt: getCurrentInsertionIndex(),
+    };
   }
 
   const before = Number(block.dataset.noteInsertBefore);
   const after = Number(block.dataset.noteInsertAfter);
   if (!Number.isFinite(before) || !Number.isFinite(after)) {
-    return getCurrentInsertionIndex();
+    return {
+      blockId: "",
+      edge: "after",
+      insertAt: getCurrentInsertionIndex(),
+    };
   }
 
   const rect = block.getBoundingClientRect();
-  return event.clientY < rect.top + rect.height / 2 ? before : after;
+  const edge = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+  return {
+    blockId: block.dataset.noteBlockId ?? "",
+    edge,
+    insertAt: edge === "before" ? before : after,
+  };
 }
 
 function resolveDropBlock(event: DragEvent) {
-  if (event.target instanceof Element) {
-    const block = event.target.closest<HTMLElement>("[data-note-insert-before][data-note-insert-after]");
-    if (block) {
-      return block;
-    }
-  }
-
   const root = markdownSurface.value;
   if (!root) {
     return null;
@@ -246,13 +279,12 @@ useNotePanelEffects({
       v-model:file-input="fileInput"
       :armed-design-card-delete-id="armedDesignCardDeleteId"
       :current-file="currentFile"
+      :drop-insertion-point="dropInsertionPoint"
       :editable-markdown="editableMarkdown"
       :render-blocks="renderBlocks"
       :selected-image-paths="selectedImagePaths"
       :should-show-markdown-input="shouldShowMarkdownInput"
       @delete-design-card="requestDesignCardDelete"
-      @drag-state="setDragging"
-      @drop="handleDrop"
       @focus-markdown="handleMarkdownFocus"
       @image-context="handleImageBlockContext"
       @image-preview="openPreview"

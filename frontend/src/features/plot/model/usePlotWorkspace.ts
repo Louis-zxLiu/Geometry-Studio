@@ -419,6 +419,7 @@ export function usePlotWorkspace() {
     noteSaveState: noteWorkspace.saveState,
     renameScript: scriptWorkspace.renameScript,
     renameWorkspace,
+    moveNoteImage: noteWorkspace.moveImage,
     removeNoteImage: noteWorkspace.removeImage,
     insertDesignCardReferenceIntoNote,
     deleteDesignCard: designCardWorkspace.deleteCard,

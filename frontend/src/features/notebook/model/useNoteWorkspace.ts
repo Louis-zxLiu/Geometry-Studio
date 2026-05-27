@@ -148,7 +148,7 @@ export function useNoteWorkspace(
     currentDocument,
     updateMarkdown,
   });
-  const { addImages, removeImage } = useNoteImages({
+  const { addImages, moveImage, removeImage } = useNoteImages({
     currentDocument,
     currentFile,
     onError,
@@ -164,6 +164,7 @@ export function useNoteWorkspace(
     hydrateFromScriptDocument,
     insertDesignCardReference,
     isPanelOpen,
+    moveImage,
     removeImage,
     renderBlocks,
     saveState,

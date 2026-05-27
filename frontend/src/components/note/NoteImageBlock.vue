@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { writeNoteImageDragData } from "../../features/notebook/services/noteImageDragData";
 import type { NoteRenderBlock } from "../../features/notebook/rendering/noteForwarder";
 
 defineProps<{
@@ -12,13 +13,28 @@ const emit = defineEmits<{
   select: [relativePath: string];
   context: [event: MouseEvent, relativePath: string];
 }>();
+
+function startDrag(event: DragEvent, block: Extract<NoteRenderBlock, { kind: "image" }>) {
+  writeNoteImageDragData(event.dataTransfer, {
+    blockId: block.id,
+    endIndex: block.endIndex,
+    relativePath: block.image.relativePath,
+    source: "note",
+    startIndex: block.startIndex,
+  });
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+  }
+}
 </script>
 
 <template>
   <figure
     class="notebook-image-block"
     :class="{ selected }"
-    @mousedown.left.prevent
+    :data-note-image-path="block.image.relativePath"
+    draggable="true"
+    @dragstart="startDrag($event, block)"
     @click="emit('select', block.image.relativePath)"
     @contextmenu.stop.prevent="emit('context', $event, block.image.relativePath)"
   >

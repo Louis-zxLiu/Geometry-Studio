@@ -1,9 +1,9 @@
 export function resolveImagePathFromEventTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
+  if (!(target instanceof Element)) {
     return "";
   }
 
-  const imageElement = target.closest("[data-note-image-path]");
+  const imageElement = target.closest<HTMLElement>("[data-note-image-path]");
   if (!(imageElement instanceof HTMLElement)) {
     return "";
   }
