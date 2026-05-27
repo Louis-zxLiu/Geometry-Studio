@@ -7,9 +7,11 @@ export type NoteImageDragData = {
 };
 
 const noteImageDragMime = "application/x-plotkitycat-note-image";
+const noteImagePathDragMime = "application/x-plotkitycat-note-image-path";
 
 export function hasNoteImageDragData(dataTransfer: DataTransfer | null | undefined) {
-  return Array.from(dataTransfer?.types ?? []).includes(noteImageDragMime);
+  const types = Array.from(dataTransfer?.types ?? []);
+  return types.includes(noteImageDragMime) || types.includes(noteImagePathDragMime);
 }
 
 export function readNoteImageDragData(
@@ -20,24 +22,26 @@ export function readNoteImageDragData(
   }
 
   const encoded = dataTransfer.getData(noteImageDragMime);
-  if (!encoded) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(encoded) as Partial<NoteImageDragData>;
-    return parsed.relativePath
-      ? {
+  if (encoded) {
+    try {
+      const parsed = JSON.parse(encoded) as Partial<NoteImageDragData>;
+      if (parsed.relativePath) {
+        return {
           blockId: parsed.blockId,
           endIndex: parsed.endIndex,
           relativePath: parsed.relativePath,
           source: "note",
           startIndex: parsed.startIndex,
-        }
-      : null;
-  } catch {
-    return null;
+        };
+      }
+    } catch {
+      // Fall through to the path-only drag payload below.
+    }
   }
+
+  const relativePath =
+    dataTransfer.getData(noteImagePathDragMime) || dataTransfer.getData("text/plain");
+  return relativePath ? { relativePath, source: "note" } : null;
 }
 
 export function writeNoteImageDragData(
@@ -49,5 +53,6 @@ export function writeNoteImageDragData(
   }
 
   dataTransfer.setData(noteImageDragMime, JSON.stringify(data));
+  dataTransfer.setData(noteImagePathDragMime, data.relativePath);
   dataTransfer.setData("text/plain", data.relativePath);
 }
