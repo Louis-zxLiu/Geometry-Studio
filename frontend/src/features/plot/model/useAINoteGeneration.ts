@@ -6,6 +6,7 @@ import type {
   AINoteSelectionPayload,
   AIProviderSettings,
 } from "../../ai/services/aiTypes";
+import { getErrorMessage } from "../../../lib/errors";
 
 type AIActivityStatus = {
   isAIGenerating: Ref<boolean>;
@@ -65,12 +66,4 @@ export function useAINoteGeneration(options: AINoteGenerationOptions) {
     generateCodeFromNoteSelection,
     runAINoteAction,
   };
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }

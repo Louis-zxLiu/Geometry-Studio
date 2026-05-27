@@ -1,5 +1,6 @@
 import { computed, ref, watch, type Ref } from "vue";
 import type { AINoteSelectionPayload, AIProviderSettings } from "../../ai/services/aiTypes";
+import { getErrorMessage } from "../../../lib/errors";
 import {
   deleteDesignCard,
   generateDesignCardFromSelection,
@@ -423,12 +424,4 @@ function getCodeLineCount(code: string) {
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }

@@ -2,6 +2,7 @@ import type { Ref } from "vue";
 import { repairCodeFromRunError } from "../../ai/services/aiBridgeCompat";
 import type { AIProviderSettings } from "../../ai/services/aiTypes";
 import { applyRepairPatch, type ChangedLineRange } from "../services/repairPatch";
+import { getErrorMessage } from "../../../lib/errors";
 
 type AIActivityStatus = {
   isAIGenerating: Ref<boolean>;
@@ -59,12 +60,4 @@ export function useAIRunErrorRepair(options: AIRunErrorRepairOptions) {
   return {
     repairCurrentRunError,
   };
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }

@@ -2,6 +2,7 @@ import type { Ref } from "vue";
 import { EventsOn } from "../../../../wailsjs/runtime/runtime";
 import type { RuntimeStatusLike } from "../../runtime/services/runtimeBridgeCompat";
 import type { WorkspaceSnapshotLike } from "../../scripts/services/scriptBridgeCompat";
+import { getErrorMessage } from "../../../lib/errors";
 
 type RuntimeState = {
   applyEnvironmentStatus: (status?: RuntimeStatusLike) => void;
@@ -172,12 +173,4 @@ export function useWorkspaceLifecycle(options: WorkspaceLifecycleOptions) {
     stopCurrentRun,
     unmount,
   };
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }

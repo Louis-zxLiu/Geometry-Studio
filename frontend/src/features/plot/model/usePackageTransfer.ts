@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import type { WorkspaceSnapshotLike } from "../../scripts/services/scriptBridgeCompat";
+import { getErrorMessage } from "../../../lib/errors";
 
 type PackageTransferAction = "" | "import" | "export";
 
@@ -143,12 +144,4 @@ export function usePackageTransfer(options: PackageTransferOptions) {
     packageTransferMessage,
     packageTransferPendingAction,
   };
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }

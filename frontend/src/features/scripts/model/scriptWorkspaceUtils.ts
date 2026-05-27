@@ -1,4 +1,5 @@
 import { computed, type Ref } from "vue";
+export { getErrorMessage } from "../../../lib/errors";
 
 export type ErrorHandler = (message: string) => void;
 export type WorkspacePhase = "idle" | "syncing" | "creating" | "renaming" | "deleting";
@@ -7,14 +8,6 @@ export const createVisualDelayMs = 260;
 
 export function computedPhase(target: WorkspacePhase, workspacePhase: Ref<WorkspacePhase>) {
   return computed(() => workspacePhase.value === target);
-}
-
-export function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }
 
 export function asString(value: unknown) {

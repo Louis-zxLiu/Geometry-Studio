@@ -6,6 +6,7 @@ import {
 } from "../../ai/services/aiBridgeCompat";
 import type { AIProviderSettings, CodeAIVersion } from "../../ai/services/aiTypes";
 import { applyRepairPatch, type ChangedLineRange } from "../../aiRepair/services/repairPatch";
+import { getErrorMessage } from "../../../lib/errors";
 
 export type { CodeAIVersion };
 
@@ -178,12 +179,4 @@ export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
     submitOptimization,
     versions,
   };
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }

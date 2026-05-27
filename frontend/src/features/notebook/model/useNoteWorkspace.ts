@@ -1,5 +1,6 @@
 import { computed, ref, watch, type Ref } from "vue";
 import type { DesignCard } from "../../designCard/services/designCardTypes";
+import { getErrorMessage } from "../../../lib/errors";
 import {
   getScriptNote,
   saveScriptNote,
@@ -169,12 +170,4 @@ export function useNoteWorkspace(
     togglePanel,
     updateMarkdown,
   };
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }

@@ -24,6 +24,7 @@ import { createRuntimeRepository } from "../../runtime/services/runtimeRepositor
 import { useRuntimeState } from "../../runtime/model/useRuntimeState";
 import { createScriptRepository } from "../../scripts/services/scriptRepository";
 import { useScriptWorkspaceMachine } from "../../scripts/model/useScriptWorkspaceMachine";
+import { getErrorMessage } from "../../../lib/errors";
 import { useAIActivityStatus } from "./useAIActivityStatus";
 import { useAINoteGeneration } from "./useAINoteGeneration";
 import { useCodeStreaming } from "./useCodeStreaming";
@@ -454,14 +455,6 @@ export function usePlotWorkspace() {
     closeUpdateInstallDialog,
     installUpdateAndRestart: installPreparedUpdate,
   };
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }
 
 function normalizeSubscriptionStatus(status: {

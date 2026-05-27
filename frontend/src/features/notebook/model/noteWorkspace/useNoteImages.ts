@@ -1,4 +1,5 @@
 import type { Ref } from "vue";
+import { getErrorMessage } from "../../../../lib/errors";
 import {
   addScriptNoteImages,
   removeScriptNoteImage,
@@ -144,12 +145,4 @@ function removeImageReference(markdown: string, relativePath: string) {
     .filter((line) => !imagePattern.test(line));
 
   return collapseBlankLines(filteredLines.join("\n")).trim();
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }
