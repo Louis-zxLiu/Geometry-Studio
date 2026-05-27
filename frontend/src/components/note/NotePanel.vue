@@ -17,6 +17,7 @@ import {
   useNoteDrop,
   type NoteDropInsertionPoint,
 } from "./useNoteDrop";
+import { useNoteDropInsertionPoint } from "./useNoteDropInsertionPoint";
 import { useNoteImagePreview } from "./useNoteImagePreview";
 import { useNoteImageSelection } from "./useNoteImageSelection";
 import { useNoteMarkdownEditing } from "./useNoteMarkdownEditing";
@@ -118,9 +119,14 @@ const {
   updateMarkdown,
 } = markdownEditing;
 
+const dropInsertion = useNoteDropInsertionPoint({
+  getCurrentInsertionIndex,
+  markdownSurface,
+});
+
 const noteDrop = useNoteDrop({
   getCurrentInsertionIndex,
-  getDropInsertionPoint,
+  getDropInsertionPoint: dropInsertion.getDropInsertionPoint,
   onAddImages: (payload) => emit("add-images", payload),
   onInsertDesignCard: (payload) => emit("insert-design-card", payload),
   onMoveImage: (payload) => emit("move-image", payload),
@@ -205,49 +211,6 @@ useDropTargetController({
 
 function openFilePicker() {
   fileInput.value?.click();
-}
-
-function getDropInsertionPoint(event: DragEvent): NoteDropInsertionPoint {
-  const block = resolveDropBlock(event);
-  if (!block) {
-    return {
-      blockId: "",
-      edge: "after",
-      insertAt: getCurrentInsertionIndex(),
-    };
-  }
-
-  const before = Number(block.dataset.noteInsertBefore);
-  const after = Number(block.dataset.noteInsertAfter);
-  if (!Number.isFinite(before) || !Number.isFinite(after)) {
-    return {
-      blockId: "",
-      edge: "after",
-      insertAt: getCurrentInsertionIndex(),
-    };
-  }
-
-  const rect = block.getBoundingClientRect();
-  const edge = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
-  return {
-    blockId: block.dataset.noteBlockId ?? "",
-    edge,
-    insertAt: edge === "before" ? before : after,
-  };
-}
-
-function resolveDropBlock(event: DragEvent) {
-  const root = markdownSurface.value;
-  if (!root) {
-    return null;
-  }
-
-  const blocks = Array.from(
-    root.querySelectorAll<HTMLElement>("[data-note-insert-before][data-note-insert-after]"),
-  );
-  return blocks.find((block) => event.clientY < block.getBoundingClientRect().bottom)
-    ?? blocks[blocks.length - 1]
-    ?? null;
 }
 
 useNotePanelEffects({
