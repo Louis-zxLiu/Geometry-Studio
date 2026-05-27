@@ -48,6 +48,8 @@ export function GetUpdateStatus():Promise<bridge.UpdateStatus>;
 
 export function ImportScenePackage():Promise<bridge.ImportSceneResult>;
 
+export function ImportScenePackageFromPath(arg1:string):Promise<bridge.ImportSceneResult>;
+
 export function InitializeApp():Promise<bridge.InitSnapshot>;
 
 export function InstallUpdateAndRestart():Promise<void>;

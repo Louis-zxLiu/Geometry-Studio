@@ -24,7 +24,7 @@ const emit = defineEmits<{
 function startDrag(event: DragEvent, cardId: string, source: DesignCardDragSource) {
   writeDesignCardDragData(event.dataTransfer, { cardId, source });
   if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.effectAllowed = "copyMove";
   }
 }
 </script>

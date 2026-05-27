@@ -15,13 +15,13 @@ type EditorDesignCardDropOptions = {
 };
 
 export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
-  function handleDragOver(event: DragEvent) {
+  function handleHostDragOver(event: DragEvent) {
     if (!hasDesignCardDragData(event.dataTransfer)) {
-      return false;
+      return;
     }
     const dragData = readDesignCardDragData(event.dataTransfer);
     if (dragData?.source === "note") {
-      return false;
+      return;
     }
 
     event.preventDefault();
@@ -30,20 +30,23 @@ export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = "move";
     }
-    return true;
   }
 
-  function handleDrop(event: DragEvent, view: EditorView) {
+  function handleHostDrop(event: DragEvent) {
     const dragData = readDesignCardDragData(event.dataTransfer);
     if (!dragData || dragData.source !== "editor") {
-      return false;
+      return;
+    }
+
+    const view = options.editorView.value;
+    if (!view) {
+      return;
     }
 
     event.preventDefault();
     options.isDraggingOver.value = false;
     options.onStopAutoScroll();
     placeCardFromEvent(event, view, dragData.cardId);
-    return true;
   }
 
   function handleDragLeave(event: DragEvent) {
@@ -63,42 +66,6 @@ export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
     options.onStopAutoScroll();
   }
 
-  function handleSurfaceDragOver(event: DragEvent) {
-    if (!hasDesignCardDragData(event.dataTransfer)) {
-      return;
-    }
-    const dragData = readDesignCardDragData(event.dataTransfer);
-    if (dragData?.source === "note") {
-      return;
-    }
-
-    event.preventDefault();
-    options.isDraggingOver.value = true;
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "move";
-    }
-  }
-
-  function handleSurfaceDrop(event: DragEvent) {
-    const dragData = readDesignCardDragData(event.dataTransfer);
-    if (!dragData || dragData.source !== "editor") {
-      return;
-    }
-    if (event.target instanceof Element && event.target.closest(".cm-content, .cm-editor")) {
-      return;
-    }
-
-    event.preventDefault();
-    options.isDraggingOver.value = false;
-    options.onStopAutoScroll();
-    const view = options.editorView.value;
-    if (!view) {
-      return;
-    }
-
-    placeCardFromEvent(event, view, dragData.cardId);
-  }
-
   function placeCardFromEvent(event: DragEvent, view: EditorView, cardId: string) {
     const position = view.posAtCoords({ x: event.clientX, y: event.clientY });
     const afterLine = position === null
@@ -110,9 +77,7 @@ export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
   return {
     clearDesignCardDragOver,
     handleDragLeave,
-    handleDragOver,
-    handleDrop,
-    handleSurfaceDragOver,
-    handleSurfaceDrop,
+    handleHostDragOver,
+    handleHostDrop,
   };
 }

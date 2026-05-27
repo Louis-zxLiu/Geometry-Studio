@@ -34,7 +34,7 @@ export class DesignCardCodeWidget extends WidgetType {
       article.classList.add("design-card-dragging");
       writeDesignCardDragData(event.dataTransfer, { cardId: this.card.id, source: "editor" });
       if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.effectAllowed = "copyMove";
       }
     });
     article.addEventListener("dragend", () => {

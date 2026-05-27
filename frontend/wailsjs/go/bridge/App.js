@@ -94,6 +94,10 @@ export function ImportScenePackage() {
   return window['go']['bridge']['App']['ImportScenePackage']();
 }
 
+export function ImportScenePackageFromPath(arg1) {
+  return window['go']['bridge']['App']['ImportScenePackageFromPath'](arg1);
+}
+
 export function InitializeApp() {
   return window['go']['bridge']['App']['InitializeApp']();
 }

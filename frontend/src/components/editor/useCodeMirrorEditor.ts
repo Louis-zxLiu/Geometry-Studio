@@ -34,8 +34,6 @@ type CodeMirrorEditorOptions = {
 type MountOptions = {
   cardDecorations: Compartment;
   buildDecorations: () => DecorationSet;
-  dragover: (event: DragEvent, view: EditorView) => boolean;
-  drop: (event: DragEvent, view: EditorView) => boolean;
 };
 
 export function useCodeMirrorEditor(options: CodeMirrorEditorOptions) {
@@ -76,8 +74,6 @@ export function useCodeMirrorEditor(options: CodeMirrorEditorOptions) {
           }),
           EditorView.domEventHandlers({
             contextmenu: handleContextMenu,
-            dragover: mountOptions.dragover,
-            drop: mountOptions.drop,
           }),
           highlightActiveLine(),
         ],

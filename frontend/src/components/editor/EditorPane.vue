@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useDropTargetController } from "../../features/designCard/services/useDropTargetController";
 import type { DesignCard, DesignCardPlacement } from "../../features/designCard/services/designCardTypes";
 import { useCodeMirrorEditor } from "./useCodeMirrorEditor";
 import { useEditorAutoScroll } from "./useEditorAutoScroll";
@@ -79,12 +80,19 @@ const designCardDrop = useEditorDesignCardDrop({
   onStopAutoScroll: autoScroll.stopDesignCardAutoScroll,
 });
 
+useDropTargetController({
+  host: editorRoot,
+  onDragLeave: designCardDrop.handleDragLeave,
+  onDragOver: designCardDrop.handleHostDragOver,
+  onDrop: designCardDrop.handleHostDrop,
+  onGlobalDragEnd: designCardDrop.clearDesignCardDragOver,
+  onGlobalDrop: designCardDrop.clearDesignCardDragOver,
+});
+
 onMounted(() => {
   const view = editor.mountEditor({
     cardDecorations: cardDecorations.cardDecorations,
     buildDecorations: cardDecorations.buildDecorations,
-    dragover: designCardDrop.handleDragOver,
-    drop: designCardDrop.handleDrop,
   });
   if (!view || !editorRoot.value) {
     return;
@@ -94,8 +102,6 @@ onMounted(() => {
   resizeObserver = new ResizeObserver(() => cardDecorations.updateCardViewportWidth(view));
   resizeObserver.observe(editorRoot.value);
   window.addEventListener("wheel", autoScroll.handleDesignCardDragWheel, autoScroll.wheelListenerOptions);
-  window.addEventListener("dragend", designCardDrop.clearDesignCardDragOver);
-  window.addEventListener("drop", designCardDrop.clearDesignCardDragOver);
   viewportAnchor.scheduleAnchorLineUpdate();
 });
 
@@ -103,8 +109,6 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect();
   resizeObserver = null;
   window.removeEventListener("wheel", autoScroll.handleDesignCardDragWheel, autoScroll.wheelListenerOptions);
-  window.removeEventListener("dragend", designCardDrop.clearDesignCardDragOver);
-  window.removeEventListener("drop", designCardDrop.clearDesignCardDragOver);
   autoScroll.stopDesignCardAutoScroll();
   viewportAnchor.cancelAnchorLineUpdate();
   editor.destroyEditor();
@@ -138,13 +142,7 @@ watch(
   <section
     class="editor-panel"
     :class="{ disabled: disabled, streaming: isStreaming, 'dragging-design-card': isDesignCardDraggingOver }"
-    @dragleave="designCardDrop.handleDragLeave"
   >
-    <div
-      ref="editorRoot"
-      class="code-editor-surface"
-      @dragover="designCardDrop.handleSurfaceDragOver"
-      @drop="designCardDrop.handleSurfaceDrop"
-    />
+    <div ref="editorRoot" class="code-editor-surface" />
   </section>
 </template>
