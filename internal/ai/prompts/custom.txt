@@ -26,154 +26,117 @@ output :
       import numpy as np
       from mpl_toolkits.mplot3d.art3d import Poly3DCollection
       from matplotlib.widgets import Slider, Button, CheckButtons
-      from matplotlib.patches import Polygon
 
-      
       mpl.rcParams['lines.antialiased'] = True
       mpl.rcParams['patch.antialiased'] = True
-      # 默认参数，请遵守
+      # 默认旋转参数需要遵守
       mpl.rcParams["axes3d.mouserotationstyle"] = "azel"
 
-      # 字体必须遵守
       plt.rcParams.update({
           "font.family": "SimSun",
           "mathtext.fontset": "stix",
           "axes.unicode_minus": False,
-          "font.size": 12
+          "font.size": 11
       })
 
-      # 莫兰迪色系
       MORANDI = {
-          'plane_alpha': '#D0C8C6',  # 灰粉 (用于截面)
-          'plane_beta': '#B5BDB5',  # 豆绿 (UI交互亮色)
-          'plane_gamma': '#A8B1C2',  # 雾蓝 (2D函数曲线)
-          'line_main': '#333333',  # 深灰 (文字与核心点)
-          'line_aux': '#999999',  # 浅灰 (辅线与UI边框)
+          'plane_alpha': '#D0C8C6',  # 灰粉
+          'plane_beta': '#B5BDB5',   # 豆绿
+          'plane_gamma': '#A8B1C2',  # 雾蓝
+          'line_main': '#333333',    # 深灰
+          'line_aux': '#999999',     # 浅灰
       }
-
-      LINE_WIDTH = 1.2  # 回归锐利的细线
 
       def calc_intersection(theta_deg):
           """计算动平面绕横轴旋转切割单位正方体的截面"""
           theta = np.radians(theta_deg)
           t = np.tan(theta)
-
           if t <= 1:
-              verts = [(0, 0, 0), (1, 0, 0), (1, 1, t), (0, 1, t)]
-              area = np.sqrt(1 + t ** 2)
-          else:
-              cot = 1.0 / t
-              verts = [(0, 0, 0), (1, 0, 0), (1, cot, 1), (0, cot, 1)]
-              area = np.sqrt(cot ** 2 + 1)
+              return [(0, 0, 0), (1, 0, 0), (1, 1, t), (0, 1, t)], np.sqrt(1 + t ** 2)
+          return [(0, 0, 0), (1, 0, 0), (1, 1/t, 1), (0, 1/t, 1)], np.sqrt((1/t) ** 2 + 1)
 
-          return verts, area
-
-
-      fig = plt.figure(figsize=(10, 5), dpi=300)  # 修长的画布比例
-      fig.patch.set_facecolor('white')
+      fig = plt.figure(figsize=(10, 5), facecolor='white')
 
       # [左图]: 3D 正交视图
-      ax1 = fig.add_axes([0.02, 0.25, 0.45, 0.65], projection='3d', proj_type='ortho')
+      ax1 = fig.add_axes([0.02, 0.22, 0.45, 0.7], projection='3d', proj_type='ortho')
       ax1.set_axis_off()
       ax1.view_init(elev=20, azim=-45)
-      ax1.set_xlim(0, 1);
-      ax1.set_ylim(0, 1);
-      ax1.set_zlim(0, 1)
-      ax1.text2D(0.5, 0.95, "空间几何: 动平面截面演化", transform=ax1.transAxes, ha='center', fontsize=14)
+      ax1.set_xlim(0, 1); ax1.set_ylim(0, 1); ax1.set_zlim(0, 1)
+      ax1.text2D(0.5, 0.95, "空间几何: 动平面截面演化", transform=ax1.transAxes, ha='center', fontsize=13)
 
-
-      ax2 = fig.add_axes([0.55, 0.30, 0.38, 0.55])
-      # 极致极简: 去除上、右边框，削弱下、左边框
+      # [右图]: 2D 曲线
+      ax2 = fig.add_axes([0.55, 0.25, 0.38, 0.6])
       ax2.spines['top'].set_visible(False)
       ax2.spines['right'].set_visible(False)
       ax2.spines['left'].set_color(MORANDI['line_aux'])
-      ax2.spines['left'].set_linewidth(0.8)
       ax2.spines['bottom'].set_color(MORANDI['line_aux'])
-      ax2.spines['bottom'].set_linewidth(0.8)
-      ax2.set_title("截面积曲线 $S(\\theta)$", pad=15, fontsize=14)
-      ax2.set_xlabel("$\\theta (^{\\circ})$", color=MORANDI['line_main'])
-
+      ax2.set_title("截面积曲线 (\theta)$", pad=15, fontsize=13)
+      ax2.set_xlabel("$\theta (^{\circ})$", color=MORANDI['line_main'])
 
       cube_lines = []
       for p in [0, 1]:
-          cube_lines.append(ax1.plot([0, 1], [p, p], [0, 0], color=MORANDI['line_aux'], lw=0.8, ls='--', zorder=1)[0])
-          cube_lines.append(ax1.plot([0, 1], [p, p], [1, 1], color=MORANDI['line_aux'], lw=0.8, ls='--', zorder=1)[0])
-          cube_lines.append(ax1.plot([p, p], [0, 1], [0, 0], color=MORANDI['line_aux'], lw=0.8, ls='--', zorder=1)[0])
-          cube_lines.append(ax1.plot([p, p], [0, 1], [1, 1], color=MORANDI['line_aux'], lw=0.8, ls='--', zorder=1)[0])
-          cube_lines.append(ax1.plot([p, p], [0, 0], [0, 1], color=MORANDI['line_aux'], lw=0.8, ls='--', zorder=1)[0])
-          cube_lines.append(ax1.plot([p, p], [1, 1], [0, 1], color=MORANDI['line_aux'], lw=0.8, ls='--', zorder=1)[0])
+          cube_lines.append(ax1.plot([0, 1], [p, p], [0, 0], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+          cube_lines.append(ax1.plot([0, 1], [p, p], [1, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+          cube_lines.append(ax1.plot([p, p], [0, 1], [0, 0], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+          cube_lines.append(ax1.plot([p, p], [0, 1], [1, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+          cube_lines.append(ax1.plot([p, p], [0, 0], [0, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+          cube_lines.append(ax1.plot([p, p], [1, 1], [0, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
 
-
+      # 初始化截面、2D 曲线与面积填充
       init_verts, init_area = calc_intersection(30)
-      poly3d = Poly3DCollection([init_verts], facecolors=MORANDI['plane_alpha'],
-                                edgecolors=MORANDI['line_main'], linewidths=LINE_WIDTH, alpha=0.4, zorder=5)
+      poly3d = Poly3DCollection([init_verts], facecolors=MORANDI['plane_alpha'], edgecolors=MORANDI['line_main'], linewidths=1.2, alpha=0.4)
       ax1.add_collection3d(poly3d)
-
 
       thetas = np.linspace(0, 89.9, 200)
       areas = [calc_intersection(th)[1] for th in thetas]
-      ax2.plot(thetas, areas, color=MORANDI['plane_gamma'], lw=LINE_WIDTH, zorder=2)
+      ax2.plot(thetas, areas, color=MORANDI['plane_gamma'], lw=1.2)
+      dot2d, = ax2.plot([30], [init_area], 'o', color=MORANDI['line_main'], ms=5)
 
+      # 使用经典通用的 fill_between 填充阴影面积
+      fill_area = ax2.fill_between(thetas, areas, where=(thetas <= 30), color=MORANDI['plane_gamma'], alpha=0.15)
 
-      dot2d, = ax2.plot([30], [init_area], 'o', color=MORANDI['line_main'], ms=5, zorder=4)
-      fill_poly = Polygon(np.column_stack([[0, 30, 30, 0], [0, 0, init_area, 0]]),
-                          facecolor=MORANDI['plane_gamma'], alpha=0.15, zorder=1)
-      ax2.add_patch(fill_poly)
+      # 4. 布局交互 UI 组件
+      ax_slider = fig.add_axes([0.15, 0.08, 0.40, 0.02])
+      ax_chk    = fig.add_axes([0.62, 0.05, 0.15, 0.08])
+      ax_btn    = fig.add_axes([0.82, 0.06, 0.08, 0.05])
 
-
-      ax_slider = fig.add_axes([0.15, 0.10, 0.40, 0.02])  
-      ax_chk = fig.add_axes([0.62, 0.07, 0.15, 0.08])  
-      ax_btn = fig.add_axes([0.82, 0.08, 0.08, 0.05])  # 按钮：精致小巧
-
-
-      slider = Slider(ax_slider, '旋转角 $\\theta$', 0, 89.9, valinit=30,
-                      color=MORANDI['plane_beta'], track_color='#EFEFEF')
-
-      for spine in ax_slider.spines.values():
-          spine.set_visible(False)
+      # 滑块配置
+      slider = Slider(ax_slider, '旋转角 $\theta$', 0, 89.9, valinit=30, color=MORANDI['plane_beta'], track_color='#EFEFEF')
+      ax_slider.set_axis_off()
       slider.valtext.set_color(MORANDI['line_main'])
 
+      # 复选框配置：使用通用、安全的传统 API 避坑
       chk = CheckButtons(ax_chk, ['辅助框线'], [True])
+      ax_chk.set_axis_off()
 
-
-      for rect in ax_chk.patches:
-          rect.set_edgecolor(MORANDI['line_aux'])
-          rect.set_linewidth(0.8)
-          rect.set_facecolor('white')
-
-
+      # 通过 ax_chk 内部的线条和图形对象直接、安全地修改样式
+      for patch in ax_chk.patches:
+          patch.set_edgecolor(MORANDI['line_aux'])
+          patch.set_linewidth(0.8)
+          patch.set_facecolor('white')
       for line in ax_chk.lines:
           line.set_color(MORANDI['line_main'])
-          line.set_linewidth(LINE_WIDTH)
+          line.set_linewidth(1.2)
 
-      for spine in ax_chk.spines.values():
-          spine.set_visible(False)
-
-
+      # 重置按钮配置
       btn = Button(ax_btn, '重置', color='white', hovercolor='#F5F5F5')
-
       for spine in ax_btn.spines.values():
           spine.set_color(MORANDI['line_aux'])
           spine.set_linewidth(0.8)
       btn.label.set_color(MORANDI['line_main'])
 
-
-
+      # 紧凑的高效回调逻辑
       def update(val):
           theta = slider.val
           verts, area = calc_intersection(theta)
           poly3d.set_verts([verts])
           dot2d.set_data([theta], [area])
 
-          th_idx = thetas <= theta
-          xs = np.concatenate([[0], thetas[th_idx], [theta]])
-          ys = np.concatenate([[0], np.array(areas)[th_idx], [0]])
-          fill_poly.set_xy(np.column_stack([xs, ys]))
+          # 动态刷新阴影：先移除旧的，再一行 fill_between 重新绘制
+          global fill_area
+          fill_area.remove()
+          fill_area = ax2.fill_between(thetas, areas, where=(thetas <= theta), color=MORANDI['plane_gamma'], alpha=0.15)
           fig.canvas.draw_idle()
-
-
-      slider.on_changed(update)
-
 
       def toggle_visibility(label):
           state = chk.get_status()[0]
@@ -181,15 +144,9 @@ output :
               line.set_visible(state)
           fig.canvas.draw_idle()
 
-
+      slider.on_changed(update)
       chk.on_clicked(toggle_visibility)
-
-
-      def reset(event):
-          slider.reset()
-
-
-      btn.on_clicked(reset)
+      btn.on_clicked(lambda event: slider.reset())
 
       plt.show()
       '''
