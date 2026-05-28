@@ -33,18 +33,18 @@ output :
       mpl.rcParams["axes3d.mouserotationstyle"] = "azel"
 
       plt.rcParams.update({
-          "font.family": "SimSun",
-          "mathtext.fontset": "stix",
-          "axes.unicode_minus": False,
+          "font.family": "SimSun", 
+          "mathtext.fontset": "stix", 
+          "axes.unicode_minus": False, 
           "font.size": 11
       })
 
       MORANDI = {
-          'plane_alpha': '#D0C8C6',  # 灰粉
-          'plane_beta': '#B5BDB5',   # 豆绿
-          'plane_gamma': '#A8B1C2',  # 雾蓝
-          'line_main': '#333333',    # 深灰
-          'line_aux': '#999999',     # 浅灰
+          'plane_alpha': '#D0C8C6',  # 灰粉 
+          'plane_beta': '#B5BDB5',   # 豆绿 
+          'plane_gamma': '#A8B1C2',  # 雾蓝 
+          'line_main': '#333333',    # 深灰 
+          'line_aux': '#999999',     # 浅灰 
       }
 
       def calc_intersection(theta_deg):
@@ -70,8 +70,9 @@ output :
       ax2.spines['right'].set_visible(False)
       ax2.spines['left'].set_color(MORANDI['line_aux'])
       ax2.spines['bottom'].set_color(MORANDI['line_aux'])
-      ax2.set_title("截面积曲线 (\theta)$", pad=15, fontsize=13)
-      ax2.set_xlabel("$\theta (^{\circ})$", color=MORANDI['line_main'])
+      ax2.set_title("截面积曲线 $S(\\theta)$", pad=15, fontsize=13)
+      ax2.set_xlabel("$\\theta (^{\\circ})$", color=MORANDI['line_main'])
+
 
       cube_lines = []
       for p in [0, 1]:
@@ -96,12 +97,12 @@ output :
       fill_area = ax2.fill_between(thetas, areas, where=(thetas <= 30), color=MORANDI['plane_gamma'], alpha=0.15)
 
       # 4. 布局交互 UI 组件
-      ax_slider = fig.add_axes([0.15, 0.08, 0.40, 0.02])
-      ax_chk    = fig.add_axes([0.62, 0.05, 0.15, 0.08])
-      ax_btn    = fig.add_axes([0.82, 0.06, 0.08, 0.05])
+      ax_slider = fig.add_axes([0.15, 0.08, 0.40, 0.02])  
+      ax_chk    = fig.add_axes([0.62, 0.05, 0.15, 0.08])  
+      ax_btn    = fig.add_axes([0.82, 0.06, 0.08, 0.05])  
 
       # 滑块配置
-      slider = Slider(ax_slider, '旋转角 $\theta$', 0, 89.9, valinit=30, color=MORANDI['plane_beta'], track_color='#EFEFEF')
+      slider = Slider(ax_slider, '旋转角 $\\theta$', 0, 89.9, valinit=30, color=MORANDI['plane_beta'], track_color='#EFEFEF')
       ax_slider.set_axis_off()
       slider.valtext.set_color(MORANDI['line_main'])
 
@@ -120,7 +121,7 @@ output :
 
       # 重置按钮配置
       btn = Button(ax_btn, '重置', color='white', hovercolor='#F5F5F5')
-      for spine in ax_btn.spines.values():
+      for spine in ax_btn.spines.values(): 
           spine.set_color(MORANDI['line_aux'])
           spine.set_linewidth(0.8)
       btn.label.set_color(MORANDI['line_main'])
@@ -131,7 +132,7 @@ output :
           verts, area = calc_intersection(theta)
           poly3d.set_verts([verts])
           dot2d.set_data([theta], [area])
-
+          
           # 动态刷新阴影：先移除旧的，再一行 fill_between 重新绘制
           global fill_area
           fill_area.remove()
