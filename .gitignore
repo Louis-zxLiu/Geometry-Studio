@@ -22,6 +22,9 @@ nul
 USERPROFILE/
 .DS_Store
 Thumbs.db
+/.gocache/
+__pycache__/
+*.py[cod]
 
 # Legacy root docs
 Tec.md
