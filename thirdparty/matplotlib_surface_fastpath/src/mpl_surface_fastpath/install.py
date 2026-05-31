@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import matplotlib.path as mpath
 import numpy as np
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from mpl_toolkits.mplot3d import axes3d
 
 from ._backend import build_closed_path_buffers
@@ -18,6 +19,7 @@ from .adapter import (
 
 _GLOBAL_PATCH_STATE = {
     "enabled": False,
+    "original_add_collection3d": None,
     "options": None,
     "original_plot_surface": None,
     "original_plot_trisurf": None,
@@ -133,12 +135,30 @@ def enable_fast_surface_globally():
     enable_fast_surface_globally_advanced()
 
 
+def _try_install_fastpath(surface, options: SurfaceFastPathOptions):
+    state = getattr(surface, "_mpl_surface_fastpath_state", None)
+    if state is not None:
+        setattr(surface, "_mpl_surface_fastpath_reason", "enabled")
+        return state
+
+    try:
+        state = install_surface_fastpath(surface, options)
+        setattr(surface, "_mpl_surface_fastpath_state", state)
+        setattr(surface, "_mpl_surface_fastpath_reason", "enabled")
+        return state
+    except Exception as exc:
+        setattr(surface, "_mpl_surface_fastpath_reason", str(exc))
+        return None
+
+
 def disable_fast_surface_globally() -> None:
     if not _GLOBAL_PATCH_STATE["enabled"]:
         return
+    axes3d.Axes3D.add_collection3d = _GLOBAL_PATCH_STATE["original_add_collection3d"]
     axes3d.Axes3D.plot_surface = _GLOBAL_PATCH_STATE["original_plot_surface"]
     axes3d.Axes3D.plot_trisurf = _GLOBAL_PATCH_STATE["original_plot_trisurf"]
     _GLOBAL_PATCH_STATE["enabled"] = False
+    _GLOBAL_PATCH_STATE["original_add_collection3d"] = None
     _GLOBAL_PATCH_STATE["options"] = None
     _GLOBAL_PATCH_STATE["original_plot_surface"] = None
     _GLOBAL_PATCH_STATE["original_plot_trisurf"] = None
@@ -168,31 +188,30 @@ def enable_fast_surface_globally_advanced(
 
     original_plot_surface = axes3d.Axes3D.plot_surface
     original_plot_trisurf = axes3d.Axes3D.plot_trisurf
+    original_add_collection3d = axes3d.Axes3D.add_collection3d
+
+    def patched_add_collection3d(self, col, *args, **kwargs):
+        collection = original_add_collection3d(self, col, *args, **kwargs)
+        if isinstance(collection, Poly3DCollection):
+            _try_install_fastpath(collection, options)
+        return collection
 
     def patched_plot_surface(self, *args, **kwargs):
         surface = original_plot_surface(self, *args, **kwargs)
-        try:
-            state = install_surface_fastpath(surface, options)
-            setattr(surface, "_mpl_surface_fastpath_state", state)
-            setattr(surface, "_mpl_surface_fastpath_reason", "enabled")
-        except Exception as exc:
-            setattr(surface, "_mpl_surface_fastpath_reason", str(exc))
+        _try_install_fastpath(surface, options)
         return surface
 
     def patched_plot_trisurf(self, *args, **kwargs):
         surface = original_plot_trisurf(self, *args, **kwargs)
-        try:
-            state = install_surface_fastpath(surface, options)
-            setattr(surface, "_mpl_surface_fastpath_state", state)
-            setattr(surface, "_mpl_surface_fastpath_reason", "enabled")
-        except Exception as exc:
-            setattr(surface, "_mpl_surface_fastpath_reason", str(exc))
+        _try_install_fastpath(surface, options)
         return surface
 
+    axes3d.Axes3D.add_collection3d = patched_add_collection3d
     axes3d.Axes3D.plot_surface = patched_plot_surface
     axes3d.Axes3D.plot_trisurf = patched_plot_trisurf
 
     _GLOBAL_PATCH_STATE["enabled"] = True
+    _GLOBAL_PATCH_STATE["original_add_collection3d"] = original_add_collection3d
     _GLOBAL_PATCH_STATE["options"] = options
     _GLOBAL_PATCH_STATE["original_plot_surface"] = original_plot_surface
     _GLOBAL_PATCH_STATE["original_plot_trisurf"] = original_plot_trisurf
