@@ -544,7 +544,7 @@ function normalizeUpdateStatus(status: UpdateStatusLike): AppUpdateStatus {
   const updateAvailable = !!status.updateAvailable;
 
   return {
-    currentVersion: typeof status.currentVersion === "string" ? status.currentVersion : "0.0.2.4",
+    currentVersion: typeof status.currentVersion === "string" ? status.currentVersion : "0.0.2.5",
     latestVersion: typeof status.latestVersion === "string" ? status.latestVersion : "",
     notes: typeof status.notes === "string" ? status.notes : "",
     publishedAt: typeof status.publishedAt === "string" ? status.publishedAt : "",
