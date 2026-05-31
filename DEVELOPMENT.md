@@ -1,5 +1,11 @@
 # PlotKityCat Development
 
+这份文档负责回答三件事：
+
+- 如何启动本地开发
+- 如何准备 runtime 与构建发布包
+- 仓库里哪些东西应该进 Git，哪些不应该
+
 ## 环境
 
 - Windows
@@ -23,26 +29,19 @@ wails dev
 
 ## 版本
 
-应用版本唯一来源：
-
-- `version.json`
-
-相关脚本都会默认读取这里的 `appVersion`。
+应用版本唯一来源是 `version.json` 的 `appVersion`。构建与发布脚本默认都读取这里的值。
 
 ## Runtime
 
-项目运行依赖便携 Python runtime：
+项目运行依赖便携 Python runtime。约定如下：
 
-- runtime 占位目录：`resources/runtime/`
-- 发布输入：本地放置的 `resources/runtime/runtime.zip`
+- 占位目录：`resources/runtime/`
+- 本地发布输入：`resources/runtime/runtime.zip`
 - 本地展开目录：`runtime/`
 - 临时展开目录：`runtime.tmp/`
 - 元数据文件：`runtime.version.json`
-
-约定：
-
 - `resources/runtime/runtime.zip` 默认不提交到 Git
-- 该文件应通过 GitHub Release asset 或其他制品存储分发
+- runtime 应通过 GitHub Release asset 或其他制品存储分发
 - 仓库仅跟踪 runtime 脚本、元数据和第三方补丁源码
 
 准备 runtime 压缩包：
@@ -51,7 +50,7 @@ wails dev
 .\tools\prepare-runtime.ps1 -SourceRuntimeDir <你的 runtime 目录>
 ```
 
-当前默认应保留的核心库：
+默认核心库：
 
 - Python 标准库
 - numpy
@@ -59,11 +58,11 @@ wails dev
 - scipy
 - PyQt5
 
-`runtime.version.json` 应同步填写实际 Python 与核心库版本，不要长期保留 `pending`。
+`runtime.version.json` 必须填写真实版本，不要长期保留 `pending`。
 
 从零重建 runtime 的完整说明见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)。
 
-## 打包入口
+## 构建与打包
 
 构建 exe：
 
@@ -71,13 +70,13 @@ wails dev
 .\tools\build-versioned-app.ps1
 ```
 
-生成发布 zip：
+生成完整发布包：
 
 ```powershell
 .\tools\package-release.ps1
 ```
 
-生成自动更新发布物：
+生成在线更新产物：
 
 ```powershell
 .\tools\prepare-update-release.ps1
@@ -107,10 +106,11 @@ wails dev
 - `frontend/`
 - `tools/`
 - `build/windows/`
-- `resources/` 下需要随项目维护的静态资源
+- `resources/` 下需要随项目维护的静态资源与占位文件
 - `resources/runtime/.gitkeep`
 - `README.md`
 - `DEVELOPMENT.md`
+- `UPDATE_RELEASE.md`
 - `RUNTIME_BUILD.md`
 - `version.json`
 - `runtime.version.json`
@@ -125,3 +125,5 @@ wails dev
 - `build/release/`
 - `build/update/`
 - `packaging/`
+
+发布服务器更新步骤见 [UPDATE_RELEASE.md](D:/projects/plotkitycat/UPDATE_RELEASE.md)。

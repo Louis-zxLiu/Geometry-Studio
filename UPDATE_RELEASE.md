@@ -1,6 +1,8 @@
 # PlotKityCat 更新发布说明
 
-这份文档只描述当前这套最小更新流程：
+这份文档只负责发布与在线更新，不解释 runtime 从零重建。runtime 重建流程单独见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)。
+
+当前发布模型：
 
 - 更新客户端只更新 `exe`
 - runtime 走整包发布，不走在线更新
@@ -9,10 +11,11 @@
   - `stable/manifest.json`
   - `releases/PlotKityCat-版本号-windows-amd64.exe`
 
-关于 runtime：
+runtime 约定：
 
 - `resources/runtime/runtime.zip` 默认不提交到 Git
 - 它应作为 release asset 或其他外部分发制品单独保存
+- 推荐命名为与应用版本对应的 release asset
 - 从零重建 runtime 的流程见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)
 
 ## 1. 先改版本号
@@ -29,13 +32,11 @@
 }
 ```
 
-说明：
+相关脚本如果不手动传 `-Version`，都会默认读取这里的 `appVersion`：
 
 - `tools/build-versioned-app.ps1`
 - `tools/prepare-update-release.ps1`
 - `tools/package-release.ps1`
-
-这三个脚本如果不手动传 `-Version`，都会默认读取这里的 `appVersion`。
 
 ## 2. 构建应用 exe
 
@@ -55,7 +56,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\build-versioned-app.ps1 -Versio
 
 - [build/bin/PlotKityCat.exe](/D:/projects/PlotKityCat/build/bin/PlotKityCat.exe)
 
-## 3. 生成给更新服务器用的 exe + manifest
+## 3. 生成在线更新产物
 
 运行：
 
@@ -80,10 +81,10 @@ powershell -ExecutionPolicy Bypass -File .\tools\prepare-update-release.ps1 -Ver
 
 说明：
 
-- `manifest.json` 里已经自动写好下载地址和 sha256
+- `manifest.json` 会自动写入下载地址和 sha256
 - 默认下载地址前缀是 `https://update.5051001.xyz/plotkitycat/releases`
 
-## 4. 生成给用户下载的完整 zip
+## 4. 生成完整下载包
 
 运行：
 
@@ -104,10 +105,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\package-release.ps1 -Version 0.
 
 说明：
 
-- 这个 zip 里会包含：
-  - `PlotKityCat.exe`
-  - `resources/runtime/runtime.zip`
-  - `Scripts/`
+- 这个 zip 会包含 `PlotKityCat.exe`、`resources/runtime/runtime.zip` 和 `Scripts/`
 - 因此发布完整包前，必须先在本地准备好 `resources/runtime/runtime.zip`
 
 ## 5. 上传到更新服务器
@@ -156,7 +154,7 @@ curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.1.9-
 
 ## 7. 最短发布流程
 
-以后你如果只想记住最短流程，就按这个顺序：
+只记最短流程时，按这个顺序执行：
 
 1. 改 [version.json](/D:/projects/PlotKityCat/version.json) 的 `appVersion`
 2. 跑 `.\tools\build-versioned-app.ps1`
@@ -165,18 +163,15 @@ curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.1.9-
 5. 上传 `build/update/版本号/` 里的 `exe`
 6. 把 `build/update/版本号/manifest.json` 覆盖到服务器 `stable/manifest.json`
 
-## 8. 当前固定约定
+## 8. 固定约定
 
-- 更新 manifest 地址：
-  - `https://update.5051001.xyz/plotkitycat/stable/manifest.json`
-- 更新 exe 文件名格式：
-  - `PlotKityCat-版本号-windows-amd64.exe`
-- 完整发布包目录格式：
-  - `build/release/PlotKityCat-v版本号`
-- 完整发布包 zip 格式：
-  - `build/release/PlotKityCat-v版本号.zip`
+- 更新 manifest 地址：`https://update.5051001.xyz/plotkitycat/stable/manifest.json`
+- 更新 exe 文件名格式：`PlotKityCat-版本号-windows-amd64.exe`
+- 完整发布包目录格式：`build/release/PlotKityCat-v版本号`
+- 完整发布包 zip 格式：`build/release/PlotKityCat-v版本号.zip`
+- runtime asset 建议格式：`PlotKityCat-runtime-版本号.zip`
 
-## 9. 如果只想发完整包，不想更新在线更新
+## 9. 只发完整包，不更新在线更新
 
 只需要：
 
@@ -184,7 +179,7 @@ curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.1.9-
 2. 跑 `.\tools\build-versioned-app.ps1`
 3. 跑 `.\tools\package-release.ps1`
 
-这样你会得到完整 zip，但不会更新服务器上的在线更新入口。
+这样会得到完整 zip，但不会更新服务器上的在线更新入口。
 
 ## 10. 常见问题
 
