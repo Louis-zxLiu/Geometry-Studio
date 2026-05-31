@@ -57,7 +57,7 @@ export class DesignCardCodeWidget extends WidgetType {
     actions.addEventListener("click", (event) => event.stopPropagation());
     actions.append(
       this.createIconButton("放大查看", "zoom", () => this.callbacks.open(this.card.id)),
-      this.createIconButton("删除设计卡片", "trash", () => this.callbacks.delete(this.card.id)),
+      this.createIconButton("从代码区移除", "trash", () => this.callbacks.delete(this.card.id)),
     );
     article.append(actions);
     shell.append(article);
@@ -87,7 +87,7 @@ export class DesignCardCodeWidget extends WidgetType {
       event.stopPropagation();
       if (icon === "trash" && !button.classList.contains("armed")) {
         button.classList.add("armed");
-        button.title = "再次点击确认删除";
+        button.title = "再次点击确认移除";
         window.clearTimeout(deleteTimer);
         deleteTimer = window.setTimeout(() => {
           button.classList.remove("armed");

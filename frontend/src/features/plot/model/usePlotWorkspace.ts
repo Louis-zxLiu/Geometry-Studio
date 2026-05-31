@@ -18,6 +18,8 @@ import type { ChangedLineRange } from "../../aiRepair/services/repairPatch";
 import { useRunErrorDialog } from "../../errors/model/useRunErrorDialog";
 import { useCodeAIOptimize } from "../../codeAIOptimize/model/useCodeAIOptimize";
 import { useDesignCardWorkspace } from "../../designCard/model/useDesignCardWorkspace";
+import { extractDesignCardReferenceIDs } from "../../designCard/services/designCardMarkdownCodec";
+import type { DesignCardDragSource } from "../../designCard/services/designCardDragData";
 import type { DesignCard } from "../../designCard/services/designCardTypes";
 import { useNoteWorkspace } from "../../notebook/model/useNoteWorkspace";
 import { createRuntimeRepository } from "../../runtime/services/runtimeRepository";
@@ -106,7 +108,6 @@ export function usePlotWorkspace() {
     isRunning,
     noteMarkdown: computed(() => noteWorkspace.currentDocument.value.markdown),
     onError: runErrorDialog.openRunErrorDialog,
-    updateNoteMarkdown: noteWorkspace.updateMarkdown,
   });
   const aiRepair = useAIRunErrorRepair({
     aiActivity,
@@ -132,10 +133,52 @@ export function usePlotWorkspace() {
     insertAt?: number;
     source?: "editor" | "note";
   }) {
-    noteWorkspace.insertDesignCardReference(payload);
+    noteWorkspace.insertDesignCardReference({
+      ...payload,
+      persist: "immediate",
+    });
     if (payload.source === "editor") {
       designCardWorkspace.removeCardPlacement(payload.cardId);
     }
+  }
+
+  function placeDesignCard(payload: {
+    cardId: string;
+    afterLine: number;
+    source: DesignCardDragSource;
+  }) {
+    designCardWorkspace.setCardPlacement(payload.cardId, payload.afterLine);
+    if (payload.source === "note") {
+      noteWorkspace.removeDesignCardReference({
+        cardId: payload.cardId,
+        persist: "immediate",
+      });
+    }
+  }
+
+  async function deleteDesignCardFromNote(cardId: string) {
+    const hasCodePlacement = designCardWorkspace.placements.value.some(
+      (placement) => placement.cardId === cardId,
+    );
+    noteWorkspace.removeDesignCardReference({
+      cardId,
+      persist: "immediate",
+    });
+    if (!hasCodePlacement) {
+      await designCardWorkspace.deleteCard(cardId);
+    }
+  }
+
+  async function deleteDesignCardFromCode(cardId: string) {
+    const stillReferencedInNote = extractDesignCardReferenceIDs(
+      noteWorkspace.currentDocument.value.markdown,
+    ).includes(cardId);
+    if (!stillReferencedInNote) {
+      await designCardWorkspace.deleteCard(cardId);
+      return;
+    }
+
+    designCardWorkspace.removeCardPlacement(cardId);
   }
 
   const lifecycle = useWorkspaceLifecycle({
@@ -328,6 +371,7 @@ export function usePlotWorkspace() {
 
   onUnmounted(() => {
     void designCardWorkspace.flushPlanSave();
+    void noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     lifecycle.unmount();
     aiActivity.stop();
   });
@@ -417,13 +461,15 @@ export function usePlotWorkspace() {
     openSettings,
     noteRenderBlocks: noteWorkspace.renderBlocks,
     noteSaveState: noteWorkspace.saveState,
+    reorderScripts: scriptWorkspace.reorderScripts,
     renameScript: scriptWorkspace.renameScript,
     renameWorkspace,
     moveNoteImage: noteWorkspace.moveImage,
     removeNoteImage: noteWorkspace.removeImage,
     insertDesignCardReferenceIntoNote,
-    deleteDesignCard: designCardWorkspace.deleteCard,
-    deleteDesignCardFromNote: designCardWorkspace.deleteCardFromNote,
+    placeDesignCard,
+    deleteDesignCard: deleteDesignCardFromCode,
+    deleteDesignCardFromNote,
     rebuildRuntime: lifecycle.rebuildRuntime,
     repairAnimationKey,
     repairAnimatedLineRanges,
@@ -498,7 +544,7 @@ function normalizeUpdateStatus(status: UpdateStatusLike): AppUpdateStatus {
   const updateAvailable = !!status.updateAvailable;
 
   return {
-    currentVersion: typeof status.currentVersion === "string" ? status.currentVersion : "0.0.1",
+    currentVersion: typeof status.currentVersion === "string" ? status.currentVersion : "0.0.2.4",
     latestVersion: typeof status.latestVersion === "string" ? status.latestVersion : "",
     notes: typeof status.notes === "string" ? status.notes : "",
     publishedAt: typeof status.publishedAt === "string" ? status.publishedAt : "",

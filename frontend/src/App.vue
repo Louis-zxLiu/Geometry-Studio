@@ -43,6 +43,7 @@ const theme = proxyRefs(useTheme());
       :is-deleting="workspace.isDeletingScript"
       @select="workspace.selectScript"
       @create="workspace.openCreateDialog"
+      @reorder="workspace.reorderScripts"
       @rename="workspace.renameScript"
       @delete="workspace.deleteScript"
       @switch-workspace="workspace.switchWorkspace"
@@ -79,7 +80,7 @@ const theme = proxyRefs(useTheme());
             @delete-design-card="workspace.deleteDesignCard"
             @move-design-card="workspace.moveDesignCard"
             @open-design-card="workspace.openDesignCardReviewRoom"
-            @place-design-card="workspace.setDesignCardPlacement($event.cardId, $event.afterLine)"
+            @place-design-card="workspace.placeDesignCard($event)"
             @design-card-anchor-line="workspace.setDesignCardAnchorLine"
             @update:code="workspace.updateCode"
           />

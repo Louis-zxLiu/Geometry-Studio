@@ -144,8 +144,11 @@ export function useNoteWorkspace(
     }
   }
 
-  const { insertDesignCardReference } = useNoteDesignCardReferences({
+  const { insertDesignCardReference, removeDesignCardReference } = useNoteDesignCardReferences({
     currentDocument,
+    persistImmediately: () => {
+      void flushPendingSave(currentFile.value);
+    },
     updateMarkdown,
   });
   const { addImages, moveImage, removeImage } = useNoteImages({
@@ -165,6 +168,7 @@ export function useNoteWorkspace(
     insertDesignCardReference,
     isPanelOpen,
     moveImage,
+    removeDesignCardReference,
     removeImage,
     renderBlocks,
     saveState,

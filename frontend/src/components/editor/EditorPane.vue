@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useDropTargetController } from "../../features/designCard/services/useDropTargetController";
+import type { DesignCardDragSource } from "../../features/designCard/services/designCardDragData";
 import type { DesignCard, DesignCardPlacement } from "../../features/designCard/services/designCardTypes";
 import { useCodeMirrorEditor } from "./useCodeMirrorEditor";
 import { useEditorAutoScroll } from "./useEditorAutoScroll";
@@ -24,7 +25,7 @@ const emit = defineEmits<{
   "design-card-anchor-line": [line: number];
   "move-design-card": [payload: { cardId: string; delta: number }];
   "open-design-card": [cardId: string];
-  "place-design-card": [payload: { cardId: string; afterLine: number }];
+  "place-design-card": [payload: { cardId: string; afterLine: number; source: DesignCardDragSource }];
   "update:code": [code: string];
 }>();
 

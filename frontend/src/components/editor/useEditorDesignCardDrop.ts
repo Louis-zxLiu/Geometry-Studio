@@ -3,13 +3,14 @@ import type { EditorView } from "../../lib/codemirror";
 import {
   hasDesignCardDragData,
   readDesignCardDragData,
+  type DesignCardDragSource,
 } from "../../features/designCard/services/designCardDragData";
 
 type EditorDesignCardDropOptions = {
   editorView: ShallowRef<EditorView | null>;
   isDraggingOver: Ref<boolean>;
   getViewportAnchorLine: (view: EditorView) => number;
-  onPlaceCard: (payload: { cardId: string; afterLine: number }) => void;
+  onPlaceCard: (payload: { cardId: string; afterLine: number; source: DesignCardDragSource }) => void;
   onUpdateAutoScroll: (event: DragEvent) => void;
   onStopAutoScroll: () => void;
 };
@@ -17,10 +18,6 @@ type EditorDesignCardDropOptions = {
 export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
   function handleHostDragOver(event: DragEvent) {
     if (!hasDesignCardDragData(event.dataTransfer)) {
-      return;
-    }
-    const dragData = readDesignCardDragData(event.dataTransfer);
-    if (dragData?.source === "note") {
       return;
     }
 
@@ -34,7 +31,7 @@ export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
 
   function handleHostDrop(event: DragEvent) {
     const dragData = readDesignCardDragData(event.dataTransfer);
-    if (!dragData || dragData.source !== "editor") {
+    if (!dragData) {
       return;
     }
 
@@ -46,7 +43,7 @@ export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
     event.preventDefault();
     options.isDraggingOver.value = false;
     options.onStopAutoScroll();
-    placeCardFromEvent(event, view, dragData.cardId);
+    placeCardFromEvent(event, view, dragData.cardId, dragData.source);
   }
 
   function handleDragLeave(event: DragEvent) {
@@ -66,12 +63,17 @@ export function useEditorDesignCardDrop(options: EditorDesignCardDropOptions) {
     options.onStopAutoScroll();
   }
 
-  function placeCardFromEvent(event: DragEvent, view: EditorView, cardId: string) {
+  function placeCardFromEvent(
+    event: DragEvent,
+    view: EditorView,
+    cardId: string,
+    source: DesignCardDragSource,
+  ) {
     const position = view.posAtCoords({ x: event.clientX, y: event.clientY });
     const afterLine = position === null
       ? options.getViewportAnchorLine(view)
       : view.state.doc.lineAt(position).number;
-    options.onPlaceCard({ cardId, afterLine });
+    options.onPlaceCard({ cardId, afterLine, source });
   }
 
   return {

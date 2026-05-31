@@ -203,7 +203,7 @@ func (s *Store) ListPlacements(sceneName string) ([]Placement, error) {
 
 	content, err := os.ReadFile(filepath.Join(root, placementFileName))
 	if os.IsNotExist(err) {
-		return []Placement{}, nil
+		return nil, nil
 	}
 	if err != nil {
 		return nil, err

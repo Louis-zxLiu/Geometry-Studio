@@ -8,6 +8,7 @@ import { collapseBlankLines, insertBlockReference } from "./noteMarkdownBlocks";
 
 type NoteDesignCardReferencesOptions = {
   currentDocument: Ref<NoteDocument>;
+  persistImmediately: () => void;
   updateMarkdown: (markdown: string) => void;
 };
 
@@ -15,6 +16,7 @@ export function useNoteDesignCardReferences(options: NoteDesignCardReferencesOpt
   function insertDesignCardReference(payload: {
     cardId: string;
     insertAt?: number;
+    persist?: "debounced" | "immediate";
     source?: "editor" | "note";
   }) {
     if (!payload.cardId) {
@@ -38,10 +40,34 @@ export function useNoteDesignCardReferences(options: NoteDesignCardReferencesOpt
       withoutExistingReference.insertAt,
     );
     options.updateMarkdown(nextMarkdown);
+    if (payload.persist === "immediate") {
+      options.persistImmediately();
+    }
+  }
+
+  function removeDesignCardReference(payload: {
+    cardId: string;
+    persist?: "debounced" | "immediate";
+  }) {
+    if (!payload.cardId) {
+      return;
+    }
+
+    const currentMarkdown = options.currentDocument.value.markdown;
+    const nextMarkdown = removeDesignCardReferences(currentMarkdown, payload.cardId).markdown;
+    if (nextMarkdown === currentMarkdown) {
+      return;
+    }
+
+    options.updateMarkdown(nextMarkdown);
+    if (payload.persist === "immediate") {
+      options.persistImmediately();
+    }
   }
 
   return {
     insertDesignCardReference,
+    removeDesignCardReference,
   };
 }
 

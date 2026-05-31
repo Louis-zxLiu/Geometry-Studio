@@ -64,13 +64,30 @@ export async function listDesignCards(sceneName: string): Promise<DesignCard[]> 
   return [];
 }
 
-export async function listDesignCardPlacements(sceneName: string): Promise<DesignCardPlacement[]> {
+export async function listDesignCardPlacements(sceneName: string): Promise<{
+  hasSavedPlacementState: boolean;
+  placements: DesignCardPlacement[];
+}> {
   const bridgeApp = getBridgeApp();
   if (typeof bridgeApp.ListDesignCardPlacements === "function") {
-    return (await bridgeApp.ListDesignCardPlacements(sceneName)).map(normalizePlacement);
+    const rawPlacements = await bridgeApp.ListDesignCardPlacements(sceneName);
+    if (!Array.isArray(rawPlacements)) {
+      return {
+        hasSavedPlacementState: false,
+        placements: [],
+      };
+    }
+
+    return {
+      hasSavedPlacementState: true,
+      placements: rawPlacements.map(normalizePlacement),
+    };
   }
 
-  return [];
+  return {
+    hasSavedPlacementState: false,
+    placements: [],
+  };
 }
 
 export async function saveDesignCardPlacements(

@@ -43,7 +43,7 @@ function startDrag(event: DragEvent, cardId: string, source: DesignCardDragSourc
       class="notebook-design-card-action notebook-design-card-remove"
       :class="{ armed }"
       type="button"
-      :title="armed ? '再次点击确认删除' : '删除设计卡片'"
+      :title="armed ? '再次点击确认移除' : '从笔记区移除'"
       @pointerdown.stop
       @click.stop="emit('delete', card.id)"
     >

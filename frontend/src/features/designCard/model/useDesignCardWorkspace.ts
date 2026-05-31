@@ -10,10 +10,7 @@ import {
   saveDesignCardPlacements,
   updateDesignCardPlan,
 } from "../services/designCardBridgeCompat";
-import {
-  extractDesignCardReferenceIDs,
-  formatDesignCardReference,
-} from "../services/designCardMarkdownCodec";
+import { extractDesignCardReferenceIDs } from "../services/designCardMarkdownCodec";
 import type { DesignCard, DesignCardPlacement } from "../services/designCardTypes";
 
 type AIActivityStatus = {
@@ -30,7 +27,6 @@ type DesignCardWorkspaceOptions = {
   isRunning: Ref<boolean>;
   noteMarkdown: Readonly<Ref<string>>;
   onError: (message: string) => void;
-  updateNoteMarkdown: (markdown: string) => void;
 };
 
 const planSaveDebounceMs = 420;
@@ -188,7 +184,7 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     }
   }
 
-  async function removeCard(cardId: string, removeOptions?: { removeNoteReferences?: boolean }) {
+  async function removeCard(cardId: string) {
     if (!options.currentFile.value || !cardId) {
       return;
     }
@@ -201,29 +197,9 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
       if (activeCardId.value === cardId) {
         activeCardId.value = "";
       }
-      if (removeOptions?.removeNoteReferences) {
-        removeCardReferencesFromNote(cardId);
-      }
     } catch (error) {
       options.onError(getErrorMessage(error));
     }
-  }
-
-  function insertCardReferenceIntoNote(cardId: string, insertAt?: number) {
-    if (!cards.value.some((card) => card.id === cardId)) {
-      return;
-    }
-
-    const reference = formatDesignCardReference(cardId);
-    const markdown = options.noteMarkdown.value;
-    const safeIndex =
-      typeof insertAt === "number" && Number.isFinite(insertAt)
-        ? Math.max(0, Math.min(insertAt, markdown.length))
-        : markdown.length;
-    const before = markdown.slice(0, safeIndex).replace(/\s+$/u, "");
-    const after = markdown.slice(safeIndex).replace(/^\s+/u, "");
-    const nextMarkdown = [before, reference, after].filter(Boolean).join("\n\n");
-    options.updateNoteMarkdown(nextMarkdown);
   }
 
   function moveCard(cardId: string, delta: number) {
@@ -260,9 +236,9 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
 
   async function loadPlacements(sceneName: string) {
     const lineCount = getCodeLineCount(options.codeContent.value);
-    const savedPlacements = await listDesignCardPlacements(sceneName);
-    placements.value = normalizePlacements(sortedCards.value, savedPlacements, lineCount, {
-      autoPlaceUnreferencedCards: true,
+    const placementState = await listDesignCardPlacements(sceneName);
+    placements.value = normalizePlacements(sortedCards.value, placementState.placements, lineCount, {
+      autoPlaceUnreferencedCards: !placementState.hasSavedPlacementState,
       noteMarkdown: options.noteMarkdown.value,
     });
     await persistPlacements(placements.value);
@@ -307,18 +283,6 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     }
   }
 
-  function removeCardReferencesFromNote(cardId: string) {
-    const referencePattern = new RegExp(
-      `^\\s*:::design-card\\{id="${escapeRegExp(cardId)}"\\}\\s*$`,
-      "gm",
-    );
-    const nextMarkdown = options.noteMarkdown.value
-      .replace(referencePattern, "")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-    options.updateNoteMarkdown(nextMarkdown);
-  }
-
   function upsertCard(card: DesignCard) {
     const nextCards = cards.value.filter((item) => item.id !== card.id);
     nextCards.push(card);
@@ -359,10 +323,8 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     closeOptimizeDialog,
     closeReviewRoom,
     deleteCard: removeCard,
-    deleteCardFromNote: (cardId: string) => removeCard(cardId, { removeNoteReferences: true }),
     flushPlanSave,
     generateFromNoteSelection,
-    insertCardReferenceIntoNote,
     isOptimizeDialogOpen,
     isReviewRoomOpen,
     moveCard,
@@ -420,8 +382,4 @@ function clampLine(line: number, lineCount: number) {
 
 function getCodeLineCount(code: string) {
   return String(code ?? "").split("\n").length;
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
