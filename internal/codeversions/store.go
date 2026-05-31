@@ -8,8 +8,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"plotkitycat/internal/files"
 )
 
 const (
@@ -26,10 +24,14 @@ type Version struct {
 }
 
 type Store struct {
-	files *files.Store
+	files sceneDirResolver
 }
 
-func NewStore(fileStore *files.Store) *Store {
+type sceneDirResolver interface {
+	SceneDir(sceneName string) (string, error)
+}
+
+func NewStore(fileStore sceneDirResolver) *Store {
 	return &Store{files: fileStore}
 }
 

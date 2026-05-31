@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"plotkitycat/internal/paths"
 )
@@ -74,11 +75,7 @@ func (m *Manager) ensureRuntimeExtracted(onProgress func(Progress)) error {
 		Percent: 92,
 	})
 
-	if err := os.RemoveAll(runtimeDir); err != nil {
-		_ = os.RemoveAll(tempDir)
-		return err
-	}
-	if err := os.Rename(tempDir, runtimeDir); err != nil {
+	if err := installRuntimeFromTemp(tempDir, runtimeDir); err != nil {
 		_ = os.RemoveAll(tempDir)
 		return err
 	}
@@ -100,6 +97,99 @@ func (m *Manager) ensureRuntimeExtracted(onProgress func(Progress)) error {
 	return nil
 }
 
+func installRuntimeFromTemp(tempDir string, runtimeDir string) error {
+	if err := os.RemoveAll(runtimeDir); err != nil {
+		return err
+	}
+
+	if err := retryRename(tempDir, runtimeDir, 8, 250*time.Millisecond); err == nil {
+		return nil
+	}
+
+	// Windows may transiently deny directory rename while Defender or shell
+	// components still hold short-lived handles on freshly extracted files.
+	// Fall back to a copy-based install so runtime rebuild remains reliable.
+	if err := os.MkdirAll(runtimeDir, 0o755); err != nil {
+		return err
+	}
+	if err := copyDirContents(tempDir, runtimeDir); err != nil {
+		return err
+	}
+
+	return os.RemoveAll(tempDir)
+}
+
+func retryRename(source string, target string, attempts int, delay time.Duration) error {
+	var lastErr error
+	for index := 0; index < attempts; index++ {
+		lastErr = os.Rename(source, target)
+		if lastErr == nil {
+			return nil
+		}
+
+		time.Sleep(delay)
+	}
+
+	return lastErr
+}
+
+func copyDirContents(sourceDir string, targetDir string) error {
+	entries, err := os.ReadDir(sourceDir)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		sourcePath := filepath.Join(sourceDir, entry.Name())
+		targetPath := filepath.Join(targetDir, entry.Name())
+
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		if entry.IsDir() {
+			if err := os.MkdirAll(targetPath, info.Mode()); err != nil {
+				return err
+			}
+			if err := copyDirContents(sourcePath, targetPath); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := copyFile(sourcePath, targetPath, info.Mode()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func copyFile(sourcePath string, targetPath string, mode os.FileMode) error {
+	source, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	target, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+
+	_, copyErr := io.Copy(target, source)
+	closeErr := target.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+
+	return nil
+}
+
 func extractArchive(archivePath string, targetDir string, onProgress func(Progress)) error {
 	reader, err := zip.OpenReader(archivePath)
 	if err != nil {
@@ -109,7 +199,7 @@ func extractArchive(archivePath string, targetDir string, onProgress func(Progre
 
 	totalFiles := 0
 	for _, file := range reader.File {
-		if !file.FileInfo().IsDir() {
+		if !archiveEntryIsDir(file) {
 			totalFiles++
 		}
 	}
@@ -128,7 +218,7 @@ func extractArchive(archivePath string, targetDir string, onProgress func(Progre
 			return fmt.Errorf("invalid runtime archive entry: %s", file.Name)
 		}
 
-		if file.FileInfo().IsDir() {
+		if archiveEntryIsDir(file) {
 			if err := os.MkdirAll(cleanTargetPath, 0o755); err != nil {
 				return err
 			}
@@ -193,4 +283,16 @@ func normalizeArchivePath(name string) string {
 	}
 
 	return normalized
+}
+
+func archiveEntryIsDir(file *zip.File) bool {
+	if file == nil {
+		return false
+	}
+
+	if file.FileInfo().IsDir() {
+		return true
+	}
+
+	return strings.HasSuffix(file.Name, "/") || strings.HasSuffix(file.Name, "\\")
 }

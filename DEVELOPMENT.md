@@ -77,9 +77,9 @@ wails dev
 如果要覆盖默认版本：
 
 ```powershell
-.\tools\build-versioned-app.ps1 -Version 0.0.1
-.\tools\package-release.ps1 -Version 0.0.1
-.\tools\prepare-update-release.ps1 -Version 0.0.1
+.\tools\build-versioned-app.ps1 -Version 0.0.2.1
+.\tools\package-release.ps1 -Version 0.0.2.1
+.\tools\prepare-update-release.ps1 -Version 0.0.2.1
 ```
 
 ## 发布前检查

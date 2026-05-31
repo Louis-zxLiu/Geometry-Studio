@@ -1,4 +1,4 @@
-package files
+package store
 
 import (
 	"archive/zip"
@@ -109,6 +109,9 @@ func (s *Store) ImportScenePackage(archivePath string) (string, error) {
 	targetName := s.nextAvailableSceneName(normalizeSceneName(suggestedSceneName))
 	targetPath := filepath.Join(scriptsDir, targetName)
 	if err := copyDirectory(extractedSceneDir, targetPath); err != nil {
+		return "", err
+	}
+	if err := s.appendSceneOrder(scriptsDir, targetName); err != nil {
 		return "", err
 	}
 

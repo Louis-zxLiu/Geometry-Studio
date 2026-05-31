@@ -10,22 +10,25 @@ analyze :
   - 欠定问题：若问题和定理的核心不在于此对象，忽略并赋值最美的可能
 output : 
   - control : 任何图形，不能以直觉写代码，必须要按照analysis的代数结果来确定！
+  - ignore : 忽略svg里面的具体内容，关注其子图布局即可，因为其内容很可能是错误的（设计者不会写svg） 
   - style :
       - beauty : 莫兰迪色系 塔夫特 半透明投影 默认无任何文字 如果有指令默认宋体与cm字体 
       - logic : 正交投影 无透视畸变 经典的立体几何考卷视角
       - shape : 真实比例 适用打印 细线条 无非必要刻度 网格 边框 动点-虚线/启用使用交互，增加复选框与拖动条
       - layout : 选择：单图/多子图(伪动态)/Animation 3D与2D混合 使用bbox_inches='tight' fig.subplots_adjust ax.text2D(...) transparent=True
   - marker : 对于图形与点的标注，默认只有基本的点ABCD，或需要标记的边长r,h，其它使用颜色和透明度渐变等来代替标注
-  - Matplotlib-rule : 如果涉及到曲面的大量交互，请选择小采样网格参数24x12，并且如果没有需要尽可能不要画坐标轴；其中，24 × 12：拖动预览 48 × 24：普通显示；
+  - Matplotlib-rule : 如果涉及到曲面请开启enable_fast_surface_globally()，mesh默认70-90
   - example : |
      这是学习的，不是复刻的例子。
-     其中的样式和风格可以学习模仿！
      '''
       import matplotlib as mpl
       import matplotlib.pyplot as plt
       import numpy as np
       from mpl_toolkits.mplot3d.art3d import Poly3DCollection
       from matplotlib.widgets import Slider, Button, CheckButtons
+      from mpl_surface_fastpath import enable_fast_surface_globally # must!
+
+      enable_fast_surface_globally() #必须带上
 
       mpl.rcParams['lines.antialiased'] = True
       mpl.rcParams['patch.antialiased'] = True

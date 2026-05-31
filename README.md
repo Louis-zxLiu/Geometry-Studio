@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/Wails-v2-red?style=flat-square" alt="Wails">
   <img src="https://img.shields.io/badge/Vue-3-4fc08d?style=flat-square" alt="Vue">
   <img src="https://img.shields.io/badge/Go-1.21+-00add8?style=flat-square" alt="Go">
-  <img src="https://img.shields.io/badge/Python-3.12+-3776ab?style=flat-square" alt="Python">
+  <img src="https://img.shields.io/badge/Python-3.13+-3776ab?style=flat-square" alt="Python">
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
 </p>
 

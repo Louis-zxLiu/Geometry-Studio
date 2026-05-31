@@ -10,7 +10,7 @@ import (
 	designai "plotkitycat/internal/designcards/ai"
 	"plotkitycat/internal/device"
 	"plotkitycat/internal/env"
-	"plotkitycat/internal/files"
+	filestore "plotkitycat/internal/files/store"
 	"plotkitycat/internal/runner"
 	settingspkg "plotkitycat/internal/settings"
 	"plotkitycat/internal/subscription"
@@ -27,7 +27,7 @@ type App struct {
 	designCardService   *designcards.Service
 	deviceService       *device.Service
 	envManager          *env.Manager
-	fileStore           *files.Store
+	fileStore           *filestore.Store
 	runner              *runner.Runner
 	aiSettingsStore     *settingspkg.AIStore
 	subscriptionService *subscription.Service
@@ -39,7 +39,7 @@ func NewApp() *App {
 	deviceService := device.NewService()
 	subscriptionService := subscription.NewService(deviceService)
 	workspaceManager := workspaces.NewManager()
-	fileStore := files.NewStore(workspaceManager)
+	fileStore := filestore.NewStore(workspaceManager)
 	designCardStore := designcards.NewStore(fileStore)
 	return &App{
 		aiService:           ai.NewService(subscriptionService),
