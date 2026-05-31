@@ -16,6 +16,7 @@ type ScriptFileActionsRepository = {
   createScript: (filename: string) => Promise<ScriptDocumentLike>;
   deleteScript: (filename: string) => Promise<WorkspaceSnapshotLike>;
   getScriptContent: (filename: string) => Promise<ScriptDocumentLike>;
+  reorderScripts: (scripts: string[], currentFile: string) => Promise<WorkspaceSnapshotLike>;
   renameScript: (oldFilename: string, nextFilename: string) => Promise<WorkspaceSnapshotLike>;
   saveAndRun: (filename: string, code: string) => Promise<unknown>;
   saveScript: (filename: string, code: string) => Promise<unknown>;
@@ -169,6 +170,22 @@ export function useScriptFileActions(options: ScriptFileActionsOptions) {
     }
   }
 
+  async function reorderScripts(scripts: string[]) {
+    if (scripts.length === 0 || options.workspacePhase.value !== "idle") {
+      return;
+    }
+
+    try {
+      const snapshot = await withTimeout(
+        options.repository.reorderScripts(scripts, options.currentFile.value),
+        "调整文件顺序超时",
+      );
+      options.applyWorkspaceSnapshot(snapshot, { preserveDirtyCurrent: true });
+    } catch (error) {
+      options.onError(getErrorMessage(error));
+    }
+  }
+
   async function deleteScript(filename: string) {
     if (!filename || options.workspacePhase.value !== "idle") {
       return;
@@ -221,6 +238,7 @@ export function useScriptFileActions(options: ScriptFileActionsOptions) {
     deletingScriptName,
     isCreateDialogOpen,
     openCreateDialog,
+    reorderScripts,
     renameScript,
     restoreLastSelection,
     runCurrentScript,

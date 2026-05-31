@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 const props = defineProps<{
   currentFile: string;
@@ -12,6 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   delete: [filename: string];
+  reorder: [scripts: string[]];
   rename: [oldFilename: string, newFilename: string];
   select: [filename: string];
 }>();
@@ -21,6 +22,17 @@ const renamingScript = ref("");
 const renameDraft = ref("");
 const deleteConfirmScript = ref("");
 const animatedNames = ref<Record<string, string>>({});
+const draggingScript = ref("");
+const armedDragScript = ref("");
+const dropTarget = ref<{ script: string; position: "before" | "after" } | null>(null);
+const sceneItemElements = new Map<string, HTMLElement>();
+const dragPreview = ref({ left: 0, top: 0, width: 0 });
+let dragArmTimer: number | null = null;
+let activePointerId: number | null = null;
+let dragPointerOffsetY = 0;
+let suppressClick = false;
+
+const dragHoldDelayMs = 100;
 
 const visibleScripts = computed(() =>
   props.scripts.map((script) => ({
@@ -28,6 +40,23 @@ const visibleScripts = computed(() =>
     label: animatedNames.value[script] ?? script,
   })),
 );
+
+const draggingScriptLabel = computed(
+  () => visibleScripts.value.find((script) => script.name === draggingScript.value)?.label ?? draggingScript.value,
+);
+
+onMounted(() => {
+  window.addEventListener("pointerdown", handleGlobalPointerDown, true);
+  window.addEventListener("keydown", handleGlobalKeyDown, true);
+  window.addEventListener("scroll", closeContextOnly, true);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("pointerdown", handleGlobalPointerDown, true);
+  window.removeEventListener("keydown", handleGlobalKeyDown, true);
+  window.removeEventListener("scroll", closeContextOnly, true);
+  document.body.classList.remove("scene-list-dragging");
+});
 
 watch(
   () => props.typingScriptName,
@@ -53,14 +82,47 @@ watch(
     if (contextScript.value && !scripts.includes(contextScript.value)) {
       closeRowActions();
     }
+    if (draggingScript.value && !scripts.includes(draggingScript.value)) {
+      finishDrag();
+    }
+    if (armedDragScript.value && !scripts.includes(armedDragScript.value)) {
+      cancelDragArm();
+    }
   },
 );
 
 function openContext(script: string, event: MouseEvent) {
+  if (draggingScript.value) {
+    return;
+  }
   event.preventDefault();
   contextScript.value = script;
   deleteConfirmScript.value = "";
   emit("select", script);
+}
+
+function handleGlobalPointerDown(event: PointerEvent) {
+  const target = event.target;
+  if (target instanceof Element && target.closest(".scene-item")) {
+    return;
+  }
+
+  closeContextOnly();
+}
+
+function handleGlobalKeyDown(event: KeyboardEvent) {
+  if (event.key === "Escape") {
+    closeRowActions();
+  }
+}
+
+function closeContextOnly() {
+  if (!contextScript.value || renamingScript.value) {
+    return;
+  }
+
+  contextScript.value = "";
+  deleteConfirmScript.value = "";
 }
 
 function startRename(script: string) {
@@ -99,6 +161,170 @@ function closeRowActions() {
   deleteConfirmScript.value = "";
 }
 
+function armDrag(script: string, event: PointerEvent) {
+  if (props.isRenaming || props.isDeleting || renamingScript.value || contextScript.value === script) {
+    return;
+  }
+
+  if (event.currentTarget instanceof HTMLElement) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  cancelDragArm();
+  closeContextOnly();
+  activePointerId = event.pointerId;
+  dragArmTimer = window.setTimeout(() => {
+    const sourceElement = sceneItemElements.get(script);
+    const sourceBounds = sourceElement?.getBoundingClientRect();
+    if (sourceBounds) {
+      dragPointerOffsetY = event.clientY - sourceBounds.top;
+      dragPreview.value = {
+        left: sourceBounds.left,
+        top: event.clientY - dragPointerOffsetY,
+        width: sourceBounds.width,
+      };
+    }
+
+    armedDragScript.value = script;
+    draggingScript.value = script;
+    suppressClick = true;
+    closeRowActions();
+    document.body.classList.add("scene-list-dragging");
+    updateDropTarget(event.clientY);
+    dragArmTimer = null;
+  }, dragHoldDelayMs);
+}
+
+function cancelDragArm() {
+  if (dragArmTimer !== null) {
+    window.clearTimeout(dragArmTimer);
+    dragArmTimer = null;
+  }
+  armedDragScript.value = "";
+}
+
+function handlePointerMove(event: PointerEvent) {
+  if (activePointerId !== event.pointerId) {
+    return;
+  }
+  if (!draggingScript.value) {
+    return;
+  }
+
+  dragPreview.value = {
+    ...dragPreview.value,
+    top: event.clientY - dragPointerOffsetY,
+  };
+  updateDropTarget(event.clientY);
+}
+
+function updateDropTarget(pointerY: number) {
+  if (!draggingScript.value) {
+    dropTarget.value = null;
+    return;
+  }
+
+  const orderedElements = visibleScripts.value
+    .filter((script) => script.name !== draggingScript.value)
+    .map((script) => ({
+      script: script.name,
+      element: sceneItemElements.get(script.name),
+    }))
+    .filter((entry): entry is { script: string; element: HTMLElement } => !!entry.element);
+
+  if (orderedElements.length === 0) {
+    dropTarget.value = null;
+    return;
+  }
+
+  for (const entry of orderedElements) {
+    const bounds = entry.element.getBoundingClientRect();
+    const midpoint = bounds.top + bounds.height / 2;
+    if (pointerY < midpoint) {
+      dropTarget.value = { script: entry.script, position: "before" };
+      return;
+    }
+  }
+
+  const lastEntry = orderedElements[orderedElements.length - 1];
+  dropTarget.value = { script: lastEntry.script, position: "after" };
+}
+
+function handlePointerUp(event: PointerEvent) {
+  if (activePointerId !== event.pointerId) {
+    return;
+  }
+
+  if (event.currentTarget instanceof HTMLElement && event.currentTarget.hasPointerCapture(event.pointerId)) {
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  if (draggingScript.value) {
+    commitDrop();
+  } else {
+    cancelDragArm();
+  }
+  activePointerId = null;
+}
+
+function handlePointerCancel(event: PointerEvent) {
+  if (activePointerId !== event.pointerId) {
+    return;
+  }
+
+  if (event.currentTarget instanceof HTMLElement && event.currentTarget.hasPointerCapture(event.pointerId)) {
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  finishDrag();
+  activePointerId = null;
+}
+
+function commitDrop() {
+  if (!draggingScript.value || !dropTarget.value || draggingScript.value === dropTarget.value.script) {
+    finishDrag();
+    return;
+  }
+
+  const nextOrder = reorderScripts(
+    props.scripts,
+    draggingScript.value,
+    dropTarget.value.position,
+    dropTarget.value.script,
+  );
+  if (nextOrder.length > 0) {
+    emit("reorder", nextOrder);
+  }
+  finishDrag();
+}
+
+function finishDrag() {
+  draggingScript.value = "";
+  dropTarget.value = null;
+  dragPointerOffsetY = 0;
+  cancelDragArm();
+  document.body.classList.remove("scene-list-dragging");
+  window.setTimeout(() => {
+    suppressClick = false;
+  }, 0);
+}
+
+function handleSelect(script: string) {
+  if (suppressClick) {
+    return;
+  }
+  emit("select", script);
+}
+
+function setSceneItemElement(script: string, element: Element | null) {
+  if (!(element instanceof HTMLElement)) {
+    sceneItemElements.delete(script);
+    return;
+  }
+
+  sceneItemElements.set(script, element);
+}
+
 function animateTyping(script: string) {
   const chars = Array.from(script);
   animatedNames.value = { ...animatedNames.value, [script]: "" };
@@ -132,6 +358,31 @@ function animateDeleting(script: string) {
     }, index * 45);
   });
 }
+
+function reorderScripts(
+  scripts: string[],
+  source: string,
+  position: "before" | "after",
+  target: string,
+) {
+  const nextScripts = [...scripts];
+  const sourceIndex = nextScripts.indexOf(source);
+  const targetIndex = nextScripts.indexOf(target);
+  if (sourceIndex < 0 || targetIndex < 0) {
+    return [];
+  }
+
+  const [moved] = nextScripts.splice(sourceIndex, 1);
+  const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+  const insertIndex = position === "before" ? adjustedTargetIndex : adjustedTargetIndex + 1;
+  nextScripts.splice(insertIndex, 0, moved);
+
+  if (nextScripts.every((script, index) => script === scripts[index])) {
+    return [];
+  }
+
+  return nextScripts;
+}
 </script>
 
 <template>
@@ -139,19 +390,29 @@ function animateDeleting(script: string) {
     <div
       v-for="script in visibleScripts"
       :key="script.name"
+      :ref="(element) => setSceneItemElement(script.name, element)"
       class="scene-item"
       :class="{
         active: script.name === currentFile,
         deleting: script.name === deletingScriptName,
         contextual: script.name === contextScript,
         renaming: script.name === renamingScript,
+        dragging: script.name === draggingScript,
+        armed: script.name === armedDragScript,
+        'drop-before': dropTarget?.script === script.name && dropTarget.position === 'before',
+        'drop-after': dropTarget?.script === script.name && dropTarget.position === 'after',
       }"
       @contextmenu="openContext(script.name, $event)"
     >
       <button
         class="scene-select-button"
         type="button"
-        @click="emit('select', script.name)"
+        @click="handleSelect(script.name)"
+        @pointerdown="armDrag(script.name, $event)"
+        @pointermove="handlePointerMove($event)"
+        @pointerup="handlePointerUp($event)"
+        @pointercancel="handlePointerCancel($event)"
+        @blur="cancelDragArm"
       >
         <span class="scene-meta">
           <span class="scene-badge" aria-hidden="true">PY</span>
@@ -222,4 +483,21 @@ function animateDeleting(script: string) {
       </span>
     </div>
   </TransitionGroup>
+
+  <div
+    v-if="draggingScript"
+    class="scene-drag-ghost"
+    :style="{
+      width: `${dragPreview.width}px`,
+      transform: `translate3d(${dragPreview.left}px, ${dragPreview.top}px, 0)`,
+    }"
+    aria-hidden="true"
+  >
+    <button class="scene-select-button" type="button" tabindex="-1">
+      <span class="scene-meta">
+        <span class="scene-badge">PY</span>
+        <span class="scene-name">{{ draggingScriptLabel }}</span>
+      </span>
+    </button>
+  </div>
 </template>

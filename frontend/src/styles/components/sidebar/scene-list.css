@@ -44,7 +44,10 @@
   min-height: 28px;
   margin-bottom: 24px;
   padding-right: 58px;
-  transition: opacity 220ms ease;
+  transition:
+    opacity 220ms ease,
+    margin 180ms ease,
+    transform 180ms ease;
   isolation: isolate;
 }
 
@@ -58,6 +61,23 @@
 
 .scene-item.deleting {
   pointer-events: none;
+}
+
+.scene-item.dragging {
+  opacity: 0.22;
+}
+
+.scene-item.armed .scene-select-button {
+  cursor: grabbing;
+  opacity: 0.78;
+}
+
+.scene-item.drop-before {
+  margin-top: 10px;
+}
+
+.scene-item.drop-after {
+  margin-bottom: 34px;
 }
 
 .scene-item::before {
@@ -80,13 +100,42 @@
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, var(--text), transparent 94%);
   text-underline-offset: 8px;
-  cursor: pointer;
+  cursor: default;
   position: relative;
   z-index: 1;
   transition:
     background-color 180ms ease,
     color 180ms ease,
-    opacity 180ms ease;
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.scene-item.dragging .scene-select-button {
+  cursor: grabbing;
+}
+
+.scene-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding-right: 58px;
+  background: transparent;
+  filter: drop-shadow(0 8px 14px color-mix(in srgb, black, transparent 88%));
+  pointer-events: none;
+  opacity: 0.7;
+  will-change: transform;
+}
+
+.scene-drag-ghost .scene-select-button {
+  background: transparent;
+  cursor: grabbing;
+  opacity: 1;
+  color: var(--text);
+  text-decoration-color: color-mix(in srgb, var(--text), transparent 86%);
 }
 
 .scene-item.active .scene-select-button {
@@ -221,4 +270,9 @@
 
 .scene-list-transition-move {
   transition: transform 260ms ease;
+}
+
+body.scene-list-dragging {
+  user-select: none;
+  cursor: grabbing;
 }

@@ -24,6 +24,7 @@ export type ScriptWorkspaceRepository = {
   deleteWorkspace: (name: string) => Promise<WorkspaceSnapshotLike>;
   getScriptContent: (filename: string) => Promise<ScriptDocumentLike>;
   refreshWorkspace: (preferredFile?: string) => Promise<WorkspaceSnapshotLike>;
+  reorderScripts: (scripts: string[], currentFile: string) => Promise<WorkspaceSnapshotLike>;
   renameScript: (oldFilename: string, nextFilename: string) => Promise<WorkspaceSnapshotLike>;
   renameWorkspace: (oldName: string, newName: string) => Promise<WorkspaceSnapshotLike>;
   saveAndRun: (filename: string, code: string) => Promise<unknown>;

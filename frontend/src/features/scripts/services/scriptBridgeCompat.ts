@@ -56,6 +56,7 @@ type BridgeAppCompat = {
   ImportScenePackage?: () => Promise<ImportSceneResultLike>;
   ImportScenePackageFromPath?: (path: string) => Promise<ImportSceneResultLike>;
   RefreshWorkspace?: (currentFile: string) => Promise<WorkspaceSnapshotLike>;
+  ReorderScripts?: (scripts: string[], currentFile: string) => Promise<WorkspaceSnapshotLike>;
   RemoveScriptNoteImage?: (filename: string, relativePath: string) => Promise<NoteDocumentLike>;
   RenameScript?: (oldFilename: string, newFilename: string) => Promise<WorkspaceSnapshotLike>;
   RenameWorkspace?: (oldName: string, newName: string) => Promise<WorkspaceSnapshotLike>;
@@ -111,6 +112,10 @@ export async function importScenePackageFromPath(path: string) {
 
 export async function refreshWorkspace(currentFile = "") {
   return callBridge("RefreshWorkspace", (app) => app.RefreshWorkspace?.(currentFile));
+}
+
+export async function reorderScripts(scripts: string[], currentFile: string) {
+  return callBridge("ReorderScripts", (app) => app.ReorderScripts?.(scripts, currentFile));
 }
 
 export async function removeScriptNoteImage(filename: string, relativePath: string) {

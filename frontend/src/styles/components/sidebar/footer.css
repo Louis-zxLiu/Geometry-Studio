@@ -33,14 +33,19 @@
   cursor: pointer;
 }
 
+.sidebar-tool-button-help .sidebar-tool-icon {
+  width: 20px;
+  height: 20px;
+}
+
 .sidebar-tool-button:hover {
   background: transparent;
   color: var(--text);
 }
 
 .sidebar-tool-icon {
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: square;

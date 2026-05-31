@@ -78,6 +78,8 @@ export function RenameScript(arg1:string,arg2:string):Promise<bridge.WorkspaceSn
 
 export function RenameWorkspace(arg1:string,arg2:string):Promise<bridge.WorkspaceSnapshot>;
 
+export function ReorderScripts(arg1:Array<string>,arg2:string):Promise<bridge.WorkspaceSnapshot>;
+
 export function RepairCodeFromRunError(arg1:bridge.AIRepairRequest):Promise<bridge.AIRepairResult>;
 
 export function SaveAISettings(arg1:bridge.AIProviderSettings):Promise<bridge.AIProviderSettings>;

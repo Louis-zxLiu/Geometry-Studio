@@ -144,6 +144,7 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
     isDeletingScript,
     isRenamingScript,
     openCreateDialog: scriptFileActions.openCreateDialog,
+    reorderScripts: scriptFileActions.reorderScripts,
     renameScript: scriptFileActions.renameScript,
     renameWorkspace: workspaceActions.renameWorkspace,
     restoreLastSelection: scriptFileActions.restoreLastSelection,

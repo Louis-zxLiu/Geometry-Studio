@@ -22,6 +22,7 @@ const emit = defineEmits<{
   "create-workspace": [name: string];
   delete: [filename: string];
   "delete-workspace": [name: string];
+  reorder: [scripts: string[]];
   rename: [oldFilename: string, newFilename: string];
   "rename-workspace": [oldName: string, newName: string];
   select: [filename: string];
@@ -70,6 +71,7 @@ const emit = defineEmits<{
         :deleting-script-name="deletingScriptName"
         :is-renaming="isRenaming"
         :is-deleting="isDeleting"
+        @reorder="emit('reorder', $event)"
         @select="emit('select', $event)"
         @rename="(oldFilename, newFilename) => emit('rename', oldFilename, newFilename)"
         @delete="emit('delete', $event)"
