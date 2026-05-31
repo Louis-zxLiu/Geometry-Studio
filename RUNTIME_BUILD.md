@@ -159,8 +159,21 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
 
 推荐约定：
 
-- 每次 runtime 发生变化，都发布一个单独的 runtime asset
+- 每次 runtime 发生变化，都发布到对应版本的 GitHub Release
+- 当前使用的资产名是 `runtime.zip`
 - 在 release 说明里注明对应的 `runtime.version.json`
+
+当前下载地址格式：
+
+```text
+https://github.com/Wing900/PlotKityCat/releases/download/v版本号/runtime.zip
+```
+
+当前示例：
+
+```text
+https://github.com/Wing900/PlotKityCat/releases/download/v0.0.2.6/runtime.zip
+```
 
 ## 常见误区
 

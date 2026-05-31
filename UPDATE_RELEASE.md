@@ -15,7 +15,8 @@ runtime 约定：
 
 - `resources/runtime/runtime.zip` 默认不提交到 Git
 - 它应作为 release asset 或其他外部分发制品单独保存
-- 推荐命名为与应用版本对应的 release asset
+- 当前使用的资产名是 `runtime.zip`
+- 建议把 runtime 上传到与应用版本对应的 GitHub Release 下
 - 从零重建 runtime 的流程见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)
 
 ## 1. 先改版本号
@@ -169,7 +170,9 @@ curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.1.9-
 - 更新 exe 文件名格式：`PlotKityCat-版本号-windows-amd64.exe`
 - 完整发布包目录格式：`build/release/PlotKityCat-v版本号`
 - 完整发布包 zip 格式：`build/release/PlotKityCat-v版本号.zip`
-- runtime asset 建议格式：`PlotKityCat-runtime-版本号.zip`
+- runtime release 页面格式：`https://github.com/Wing900/PlotKityCat/releases/tag/v版本号`
+- runtime 下载地址格式：`https://github.com/Wing900/PlotKityCat/releases/download/v版本号/runtime.zip`
+- 当前示例：`https://github.com/Wing900/PlotKityCat/releases/download/v0.0.2.6/runtime.zip`
 
 ## 9. 只发完整包，不更新在线更新
 
