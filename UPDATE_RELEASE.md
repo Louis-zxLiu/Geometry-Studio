@@ -9,6 +9,12 @@
   - `stable/manifest.json`
   - `releases/PlotKityCat-版本号-windows-amd64.exe`
 
+关于 runtime：
+
+- `resources/runtime/runtime.zip` 默认不提交到 Git
+- 它应作为 release asset 或其他外部分发制品单独保存
+- 从零重建 runtime 的流程见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)
+
 ## 1. 先改版本号
 
 编辑：
@@ -102,6 +108,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\package-release.ps1 -Version 0.
   - `PlotKityCat.exe`
   - `resources/runtime/runtime.zip`
   - `Scripts/`
+- 因此发布完整包前，必须先在本地准备好 `resources/runtime/runtime.zip`
 
 ## 5. 上传到更新服务器
 
@@ -202,4 +209,3 @@ curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.1.9-
 - `build/bin/`
 - `build/release/`
 - `build/update/`
-

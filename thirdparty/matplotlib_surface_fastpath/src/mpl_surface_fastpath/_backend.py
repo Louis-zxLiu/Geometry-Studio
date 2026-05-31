@@ -8,7 +8,6 @@ def _configure_windows_dll_path() -> None:
     package_dir = Path(__file__).resolve().parent
     runtime_root = package_dir.parents[3]
     candidates = [
-        Path("D:/msys2/mingw64/bin"),
         runtime_root / "DLLs",
         package_dir,
     ]

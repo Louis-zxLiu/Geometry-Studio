@@ -5,12 +5,14 @@ frontend/dist/
 build/bin/
 build/release/
 build/update/
-runtime/
-runtime.tmp/
-Scripts/
+/runtime/
+/runtime.tmp/
+/Scripts/
 *.exe
 *.dll
 *.zip
+!/resources/runtime/
+!/resources/runtime/.gitkeep
 .runtime-staging/
 .runtime-staging.7z
 .tools_py/
@@ -23,6 +25,7 @@ nul
 .DS_Store
 Thumbs.db
 /.gocache/
+/.runtime-pack/
 __pycache__/
 *.py[cod]
 

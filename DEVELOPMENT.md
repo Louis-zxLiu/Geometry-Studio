@@ -33,10 +33,17 @@ wails dev
 
 项目运行依赖便携 Python runtime：
 
-- 发布输入：`resources/runtime/runtime.zip`
+- runtime 占位目录：`resources/runtime/`
+- 发布输入：本地放置的 `resources/runtime/runtime.zip`
 - 本地展开目录：`runtime/`
 - 临时展开目录：`runtime.tmp/`
 - 元数据文件：`runtime.version.json`
+
+约定：
+
+- `resources/runtime/runtime.zip` 默认不提交到 Git
+- 该文件应通过 GitHub Release asset 或其他制品存储分发
+- 仓库仅跟踪 runtime 脚本、元数据和第三方补丁源码
 
 准备 runtime 压缩包：
 
@@ -53,6 +60,8 @@ wails dev
 - PyQt5
 
 `runtime.version.json` 应同步填写实际 Python 与核心库版本，不要长期保留 `pending`。
+
+从零重建 runtime 的完整说明见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)。
 
 ## 打包入口
 
@@ -99,8 +108,10 @@ wails dev
 - `tools/`
 - `build/windows/`
 - `resources/` 下需要随项目维护的静态资源
+- `resources/runtime/.gitkeep`
 - `README.md`
 - `DEVELOPMENT.md`
+- `RUNTIME_BUILD.md`
 - `version.json`
 - `runtime.version.json`
 
