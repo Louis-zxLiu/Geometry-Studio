@@ -59,16 +59,22 @@ func (s *Service) Session(ctx context.Context, force bool) (Session, error) {
 }
 
 func (s *Service) PurchaseLink() (PurchaseLink, error) {
-	if s.deviceIDProvider == nil {
+	state, err := s.store.Load()
+	if err != nil {
+		return PurchaseLink{}, err
+	}
+
+	deviceID, stateChanged, err := s.resolveDeviceID(&state)
+	if err != nil {
 		return PurchaseLink{
 			Configured: false,
 			Message:    "设备识别服务未就绪",
 		}, nil
 	}
-
-	deviceID, err := s.deviceIDProvider.ID()
-	if err != nil {
-		return PurchaseLink{}, err
+	if stateChanged {
+		if err := s.store.Save(state); err != nil {
+			return PurchaseLink{}, err
+		}
 	}
 
 	url, err := buildPurchaseURL(purchaseURL(), deviceID)
@@ -92,25 +98,27 @@ func (s *Service) PurchaseLink() (PurchaseLink, error) {
 }
 
 func (s *Service) resolveState(ctx context.Context, force bool) (CacheState, error) {
-	if s.deviceIDProvider == nil {
+	state, err := s.store.Load()
+	if err != nil {
+		return CacheState{}, err
+	}
+
+	deviceID, stateChanged, err := s.resolveDeviceID(&state)
+	if err != nil {
 		return CacheState{
 			Status:  StatusError,
 			Message: "设备识别服务未就绪",
 		}, nil
 	}
-
-	deviceID, err := s.deviceIDProvider.ID()
-	if err != nil {
-		return CacheState{}, err
-	}
-
-	state, err := s.store.Load()
-	if err != nil {
-		return CacheState{}, err
-	}
 	state.DeviceID = deviceID
 	if strings.TrimSpace(state.InstallID) == "" {
 		state.InstallID = uuid.NewString()
+		stateChanged = true
+	}
+	if stateChanged {
+		if err := s.store.Save(state); err != nil {
+			return CacheState{}, err
+		}
 	}
 
 	if !force && s.canUseCache(state) {
@@ -151,6 +159,28 @@ func (s *Service) resolveState(ctx context.Context, force bool) (CacheState, err
 	}
 
 	return state, nil
+}
+
+func (s *Service) resolveDeviceID(state *CacheState) (string, bool, error) {
+	if state != nil {
+		if deviceID := strings.TrimSpace(state.DeviceID); deviceID != "" {
+			state.DeviceID = deviceID
+			return deviceID, false, nil
+		}
+	}
+	if s.deviceIDProvider == nil {
+		return "", false, fmt.Errorf("device id provider is nil")
+	}
+
+	deviceID, err := s.deviceIDProvider.ID()
+	if err != nil {
+		return "", false, err
+	}
+	deviceID = strings.TrimSpace(deviceID)
+	if state != nil {
+		state.DeviceID = deviceID
+	}
+	return deviceID, true, nil
 }
 
 func (s *Service) canUseCache(state CacheState) bool {
