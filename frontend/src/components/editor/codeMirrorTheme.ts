@@ -116,6 +116,15 @@ export const editorTheme = EditorView.theme({
   ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
     backgroundColor: "color-mix(in srgb, var(--muted), transparent 78%)",
   },
+  ".cm-search-match": {
+    backgroundColor: "color-mix(in srgb, #ffd76a, transparent 42%)",
+    borderRadius: "3px",
+  },
+  ".cm-search-match-active": {
+    backgroundColor: "color-mix(in srgb, #ffb347, transparent 22%)",
+    borderRadius: "3px",
+    boxShadow: "inset 0 0 0 1px color-mix(in srgb, #c46a18, transparent 28%)",
+  },
   ".cm-cursor": {
     borderLeftColor: "var(--text)",
   },

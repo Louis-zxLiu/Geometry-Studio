@@ -26,6 +26,62 @@
   overflow: hidden;
 }
 
+.editor-search-bar {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--line), transparent 20%);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface), white 18%);
+  box-shadow: 0 10px 24px rgba(20, 24, 36, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.editor-search-input {
+  width: 220px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--line), transparent 28%);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text);
+  font: inherit;
+}
+
+.editor-search-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent), transparent 38%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent), transparent 82%);
+}
+
+.editor-search-status {
+  min-width: 36px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.editor-search-button,
+.editor-search-close {
+  border: 0;
+  border-radius: 9px;
+  padding: 7px 10px;
+  background: color-mix(in srgb, var(--surface-soft), white 14%);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.editor-search-button:hover,
+.editor-search-close:hover {
+  background: color-mix(in srgb, var(--surface-soft), var(--accent) 12%);
+}
+
 @keyframes editor-stream-line {
   from {
     opacity: 0.1;
