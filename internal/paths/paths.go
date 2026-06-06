@@ -51,6 +51,15 @@ func AISettingsPath() (string, error) {
 	return filepath.Join(dir, "ai-settings.json"), nil
 }
 
+func WorkspaceStatePath() (string, error) {
+	dir, err := ConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(dir, "workspace-state.json"), nil
+}
+
 func UpdatesDir() (string, error) {
 	dir, err := ConfigDir()
 	if err != nil {

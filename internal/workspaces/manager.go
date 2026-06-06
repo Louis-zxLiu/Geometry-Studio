@@ -8,12 +8,15 @@ import (
 )
 
 type Manager struct {
-	mu     sync.Mutex
-	active string
+	mu         sync.Mutex
+	active     string
+	stateStore *StateStore
 }
 
 func NewManager() *Manager {
-	return &Manager{}
+	return &Manager{
+		stateStore: NewStateStore(),
+	}
 }
 
 func (m *Manager) EnsureReady() error {
@@ -55,7 +58,16 @@ func (m *Manager) CurrentDir() (string, error) {
 	}
 
 	if m.active == "" || !contains(names, m.active) {
-		m.active = chooseInitialWorkspace(names)
+		if restored, err := m.stateStore.LoadCurrentWorkspace(); err != nil {
+			return "", err
+		} else if restored != "" && contains(names, restored) {
+			m.active = restored
+		} else {
+			m.active = chooseInitialWorkspace(names)
+		}
+		if err := m.stateStore.SaveCurrentWorkspace(m.active); err != nil {
+			return "", err
+		}
 	}
 
 	return filepath.Join(root, m.active), nil
@@ -94,7 +106,7 @@ func (m *Manager) Switch(name string) error {
 	}
 
 	m.active = name
-	return nil
+	return m.stateStore.SaveCurrentWorkspace(m.active)
 }
 
 func (m *Manager) Create(name string) (Workspace, error) {
@@ -122,6 +134,9 @@ func (m *Manager) Create(name string) (Workspace, error) {
 	}
 
 	m.active = name
+	if err := m.stateStore.SaveCurrentWorkspace(m.active); err != nil {
+		return Workspace{}, err
+	}
 	return Workspace{Name: name, SceneCount: 0}, nil
 }
 
@@ -158,6 +173,9 @@ func (m *Manager) Rename(oldName string, newName string) (Workspace, error) {
 	}
 	if m.active == oldName {
 		m.active = newName
+		if err := m.stateStore.SaveCurrentWorkspace(m.active); err != nil {
+			return Workspace{}, err
+		}
 	}
 
 	count, err := countScenes(newPath)
