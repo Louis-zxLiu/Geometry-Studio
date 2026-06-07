@@ -36,11 +36,11 @@ wails dev
 项目运行依赖便携 Python runtime。约定如下：
 
 - 占位目录：`resources/runtime/`
-- 本地发布输入：`resources/runtime/runtime.zip`
+- 本地发布输入：`resources/runtime/runtime.7z`
 - 本地展开目录：`runtime/`
 - 临时展开目录：`runtime.tmp/`
 - 元数据文件：`runtime.version.json`
-- `resources/runtime/runtime.zip` 默认不提交到 Git
+- `resources/runtime/runtime.7z` 默认不提交到 Git
 - runtime 应通过 GitHub Release asset 或其他制品存储分发
 - 仓库仅跟踪 runtime 脚本、元数据和第三方补丁源码
 
@@ -93,7 +93,7 @@ wails dev
 ## 发布前检查
 
 - 确认 `version.json` 版本正确
-- 确认 `resources/runtime/runtime.zip` 存在
+- 确认 `resources/runtime/runtime.7z` 存在
 - 确认 `runtime.version.json` 已填写真实版本
 - 确认 `Scripts/` 中示例内容就是准备随包分发的内容
 - 确认 `config/` 没有本机账号、缓存、更新状态等脏数据

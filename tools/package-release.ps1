@@ -35,15 +35,24 @@ $releaseName = "PlotKityCat-v$Version"
 $releaseRoot = Join-Path $repoRoot "build/release/$releaseName"
 $releaseZip = "$releaseRoot.zip"
 $binExe = Join-Path $repoRoot "build/bin/PlotKityCat.exe"
-$runtimeZip = Join-Path $repoRoot "resources/runtime/runtime.zip"
+$runtimeArchive = Join-Path $repoRoot "resources/runtime/runtime.7z"
+$runtime7ZipDir = Join-Path $repoRoot "tools/7zip/extra/x64"
 $scriptsDir = Join-Path $repoRoot "Scripts"
 
 if (-not (Test-Path $binExe)) {
     throw "Missing built executable: $binExe"
 }
 
-if (-not (Test-Path $runtimeZip)) {
-    throw "Missing runtime archive: $runtimeZip"
+if (-not (Test-Path $runtimeArchive)) {
+    throw "Missing runtime archive: $runtimeArchive"
+}
+
+if (-not (Test-Path (Join-Path $runtime7ZipDir "7za.exe"))) {
+    throw "Missing runtime extractor: $(Join-Path $runtime7ZipDir '7za.exe')"
+}
+
+if (-not (Test-Path (Join-Path $runtime7ZipDir "7za.dll"))) {
+    throw "Missing runtime extractor DLL: $(Join-Path $runtime7ZipDir '7za.dll')"
 }
 
 if (Test-Path $releaseRoot) {
@@ -55,8 +64,11 @@ if (Test-Path $releaseZip) {
 }
 
 New-Item -ItemType Directory -Path (Join-Path $releaseRoot "resources/runtime") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $releaseRoot "resources/runtime/7zip") -Force | Out-Null
 Copy-Item -LiteralPath $binExe -Destination (Join-Path $releaseRoot "PlotKityCat.exe") -Force
-Copy-Item -LiteralPath $runtimeZip -Destination (Join-Path $releaseRoot "resources/runtime/runtime.zip") -Force
+Copy-Item -LiteralPath $runtimeArchive -Destination (Join-Path $releaseRoot "resources/runtime/runtime.7z") -Force
+Copy-Item -LiteralPath (Join-Path $runtime7ZipDir "7za.exe") -Destination (Join-Path $releaseRoot "resources/runtime/7zip/7za.exe") -Force
+Copy-Item -LiteralPath (Join-Path $runtime7ZipDir "7za.dll") -Destination (Join-Path $releaseRoot "resources/runtime/7zip/7za.dll") -Force
 
 if ($IncludeScripts -and (Test-Path $scriptsDir)) {
     Copy-Item -LiteralPath $scriptsDir -Destination (Join-Path $releaseRoot "Scripts") -Recurse -Force

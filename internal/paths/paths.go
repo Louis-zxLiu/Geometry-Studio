@@ -93,7 +93,21 @@ func RuntimeArchivePath() (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(root, "resources", "runtime", "runtime.zip"), nil
+	return filepath.Join(root, "resources", "runtime", "runtime.7z"), nil
+}
+
+func RuntimeExtractorPath() (string, error) {
+	root, err := AppRoot()
+	if err != nil {
+		return "", err
+	}
+
+	packagedPath := filepath.Join(root, "resources", "runtime", "7zip", "7za.exe")
+	if fileExists(packagedPath) {
+		return packagedPath, nil
+	}
+
+	return filepath.Join(root, "tools", "7zip", "extra", "x64", "7za.exe"), nil
 }
 
 func RuntimeTempDir() (string, error) {

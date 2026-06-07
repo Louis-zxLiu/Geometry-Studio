@@ -5,7 +5,7 @@ param(
 
     [string]$VersionFile = "runtime.version.json",
 
-    [string]$OutputZip = "resources/runtime/runtime.zip",
+    [string]$OutputArchive = "resources/runtime/runtime.7z",
 
     [switch]$CleanExistingRuntime,
 
@@ -19,7 +19,11 @@ param(
 
     [switch]$TrimQtOptionalUiForRelease,
 
-    [switch]$TrimPythonPackagingToolsForRelease
+    [switch]$TrimPythonPackagingToolsForRelease,
+
+    [switch]$TrimPythonRuntimeClutterForRelease,
+
+    [switch]$TrimSuspiciousPythonPackagesForRelease
 )
 
 $ErrorActionPreference = "Stop"
@@ -165,6 +169,28 @@ function Remove-FilesExceptAllowed {
 
         Remove-Item -LiteralPath $_.FullName -Recurse -Force
     }
+}
+
+function Remove-DirectoriesByName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RootPath,
+        [Parameter(Mandatory = $true)]
+        [string[]]$DirectoryNames
+    )
+
+    if (-not (Test-Path -LiteralPath $RootPath -PathType Container)) {
+        return
+    }
+
+    Get-ChildItem -LiteralPath $RootPath -Recurse -Directory -Force -ErrorAction SilentlyContinue |
+        Where-Object { $DirectoryNames -contains $_.Name } |
+        Sort-Object FullName -Descending |
+        ForEach-Object {
+            if (Test-Path -LiteralPath $_.FullName) {
+                Remove-Item -LiteralPath $_.FullName -Recurse -Force
+            }
+        }
 }
 
 function Trim-QtRuntimeForRelease {
@@ -412,9 +438,93 @@ function Trim-PythonPackagingToolsForRelease {
     Remove-PathsIfPresent -RuntimeRoot $RuntimeRoot -RelativePaths $packagingTools
 }
 
+function Trim-PythonRuntimeClutterForRelease {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RuntimeRoot
+    )
+
+    Remove-DirectoriesByName -RootPath $RuntimeRoot -DirectoryNames @(
+        "__pycache__",
+        "test",
+        "tests",
+        "testing",
+        "example",
+        "examples",
+        "doc",
+        "docs"
+    )
+
+    Remove-PathsIfPresent -RuntimeRoot $RuntimeRoot -RelativePaths @(
+        "Lib/site-packages/PyQt5/Qt5/qsci"
+    )
+}
+
+function Trim-SuspiciousPythonPackagesForRelease {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RuntimeRoot
+    )
+
+    $suspiciousPackages = @(
+        "Lib/site-packages/ipympl",
+        "Lib/site-packages/ipympl-0.9.8.dist-info",
+        "Lib/site-packages/pydantic_ai",
+        "Lib/site-packages/pydantic_ai-1.22.0.dist-info",
+        "Lib/site-packages/github",
+        "Lib/site-packages/PyGithub-2.8.1.dist-info",
+        "Lib/site-packages/cryptography",
+        "Lib/site-packages/cryptography-46.0.3.dist-info",
+        "Lib/site-packages/lxml",
+        "Lib/site-packages/lxml-6.0.2.dist-info"
+    )
+
+    Remove-PathsIfPresent -RuntimeRoot $RuntimeRoot -RelativePaths $suspiciousPackages
+}
+
+function Get-Runtime7ZipExecutablePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot
+    )
+
+    $candidates = @(
+        (Join-Path $RepositoryRoot "tools/7zip/extra/x64/7za.exe"),
+        (Join-Path $RepositoryRoot "tools/7zip/7za.exe")
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+
+    throw "7-Zip CLI not found. Expected tools/7zip/extra/x64/7za.exe"
+}
+
+function New-7ZipRuntimeArchive {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$SourceDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$ArchivePath
+    )
+
+    $sevenZipExe = Get-Runtime7ZipExecutablePath -RepositoryRoot $RepositoryRoot
+    $workingDirectory = Split-Path -Parent $SourceDirectory
+    $sourcePattern = (Join-Path $SourceDirectory "*")
+
+    & $sevenZipExe a -t7z $ArchivePath $sourcePattern -mx=9 -m0=lzma2 -md=512m -mfb=273 -ms=on -mmt=on
+    if ($LASTEXITCODE -ne 0) {
+        throw "7-Zip failed while creating runtime archive: exit code $LASTEXITCODE"
+    }
+}
+
 $sourceRuntimeDir = Resolve-InWorkspacePath -PathValue $SourceRuntimeDir
 $versionFilePath = Resolve-InWorkspacePath -PathValue $VersionFile
-$outputZipPath = Resolve-InWorkspacePath -PathValue $OutputZip
+$outputArchivePath = Resolve-InWorkspacePath -PathValue $OutputArchive
 $runtimeDirPath = Resolve-InWorkspacePath -PathValue "runtime"
 $tempRoot = Resolve-InWorkspacePath -PathValue ".runtime-pack"
 $stagingDir = Join-Path -Path $tempRoot -ChildPath "runtime"
@@ -462,17 +572,25 @@ if ($TrimPythonPackagingToolsForRelease.IsPresent) {
     Trim-PythonPackagingToolsForRelease -RuntimeRoot $stagingDir
 }
 
-if (Test-Path -LiteralPath $outputZipPath) {
-    Remove-Item -LiteralPath $outputZipPath -Force
+if ($TrimPythonRuntimeClutterForRelease.IsPresent) {
+    Trim-PythonRuntimeClutterForRelease -RuntimeRoot $stagingDir
 }
 
-Compress-Archive -Path (Join-Path $stagingDir "*") -DestinationPath $outputZipPath -CompressionLevel Optimal
+if ($TrimSuspiciousPythonPackagesForRelease.IsPresent) {
+    Trim-SuspiciousPythonPackagesForRelease -RuntimeRoot $stagingDir
+}
+
+if (Test-Path -LiteralPath $outputArchivePath) {
+    Remove-Item -LiteralPath $outputArchivePath -Force
+}
+
+New-7ZipRuntimeArchive -RepositoryRoot $repoRoot -SourceDirectory $stagingDir -ArchivePath $outputArchivePath
 
 if ($CleanExistingRuntime.IsPresent -and (Test-Path -LiteralPath $runtimeDirPath)) {
     Remove-Item -LiteralPath $runtimeDirPath -Recurse -Force
 }
 
-Write-Host "Prepared runtime archive:" $outputZipPath
+Write-Host "Prepared runtime archive:" $outputArchivePath
 Write-Host "Staged from:" $sourceRuntimeDir
 Write-Host "Version file:" $versionFilePath
 Write-Host "Trim Qt for release:" $TrimQtForRelease.IsPresent
@@ -481,3 +599,5 @@ Write-Host "Trim optional scientific packages for release:" $TrimOptionalScienti
 Write-Host "Trim AI Python packages for release:" $TrimAIPythonPackagesForRelease.IsPresent
 Write-Host "Trim Qt optional UI for release:" $TrimQtOptionalUiForRelease.IsPresent
 Write-Host "Trim Python packaging tools for release:" $TrimPythonPackagingToolsForRelease.IsPresent
+Write-Host "Trim Python runtime clutter for release:" $TrimPythonRuntimeClutterForRelease.IsPresent
+Write-Host "Trim suspicious Python packages for release:" $TrimSuspiciousPythonPackagesForRelease.IsPresent

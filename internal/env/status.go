@@ -95,8 +95,8 @@ func EvaluateStatus(requirements []Requirement) (Status, error) {
 	case !archiveExists && len(missing) > 0:
 		status.Code = "runtime_archive_missing"
 		status.Severity = "error"
-		status.Summary = "缺少 resources/runtime/runtime.zip，无法自动修复内置 WinPython"
-		status.RecommendedAction = "请补齐 resources/runtime/runtime.zip 后再重建 Runtime"
+		status.Summary = "缺少 resources/runtime/runtime.7z，无法自动修复内置 WinPython"
+		status.RecommendedAction = "请补齐 resources/runtime/runtime.7z 后再重建 Runtime"
 	case !pythonExists:
 		status.Code = "python_executable_missing"
 		status.Severity = "error"

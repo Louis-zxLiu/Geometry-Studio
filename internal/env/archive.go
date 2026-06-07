@@ -1,15 +1,16 @@
 package env
 
 import (
-	"archive/zip"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"plotkitycat/internal/paths"
+	"plotkitycat/internal/processutil"
 )
 
 func (m *Manager) ensureRuntimeExtracted(onProgress func(Progress)) error {
@@ -41,6 +42,15 @@ func (m *Manager) ensureRuntimeExtracted(onProgress func(Progress)) error {
 		return fmt.Errorf("runtime archive not found: %s", archivePath)
 	}
 
+	extractorPath, err := paths.RuntimeExtractorPath()
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(extractorPath); err != nil {
+		return fmt.Errorf("runtime extractor not found: %s", extractorPath)
+	}
+
 	reportProgress(onProgress, Progress{
 		Stage:   "extracting",
 		Message: "Extracting runtime",
@@ -64,7 +74,7 @@ func (m *Manager) ensureRuntimeExtracted(onProgress func(Progress)) error {
 		return err
 	}
 
-	if err := extractArchive(archivePath, tempDir, onProgress); err != nil {
+	if err := extractArchive(archivePath, extractorPath, tempDir, onProgress); err != nil {
 		_ = os.RemoveAll(tempDir)
 		return err
 	}
@@ -190,109 +200,40 @@ func copyFile(sourcePath string, targetPath string, mode os.FileMode) error {
 	return nil
 }
 
-func extractArchive(archivePath string, targetDir string, onProgress func(Progress)) error {
-	reader, err := zip.OpenReader(archivePath)
-	if err != nil {
-		return err
+func extractArchive(archivePath string, extractorPath string, targetDir string, onProgress func(Progress)) error {
+	reportProgress(onProgress, Progress{
+		Stage:   "extracting",
+		Message: "Launching 7z extractor",
+		Percent: 24,
+	})
+
+	outputDirArg := "-o" + targetDir
+	cmd := exec.Command(extractorPath, "x", archivePath, outputDirArg, "-y")
+	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
+	cmd.Dir = filepath.Dir(extractorPath)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		message := stderr.String()
+		if message == "" {
+			message = stdout.String()
+		}
+		if message == "" {
+			message = err.Error()
+		}
+
+		return fmt.Errorf("extract runtime archive with 7z: %s", message)
 	}
-	defer reader.Close()
 
-	totalFiles := 0
-	for _, file := range reader.File {
-		if !archiveEntryIsDir(file) {
-			totalFiles++
-		}
-	}
-
-	processedFiles := 0
-	for _, file := range reader.File {
-		relativePath := normalizeArchivePath(file.Name)
-		if relativePath == "" {
-			continue
-		}
-
-		targetPath := filepath.Join(targetDir, filepath.FromSlash(relativePath))
-		cleanTargetPath := filepath.Clean(targetPath)
-		cleanRoot := filepath.Clean(targetDir) + string(os.PathSeparator)
-		if cleanTargetPath != filepath.Clean(targetDir) && !strings.HasPrefix(cleanTargetPath, cleanRoot) {
-			return fmt.Errorf("invalid runtime archive entry: %s", file.Name)
-		}
-
-		if archiveEntryIsDir(file) {
-			if err := os.MkdirAll(cleanTargetPath, 0o755); err != nil {
-				return err
-			}
-			continue
-		}
-
-		if err := os.MkdirAll(filepath.Dir(cleanTargetPath), 0o755); err != nil {
-			return err
-		}
-
-		src, err := file.Open()
-		if err != nil {
-			return err
-		}
-
-		dst, err := os.OpenFile(cleanTargetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, file.Mode())
-		if err != nil {
-			src.Close()
-			return err
-		}
-
-		_, copyErr := io.Copy(dst, src)
-		closeErr := dst.Close()
-		srcErr := src.Close()
-		if copyErr != nil {
-			return copyErr
-		}
-		if closeErr != nil {
-			return closeErr
-		}
-		if srcErr != nil {
-			return srcErr
-		}
-
-		processedFiles++
-		if totalFiles > 0 {
-			progressPercent := 18 + int(float64(processedFiles)/float64(totalFiles)*68.0)
-			reportProgress(onProgress, Progress{
-				Stage:   "extracting",
-				Message: "Extracting runtime",
-				Percent: progressPercent,
-			})
-		}
-	}
+	reportProgress(onProgress, Progress{
+		Stage:   "extracting",
+		Message: "Runtime archive extracted",
+		Percent: 86,
+	})
 
 	return nil
-}
-
-func normalizeArchivePath(name string) string {
-	normalized := strings.TrimSpace(strings.ReplaceAll(name, "\\", "/"))
-	normalized = strings.TrimPrefix(normalized, "./")
-	normalized = strings.TrimPrefix(normalized, "/")
-	if normalized == "" {
-		return ""
-	}
-
-	if normalized == "runtime" {
-		return ""
-	}
-	if strings.HasPrefix(normalized, "runtime/") {
-		return strings.TrimPrefix(normalized, "runtime/")
-	}
-
-	return normalized
-}
-
-func archiveEntryIsDir(file *zip.File) bool {
-	if file == nil {
-		return false
-	}
-
-	if file.FileInfo().IsDir() {
-		return true
-	}
-
-	return strings.HasSuffix(file.Name, "/") || strings.HasSuffix(file.Name, "\\")
 }

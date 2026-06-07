@@ -5,13 +5,13 @@
 这份文档描述两件事：
 
 - 如何给别人分发现成的 Python runtime
-- 如何从零重建 `resources/runtime/runtime.zip`
+- 如何从零重建 `resources/runtime/runtime.7z`
 
 本项目的 runtime 是发布制品，不是源码仓库资产。
 
 结论先说清楚：
 
-- `resources/runtime/runtime.zip` 默认不提交到 Git
+- `resources/runtime/runtime.7z` 默认不提交到 Git
 - 仓库只跟踪 runtime 构建脚本、版本元数据和第三方补丁源码
 - 现成 runtime 应通过 GitHub Release asset、对象存储或内部制品库分发
 
@@ -27,7 +27,7 @@
 
 仓库中默认不会跟踪：
 
-- `resources/runtime/runtime.zip`
+- `resources/runtime/runtime.7z`
 - `runtime/`
 - `runtime.tmp/`
 
@@ -35,11 +35,11 @@
 
 如果只是让接手者继续打包发布，不要求他从零重建 runtime，最简单的交付方式是：
 
-1. 把本地现成的 `resources/runtime/runtime.zip` 上传为 GitHub Release asset，或放到稳定下载地址
+1. 把本地现成的 `resources/runtime/runtime.7z` 上传为 GitHub Release asset，或放到稳定下载地址
 2. 告诉接手者把该文件放回：
 
 ```text
-resources/runtime/runtime.zip
+resources/runtime/runtime.7z
 ```
 
 3. 接手者即可继续运行：
@@ -121,7 +121,7 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
 
 如果未来升级 Python 小版本但 ABI 发生变化，必须同步补齐匹配的 `.pyd`。
 
-### 5. 生成 runtime.zip
+### 5. 生成 runtime.7z
 
 在仓库根目录执行：
 
@@ -139,14 +139,18 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
   -TrimOptionalScientificPackagesForRelease `
   -TrimAIPythonPackagesForRelease `
   -TrimQtOptionalUiForRelease
+  -TrimPythonPackagingToolsForRelease `
+  -TrimPythonRuntimeClutterForRelease `
+  -TrimSuspiciousPythonPackagesForRelease
 ```
 
 这些开关都只作用于 staging 目录 `.runtime-pack/runtime`，不会修改原始 `SourceRuntimeDir`。
 
 执行结果：
 
-- 生成 `resources/runtime/runtime.zip`
+- 生成 `resources/runtime/runtime.7z`
 - staging 目录默认使用 `.runtime-pack/`
+- 默认使用仓库内 `tools/7zip/extra/x64/7za.exe` 生成 7z 压缩包
 
 当前开关含义：
 
@@ -160,12 +164,18 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
   删除 `langchain/google_genai/huggingface_hub/tiktoken` 等 Python AI 生态包
 - `-TrimQtOptionalUiForRelease`
   删除 `qml/`、边缘 Qt 插件，以及除中文外的大部分 Qt 翻译资源
+- `-TrimPythonPackagingToolsForRelease`
+  删除 `pip/setuptools/wheel/pkg_resources`
+- `-TrimPythonRuntimeClutterForRelease`
+  删除 `__pycache__`、`testing/tests/examples/docs` 和 `PyQt5/Qt5/qsci`
+- `-TrimSuspiciousPythonPackagesForRelease`
+  删除 `ipympl/pydantic_ai/github/cryptography/lxml`
 
 ### 6. 人工验收
 
 至少做这几项检查：
 
-1. 解压生成的 `resources/runtime/runtime.zip`
+1. 使用 7-Zip 解压生成的 `resources/runtime/runtime.7z`
 2. 确认存在：
    `Lib/site-packages/mpl_surface_fastpath/`
 3. 确认存在：
@@ -176,7 +186,7 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
 
 ## 发布建议
 
-`runtime.zip` 不要放进普通 Git 提交历史。
+`runtime.7z` 不要放进普通 Git 提交历史。
 
 建议的分发方式：
 
@@ -187,24 +197,24 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
 推荐约定：
 
 - 每次 runtime 发生变化，都发布到对应版本的 GitHub Release
-- 当前使用的资产名是 `runtime.zip`
+- 当前使用的资产名是 `runtime.7z`
 - 在 release 说明里注明对应的 `runtime.version.json`
 
 当前下载地址格式：
 
 ```text
-https://github.com/Wing900/PlotKityCat/releases/download/v版本号/runtime.zip
+https://github.com/Wing900/PlotKityCat/releases/download/v版本号/runtime.7z
 ```
 
 当前示例：
 
 ```text
-https://github.com/Wing900/PlotKityCat/releases/download/v0.0.2.6/runtime.zip
+https://github.com/Wing900/PlotKityCat/releases/download/v0.0.2.6/runtime.7z
 ```
 
 ## 常见误区
 
-### 误区 1：仓库里应该直接提交 `runtime.zip`
+### 误区 1：仓库里应该直接提交 `runtime.7z`
 
 不建议。这个文件体积大、变更频率低、二进制 diff 意义弱，更适合作为发布制品管理。
 
