@@ -108,6 +108,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\package-release.ps1 -Version 0.
 
 - 这个 zip 会包含 `PlotKityCat.exe`、`resources/runtime/runtime.zip` 和 `Scripts/`
 - 因此发布完整包前，必须先在本地准备好 `resources/runtime/runtime.zip`
+- 当前推荐先按 [RUNTIME_BUILD.md](/D:/projects/plotkitycat/RUNTIME_BUILD.md:1) 用裁剪开关重建 runtime，再执行完整打包
 
 ## 5. 上传到更新服务器
 

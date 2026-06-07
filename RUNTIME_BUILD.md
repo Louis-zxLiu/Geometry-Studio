@@ -129,10 +129,37 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
 .\tools\prepare-runtime.ps1 -SourceRuntimeDir <你的WinPython目录>
 ```
 
+如果要生成当前推荐的瘦身版 runtime，请显式打开裁剪开关：
+
+```powershell
+.\tools\prepare-runtime.ps1 `
+  -SourceRuntimeDir <你的WinPython目录> `
+  -TrimQtForRelease `
+  -TrimUnusedPythonPackagesForRelease `
+  -TrimOptionalScientificPackagesForRelease `
+  -TrimAIPythonPackagesForRelease `
+  -TrimQtOptionalUiForRelease
+```
+
+这些开关都只作用于 staging 目录 `.runtime-pack/runtime`，不会修改原始 `SourceRuntimeDir`。
+
 执行结果：
 
 - 生成 `resources/runtime/runtime.zip`
 - staging 目录默认使用 `.runtime-pack/`
+
+当前开关含义：
+
+- `-TrimQtForRelease`
+  删除 Qt 第一、第二梯队，例如 WebEngine、Designer、Multimedia、Location 及边缘平台插件
+- `-TrimUnusedPythonPackagesForRelease`
+  删除 Jupyter、IPython、格式化工具、额外绘图库等低风险开发环境包
+- `-TrimOptionalScientificPackagesForRelease`
+  删除 `cvxpy/scs/osqp/networkx/xarray/seaborn` 等非主链科学计算包
+- `-TrimAIPythonPackagesForRelease`
+  删除 `langchain/google_genai/huggingface_hub/tiktoken` 等 Python AI 生态包
+- `-TrimQtOptionalUiForRelease`
+  删除 `qml/`、边缘 Qt 插件，以及除中文外的大部分 Qt 翻译资源
 
 ### 6. 人工验收
 
