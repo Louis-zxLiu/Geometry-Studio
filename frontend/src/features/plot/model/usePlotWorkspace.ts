@@ -25,6 +25,7 @@ import { useNoteWorkspace } from "../../notebook/model/useNoteWorkspace";
 import { createRuntimeRepository } from "../../runtime/services/runtimeRepository";
 import { useRuntimeState } from "../../runtime/model/useRuntimeState";
 import { createScriptRepository } from "../../scripts/services/scriptRepository";
+import { asString } from "../../scripts/model/scriptWorkspaceUtils";
 import { useScriptWorkspaceMachine } from "../../scripts/model/useScriptWorkspaceMachine";
 import { getErrorMessage } from "../../../lib/errors";
 import { useAIActivityStatus } from "./useAIActivityStatus";
@@ -34,6 +35,7 @@ import {
 } from "../../aiExecution/model/useAICodeExecutionLoop";
 import { useAIRunResultCoordinator } from "./useAIRunResultCoordinator";
 import { useAINoteGeneration } from "./useAINoteGeneration";
+import { useSceneCodeExecutionTask } from "./useSceneCodeExecutionTask";
 import { useCodeStreaming } from "./useCodeStreaming";
 import { usePackageTransfer } from "./usePackageTransfer";
 import { usePkcDropImport } from "./usePkcDropImport";
@@ -90,16 +92,31 @@ export function usePlotWorkspace() {
     runErrorDialog.openRunErrorDialog,
     designCardsForNote,
   );
-  const codeStreaming = useCodeStreaming(scriptWorkspace.codeContent);
+  const codeStreaming = useCodeStreaming(scriptWorkspace.codeContent, scriptWorkspace.currentFile);
   const aiRepair = useAIRunErrorRepair({
     aiActivity,
     aiSettings,
     codeContent: scriptWorkspace.codeContent,
     currentFile: scriptWorkspace.currentFile,
     executeAICodeLoop: () => aiCodeExecutionLoop.execute(),
+    executeSceneCodeLoop: (sceneName, code) => sceneCodeExecutionTask.execute(sceneName, code),
     errorDialog: runErrorDialog,
     isRunning,
+    loadSceneCode: async (sceneName) => {
+      if (sceneName === scriptWorkspace.currentFile.value) {
+        return scriptWorkspace.codeContent.value;
+      }
+
+      const document = await scriptRepository.getScriptContent(sceneName);
+      return asString(document.code);
+    },
     onApplied: animateRepairRanges,
+    saveSceneCode: async (sceneName, code) => {
+      await scriptRepository.saveScript(sceneName, code);
+      if (sceneName === scriptWorkspace.currentFile.value) {
+        scriptWorkspace.updateCode(code);
+      }
+    },
   });
   const aiCodeExecutionLoop = useAICodeExecutionLoop({
     clearRunError: runErrorDialog.clearRunError,
@@ -111,6 +128,43 @@ export function usePlotWorkspace() {
     onInterrupted: () => runErrorDialog.openRunErrorDialog("已中断 AI 检查"),
     repairCodeWithError: aiRepair.repairCodeWithError,
     runCurrentCodeAndWait,
+  });
+  const sceneCodeExecutionTask = useSceneCodeExecutionTask({
+    aiSettings: () => aiSettings.value,
+    clearRunError: runErrorDialog.clearRunError,
+    loadSceneCode: async (sceneName) => {
+      if (sceneName === scriptWorkspace.currentFile.value) {
+        return scriptWorkspace.codeContent.value;
+      }
+
+      const document = await scriptRepository.getScriptContent(sceneName);
+      return asString(document.code);
+    },
+    maxRepairAttempts: 8,
+    onFailure: ({ message, repairable, sceneName }) =>
+      runErrorDialog.openRunErrorDialog(
+        sceneName === scriptWorkspace.currentFile.value
+          ? message
+          : `[${sceneName}] ${message}`,
+        {
+          repairable,
+          repairSceneName: sceneName,
+          repairText: message,
+        },
+      ),
+    onInterrupted: (sceneName) =>
+      runErrorDialog.openRunErrorDialog(
+        sceneName === scriptWorkspace.currentFile.value
+          ? "已中断 AI 检查"
+          : `[${sceneName}] 已中断 AI 检查`,
+      ),
+    runSceneCodeAndWait,
+    saveSceneCode: async (sceneName, code) => {
+      await scriptRepository.saveScript(sceneName, code);
+      if (sceneName === scriptWorkspace.currentFile.value) {
+        scriptWorkspace.updateCode(code);
+      }
+    },
   });
   const codeAIOptimize = useCodeAIOptimize({
     aiActivity,
@@ -125,11 +179,21 @@ export function usePlotWorkspace() {
   const aiGeneration = useAINoteGeneration({
     aiActivity,
     aiSettings,
-    codeContent: scriptWorkspace.codeContent,
     currentFile: scriptWorkspace.currentFile,
-    executeAICodeLoop: () => aiCodeExecutionLoop.execute(),
+    executeSceneCodeLoop: (sceneName, code) => sceneCodeExecutionTask.execute(sceneName, code),
     isRunning,
     onError: runErrorDialog.openRunErrorDialog,
+    resolveSceneCode: async (sceneName) => {
+      if (sceneName === scriptWorkspace.currentFile.value) {
+        return scriptWorkspace.codeContent.value;
+      }
+
+      const document = await scriptRepository.getScriptContent(sceneName);
+      return asString(document.code);
+    },
+    saveSceneCode: async (sceneName, code) => {
+      await scriptRepository.saveScript(sceneName, code);
+    },
     streamGeneratedCode: codeStreaming.streamGeneratedCode,
   });
   const designCardWorkspace = useDesignCardWorkspace({
@@ -219,10 +283,14 @@ export function usePlotWorkspace() {
   });
 
   async function runCurrentCodeAndWait(): Promise<AICodeRunResult> {
+    return runSceneCodeAndWait(scriptWorkspace.currentFile.value, scriptWorkspace.codeContent.value);
+  }
+
+  async function runSceneCodeAndWait(sceneName: string, code: string): Promise<AICodeRunResult> {
     const resultPromise = aiRunResultCoordinator.createPendingAICodeRun();
 
     try {
-      await scriptWorkspace.startCurrentRun();
+      await scriptRepository.saveAndRun(sceneName, code);
       return await resultPromise;
     } catch (error) {
       aiRunResultCoordinator.settlePendingAICodeRun({
@@ -240,6 +308,21 @@ export function usePlotWorkspace() {
 
   function openSettings() {
     isSettingsDialogOpen.value = true;
+  }
+
+  async function createScript(name: string) {
+    codeStreaming.cancelStreaming();
+    await scriptWorkspace.createScript(name);
+  }
+
+  async function renameScript(oldName: string, newName: string) {
+    codeStreaming.cancelStreaming();
+    await scriptWorkspace.renameScript(oldName, newName);
+  }
+
+  async function deleteScript(name: string) {
+    codeStreaming.cancelStreaming();
+    await scriptWorkspace.deleteScript(name);
   }
 
   function openAISettings() {
@@ -264,23 +347,32 @@ export function usePlotWorkspace() {
   }
 
   async function switchWorkspace(name: string) {
+    codeStreaming.cancelStreaming();
     await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     await scriptWorkspace.switchWorkspace(name);
   }
 
   async function createWorkspace(name: string) {
+    codeStreaming.cancelStreaming();
     await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     await scriptWorkspace.createWorkspace(name);
   }
 
   async function renameWorkspace(oldName: string, newName: string) {
+    codeStreaming.cancelStreaming();
     await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     await scriptWorkspace.renameWorkspace(oldName, newName);
   }
 
   async function deleteWorkspace(name: string) {
+    codeStreaming.cancelStreaming();
     await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     await scriptWorkspace.deleteWorkspace(name);
+  }
+
+  async function selectScript(name: string) {
+    codeStreaming.cancelStreaming();
+    await scriptWorkspace.selectScript(name);
   }
 
   async function refreshSubscriptionStatus(force: boolean) {
@@ -412,6 +504,7 @@ export function usePlotWorkspace() {
   });
 
   onUnmounted(() => {
+    codeStreaming.cancelStreaming();
     void designCardWorkspace.flushPlanSave();
     void noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     lifecycle.unmount();
@@ -452,11 +545,11 @@ export function usePlotWorkspace() {
         runErrorDialog.openRunErrorDialog(getErrorMessage(error));
       }
     },
-    createScript: scriptWorkspace.createScript,
+    createScript,
     createWorkspace,
     currentFile: scriptWorkspace.currentFile,
     currentWorkspace: scriptWorkspace.currentWorkspace,
-    deleteScript: scriptWorkspace.deleteScript,
+    deleteScript,
     deleteWorkspace,
     deletingScriptName: scriptWorkspace.deletingScriptName,
     environmentStatus: runtime.environmentStatus,
@@ -504,7 +597,7 @@ export function usePlotWorkspace() {
     noteRenderBlocks: noteWorkspace.renderBlocks,
     noteSaveState: noteWorkspace.saveState,
     reorderScripts: scriptWorkspace.reorderScripts,
-    renameScript: scriptWorkspace.renameScript,
+    renameScript,
     renameWorkspace,
     moveNoteImage: noteWorkspace.moveImage,
     removeNoteImage: noteWorkspace.removeImage,
@@ -519,7 +612,7 @@ export function usePlotWorkspace() {
     runCurrentScript: scriptWorkspace.runCurrentScript,
     runErrorText: runErrorDialog.runErrorText,
     scripts: scriptWorkspace.scripts,
-    selectScript: scriptWorkspace.selectScript,
+    selectScript,
     selectCodeAIOptimizeVersion: codeAIOptimize.selectVersion,
     switchWorkspace,
     stopCurrentRun: lifecycle.stopCurrentRun,

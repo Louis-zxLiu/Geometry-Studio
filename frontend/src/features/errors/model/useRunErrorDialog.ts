@@ -4,25 +4,36 @@ export function useRunErrorDialog() {
   const isRunErrorDialogOpen = ref(false);
   const isRunErrorCopied = ref(false);
   const isRunErrorRepairable = ref(false);
+  const runErrorRepairSceneName = ref("");
+  const runErrorRepairText = ref("");
   const runErrorText = ref("");
 
-  function openRunErrorDialog(errorText: string, options?: { repairable?: boolean }) {
+  function openRunErrorDialog(
+    errorText: string,
+    options?: { repairable?: boolean; repairSceneName?: string; repairText?: string },
+  ) {
     runErrorText.value = asString(errorText);
     isRunErrorDialogOpen.value = true;
     isRunErrorCopied.value = false;
     isRunErrorRepairable.value = options?.repairable ?? false;
+    runErrorRepairSceneName.value = options?.repairSceneName?.trim() ?? "";
+    runErrorRepairText.value = asString(options?.repairText ?? errorText);
   }
 
   function closeRunErrorDialog() {
     isRunErrorDialogOpen.value = false;
     isRunErrorCopied.value = false;
     isRunErrorRepairable.value = false;
+    runErrorRepairSceneName.value = "";
+    runErrorRepairText.value = "";
   }
 
   function clearRunError() {
     runErrorText.value = "";
     isRunErrorCopied.value = false;
     isRunErrorRepairable.value = false;
+    runErrorRepairSceneName.value = "";
+    runErrorRepairText.value = "";
   }
 
   async function copyRunError() {
@@ -54,6 +65,8 @@ export function useRunErrorDialog() {
     isRunErrorCopied,
     isRunErrorDialogOpen,
     isRunErrorRepairable,
+    runErrorRepairSceneName,
+    runErrorRepairText,
     openRunErrorDialog,
     runErrorText,
   };

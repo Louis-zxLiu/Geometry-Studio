@@ -3,10 +3,12 @@ import { generateCodeFromSelection } from "../../ai/services/aiBridgeCompat";
 import type {
   AIGenerationKind,
   AINoteActionRequest,
-  AINoteSelectionPayload,
+  AINoteSceneActionRequest,
   AIProviderSettings,
 } from "../../ai/services/aiTypes";
 import { getErrorMessage } from "../../../lib/errors";
+import type { CodeStreamingResult } from "./useCodeStreaming";
+import { composeGeneratedCode } from "./useCodeStreaming";
 
 type AIActivityStatus = {
   isAIGenerating: Ref<boolean>;
@@ -19,18 +21,20 @@ type AIActivityStatus = {
 type AINoteGenerationOptions = {
   aiActivity: AIActivityStatus;
   aiSettings: Ref<AIProviderSettings>;
-  codeContent: Ref<string>;
   currentFile: Ref<string>;
-  executeAICodeLoop: () => Promise<boolean>;
+  executeSceneCodeLoop: (sceneName: string, code: string) => Promise<boolean>;
   isRunning: Ref<boolean>;
   onError: (message: string) => void;
-  streamGeneratedCode: (generatedCode: string) => Promise<void>;
+  resolveSceneCode: (sceneName: string) => Promise<string>;
+  saveSceneCode: (sceneName: string, code: string) => Promise<void>;
+  streamGeneratedCode: (generatedCode: string) => Promise<CodeStreamingResult>;
 };
 
 export function useAINoteGeneration(options: AINoteGenerationOptions) {
   async function runAINoteAction(request: AINoteActionRequest) {
+    const targetScene = request.sceneName.trim();
     if (
-      !options.currentFile.value ||
+      !targetScene ||
       options.isRunning.value ||
       options.aiActivity.isAIGenerating.value ||
       !request.selection.items.length
@@ -40,17 +44,33 @@ export function useAINoteGeneration(options: AINoteGenerationOptions) {
 
     options.aiActivity.startWorking();
     try {
+      const targetCode = await options.resolveSceneCode(targetScene);
       const result = await generateCodeFromSelection({
         kind: request.kind,
-        sceneName: options.currentFile.value,
-        currentCode: options.codeContent.value,
+        sceneName: targetScene,
+        currentCode: targetCode,
         settings: options.aiSettings.value,
         selection: request.selection,
       });
 
-      await options.streamGeneratedCode(result.code);
+      const nextCode = composeGeneratedCode(targetCode, result.code);
+      if (options.currentFile.value !== targetScene) {
+        await options.saveSceneCode(targetScene, nextCode);
+        options.aiActivity.startChecking();
+        await options.executeSceneCodeLoop(targetScene, nextCode);
+        return;
+      }
+
+      const streamingResult = await options.streamGeneratedCode(result.code);
+      if (streamingResult === "cancelled") {
+        await options.saveSceneCode(targetScene, nextCode);
+        options.aiActivity.startChecking();
+        await options.executeSceneCodeLoop(targetScene, nextCode);
+        return;
+      }
+
       options.aiActivity.startChecking();
-      await options.executeAICodeLoop();
+      await options.executeSceneCodeLoop(targetScene, nextCode);
     } catch (error) {
       options.onError(getErrorMessage(error));
     } finally {
@@ -58,12 +78,12 @@ export function useAINoteGeneration(options: AINoteGenerationOptions) {
     }
   }
 
-  function generateCodeFromNoteSelection(selection: AINoteSelectionPayload) {
-    return runTypedAINoteAction("visualize", selection);
+  function generateCodeFromNoteSelection(request: AINoteSceneActionRequest) {
+    return runTypedAINoteAction("visualize", request);
   }
 
-  function runTypedAINoteAction(kind: AIGenerationKind, selection: AINoteSelectionPayload) {
-    return runAINoteAction({ kind, selection });
+  function runTypedAINoteAction(kind: AIGenerationKind, request: AINoteSceneActionRequest) {
+    return runAINoteAction({ kind, ...request });
   }
 
   return {

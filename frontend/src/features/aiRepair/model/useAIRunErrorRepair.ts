@@ -14,7 +14,12 @@ type AIActivityStatus = {
 
 type ErrorDialog = {
   closeRunErrorDialog: () => void;
-  openRunErrorDialog: (errorText: string, options?: { repairable?: boolean }) => void;
+  openRunErrorDialog: (
+    errorText: string,
+    options?: { repairable?: boolean; repairSceneName?: string; repairText?: string },
+  ) => void;
+  runErrorRepairSceneName: Ref<string>;
+  runErrorRepairText: Ref<string>;
   runErrorText: Ref<string>;
 };
 
@@ -24,46 +29,63 @@ type AIRunErrorRepairOptions = {
   codeContent: Ref<string>;
   currentFile: Ref<string>;
   executeAICodeLoop?: () => Promise<boolean>;
+  executeSceneCodeLoop?: (sceneName: string, code: string) => Promise<boolean>;
   errorDialog: ErrorDialog;
   isRunning: Ref<boolean>;
+  loadSceneCode?: (sceneName: string) => Promise<string>;
   onApplied: (ranges: ChangedLineRange[]) => void;
+  saveSceneCode?: (sceneName: string, code: string) => Promise<void>;
 };
 
 export function useAIRunErrorRepair(options: AIRunErrorRepairOptions) {
-  async function repairCodeWithError(errorText: string) {
+  async function repairCodeWithError(errorText: string, sceneName = options.currentFile.value, currentCode = options.codeContent.value) {
     const result = await repairCodeFromRunError({
-      sceneName: options.currentFile.value,
-      currentCode: options.codeContent.value,
+      sceneName,
+      currentCode,
       errorText,
       settings: options.aiSettings.value,
     });
-    const applied = applyRepairPatch(options.codeContent.value, result.patch);
-    options.codeContent.value = applied.code;
-    options.onApplied(applied.changedRanges);
+    const applied = applyRepairPatch(currentCode, result.patch);
+    if (sceneName === options.currentFile.value) {
+      options.codeContent.value = applied.code;
+      options.onApplied(applied.changedRanges);
+    } else if (options.saveSceneCode) {
+      await options.saveSceneCode(sceneName, applied.code);
+    }
     return applied;
   }
 
   async function repairCurrentRunError() {
+    const repairSceneName = options.errorDialog.runErrorRepairSceneName.value || options.currentFile.value;
     if (
       options.aiActivity.isAIGenerating.value ||
       options.isRunning.value ||
-      !options.currentFile.value
+      !repairSceneName
     ) {
       return;
     }
 
-    const errorText = options.errorDialog.runErrorText.value;
+    const errorText = options.errorDialog.runErrorRepairText.value || options.errorDialog.runErrorText.value;
     options.errorDialog.closeRunErrorDialog();
     options.aiActivity.startWorking();
 
     try {
-      await repairCodeWithError(errorText);
-      if (options.executeAICodeLoop) {
+      const currentCode = repairSceneName === options.currentFile.value
+        ? options.codeContent.value
+        : await options.loadSceneCode?.(repairSceneName) ?? "";
+      const applied = await repairCodeWithError(errorText, repairSceneName, currentCode);
+      if (repairSceneName !== options.currentFile.value && options.executeSceneCodeLoop) {
+        options.aiActivity.startChecking();
+        await options.executeSceneCodeLoop(repairSceneName, applied.code);
+      } else if (options.executeAICodeLoop) {
         options.aiActivity.startChecking();
         await options.executeAICodeLoop();
       }
     } catch (error) {
-      options.errorDialog.openRunErrorDialog(getErrorMessage(error));
+      options.errorDialog.openRunErrorDialog(getErrorMessage(error), {
+        repairSceneName,
+        repairText: getErrorMessage(error),
+      });
     } finally {
       options.aiActivity.stop();
     }

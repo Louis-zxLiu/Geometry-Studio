@@ -5,7 +5,9 @@ type UseAIRunResultCoordinatorOptions = {
 };
 
 export function useAIRunResultCoordinator(options: UseAIRunResultCoordinatorOptions) {
-  let pendingAICodeRunResolve: ((result: AICodeRunResult) => void) | null = null;
+  let pendingAICodeRunResolve:
+    | ((result: AICodeRunResult) => void)
+    | null = null;
 
   function settlePendingAICodeRun(result: AICodeRunResult) {
     if (!pendingAICodeRunResolve) {

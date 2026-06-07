@@ -1,5 +1,5 @@
 import { computed, ref, watch, type Ref } from "vue";
-import type { AINoteSelectionPayload, AIProviderSettings } from "../../ai/services/aiTypes";
+import type { AINoteSceneActionRequest, AIProviderSettings } from "../../ai/services/aiTypes";
 import { getErrorMessage } from "../../../lib/errors";
 import {
   deleteDesignCard,
@@ -85,12 +85,13 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     }
   }
 
-  async function generateFromNoteSelection(selection: AINoteSelectionPayload) {
+  async function generateFromNoteSelection(request: AINoteSceneActionRequest) {
+    const targetScene = request.sceneName.trim();
     if (
-      !options.currentFile.value ||
+      !targetScene ||
       options.isRunning.value ||
       options.aiActivity.isAIGenerating.value ||
-      !selection.items.length
+      !request.selection.items.length
     ) {
       return;
     }
@@ -98,10 +99,14 @@ export function useDesignCardWorkspace(options: DesignCardWorkspaceOptions) {
     options.aiActivity.start();
     try {
       const result = await generateDesignCardFromSelection({
-        sceneName: options.currentFile.value,
+        sceneName: targetScene,
         settings: options.aiSettings.value,
-        selection,
+        selection: request.selection,
       });
+      if (options.currentFile.value !== targetScene) {
+        return;
+      }
+
       upsertCard(result.card);
       await placeCardAtAnchor(result.card.id);
       openReviewRoom(result.card.id);

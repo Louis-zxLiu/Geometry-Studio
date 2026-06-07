@@ -25,6 +25,11 @@ export type AINoteSelectionPayload = {
   items: AINoteSelectionItem[];
 };
 
+export type AINoteSceneActionRequest = {
+  sceneName: string;
+  selection: AINoteSelectionPayload;
+};
+
 export type AIGenerationRequest = {
   kind: AIGenerationKind;
   sceneName: string;
@@ -35,8 +40,7 @@ export type AIGenerationRequest = {
 
 export type AINoteActionRequest = {
   kind: AIGenerationKind;
-  selection: AINoteSelectionPayload;
-};
+} & AINoteSceneActionRequest;
 
 export type AIGenerationResult = {
   code: string;

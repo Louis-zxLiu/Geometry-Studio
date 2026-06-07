@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import type { DesignCard } from "../../features/designCard/services/designCardTypes";
 import { useDropTargetController } from "../../features/designCard/services/useDropTargetController";
-import type { AINoteSelectionPayload } from "../../features/ai/services/aiTypes";
+import type { AINoteSceneActionRequest } from "../../features/ai/services/aiTypes";
 import type { NoteRenderBlock } from "../../features/notebook/rendering/noteForwarder";
 import type { NoteDocument } from "../../features/notebook/services/notebookStorage";
 import NoteDocumentArea from "./panel/NoteDocumentArea.vue";
@@ -36,8 +36,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "add-images": [payload: { files: File[]; insertAt: number }];
-  "ai-generate": [selection: AINoteSelectionPayload];
-  "ai-design": [selection: AINoteSelectionPayload];
+  "ai-generate": [request: AINoteSceneActionRequest];
+  "ai-design": [request: AINoteSceneActionRequest];
   "delete-design-card": [cardId: string];
   "insert-design-card": [payload: { cardId: string; insertAt: number; source?: "editor" | "note" }];
   "move-image": [payload: {
@@ -175,8 +175,9 @@ const {
 } = useNoteAIActions({
   buildSelectionPayload,
   closeContextMenu,
-  onDesign: (selection) => emit("ai-design", selection),
-  onGenerate: (selection) => emit("ai-generate", selection),
+  currentFile: () => props.currentFile,
+  onDesign: (request) => emit("ai-design", request),
+  onGenerate: (request) => emit("ai-generate", request),
 });
 
 const {

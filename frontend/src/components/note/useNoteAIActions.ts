@@ -1,10 +1,11 @@
-import type { AINoteSelectionPayload } from "../../features/ai/services/aiTypes";
+import type { AINoteSceneActionRequest, AINoteSelectionPayload } from "../../features/ai/services/aiTypes";
 
 type NoteAIActionsOptions = {
   buildSelectionPayload: () => AINoteSelectionPayload | null;
   closeContextMenu: () => void;
-  onDesign: (selection: AINoteSelectionPayload) => void;
-  onGenerate: (selection: AINoteSelectionPayload) => void;
+  currentFile: () => string;
+  onDesign: (request: AINoteSceneActionRequest) => void;
+  onGenerate: (request: AINoteSceneActionRequest) => void;
 };
 
 export function useNoteAIActions(options: NoteAIActionsOptions) {
@@ -18,15 +19,18 @@ export function useNoteAIActions(options: NoteAIActionsOptions) {
 
   function runAIAction(kind: "generate" | "design") {
     const selection = options.buildSelectionPayload();
-    if (!selection) {
+    const sceneName = options.currentFile().trim();
+    if (!selection || !sceneName) {
       options.closeContextMenu();
       return;
     }
 
+    const request = { sceneName, selection };
+
     if (kind === "design") {
-      options.onDesign(selection);
+      options.onDesign(request);
     } else {
-      options.onGenerate(selection);
+      options.onGenerate(request);
     }
     options.closeContextMenu();
   }
