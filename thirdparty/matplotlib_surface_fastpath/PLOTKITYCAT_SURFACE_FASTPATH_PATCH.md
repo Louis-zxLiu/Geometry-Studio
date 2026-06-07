@@ -127,6 +127,7 @@ The runtime also needs the MinGW/OpenMP DLLs used by the compiled extension:
 - `libgomp-1.dll`
 - `libstdc++-6.dll`
 - `libgcc_s_seh-1.dll`
+- `libwinpthread-1.dll`
 
 ## Runtime integration note
 

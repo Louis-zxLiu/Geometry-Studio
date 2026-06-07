@@ -123,7 +123,7 @@ function Add-MatplotlibSurfaceFastpathToRuntime {
         Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $packageTargetRoot $fileName) -Force
     }
 
-    foreach ($dllName in @("libgomp-1.dll", "libstdc++-6.dll", "libgcc_s_seh-1.dll")) {
+    foreach ($dllName in @("libgomp-1.dll", "libstdc++-6.dll", "libgcc_s_seh-1.dll", "libwinpthread-1.dll")) {
         $sourcePath = Join-Path $dllSourceRoot $dllName
         if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
             throw "Surface fastpath DLL not found: $sourcePath"

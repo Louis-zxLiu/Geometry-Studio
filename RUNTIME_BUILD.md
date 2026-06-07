@@ -182,6 +182,7 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
    `DLLs/libgomp-1.dll`
    `DLLs/libstdc++-6.dll`
    `DLLs/libgcc_s_seh-1.dll`
+   `DLLs/libwinpthread-1.dll`
 4. 确认扩展 ABI 与 `runtime.version.json` 的 `pythonVersion` 一致
 
 ## 发布建议
