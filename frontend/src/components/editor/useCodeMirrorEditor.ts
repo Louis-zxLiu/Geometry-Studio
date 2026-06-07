@@ -186,7 +186,7 @@ export function useCodeMirrorEditor(options: CodeMirrorEditorOptions) {
       return;
     }
     searchActiveIndex.value = (searchActiveIndex.value + 1 + searchRanges.length) % searchRanges.length;
-    revealActiveMatch({ focusEditor: false });
+    revealActiveMatch();
   }
 
   function findPreviousMatch() {
@@ -194,7 +194,7 @@ export function useCodeMirrorEditor(options: CodeMirrorEditorOptions) {
       return;
     }
     searchActiveIndex.value = (searchActiveIndex.value - 1 + searchRanges.length) % searchRanges.length;
-    revealActiveMatch({ focusEditor: false });
+    revealActiveMatch();
   }
 
   function refreshSearch(revealActive: boolean) {
@@ -224,11 +224,11 @@ export function useCodeMirrorEditor(options: CodeMirrorEditorOptions) {
     }
     applySearchDecorations(buildSearchDecorations());
     if (revealActive) {
-      revealActiveMatch({ focusEditor: false });
+      revealActiveMatch();
     }
   }
 
-  function revealActiveMatch(options: { focusEditor: boolean }) {
+  function revealActiveMatch() {
     const view = editorView.value;
     if (!view || searchActiveIndex.value < 0 || searchActiveIndex.value >= searchRanges.length) {
       applySearchDecorations(buildSearchDecorations());
@@ -241,9 +241,6 @@ export function useCodeMirrorEditor(options: CodeMirrorEditorOptions) {
       selection: { anchor: activeRange.from, head: activeRange.to },
       scrollIntoView: true,
     });
-    if (options.focusEditor) {
-      view.focus();
-    }
   }
 
   function applySearchDecorations(decorations: DecorationSet) {

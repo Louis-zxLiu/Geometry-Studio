@@ -190,7 +190,6 @@ function handlePanelPointerDown(event: PointerEvent) {
           class="editor-search-input"
           type="text"
           :value="searchQuery"
-          placeholder=""
           @input="editor.updateSearchQuery(($event.target as HTMLInputElement).value)"
           @keydown.stop
           @keydown.enter.prevent="($event.shiftKey ? editor.findPreviousMatch() : editor.findNextMatch())"
