@@ -8,6 +8,7 @@ type ScriptAutoSyncRepository = {
 type ScriptAutoSyncOptions = {
   codeContent: Ref<string>;
   currentFile: Ref<string>;
+  isSyncPaused?: Ref<boolean>;
   lastLoadedCode: Ref<string>;
   onAutoSaveError: (error: unknown) => void;
   repository: ScriptAutoSyncRepository;
@@ -28,6 +29,10 @@ export function useScriptAutoSync(options: ScriptAutoSyncOptions) {
     }
 
     codeAutoSaveTimer = window.setInterval(() => {
+      if (options.isSyncPaused?.value) {
+        return;
+      }
+
       if (options.workspacePhase.value !== "idle") {
         return;
       }
@@ -40,6 +45,10 @@ export function useScriptAutoSync(options: ScriptAutoSyncOptions) {
     }, codeAutoSaveIntervalMs);
 
     syncTimer = window.setInterval(() => {
+      if (options.isSyncPaused?.value) {
+        return;
+      }
+
       if (options.workspacePhase.value !== "idle") {
         return;
       }

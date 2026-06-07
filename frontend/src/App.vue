@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { proxyRefs } from "vue";
+import { reactive } from "vue";
 import CreateScriptDialog from "./components/CreateScriptDialog.vue";
 import AISettingsDialog from "./components/AISettingsDialog.vue";
 import CodeAIOptimizeContextMenu from "./components/codeAIOptimize/CodeAIOptimizeContextMenu.vue";
@@ -20,8 +20,8 @@ import UpdateRestartDialog from "./components/UpdateRestartDialog.vue";
 import { usePlotWorkspace } from "./features/plot/model/usePlotWorkspace";
 import { useTheme } from "./composables/useTheme";
 
-const workspace = proxyRefs(usePlotWorkspace());
-const theme = proxyRefs(useTheme());
+const workspace = reactive(usePlotWorkspace());
+const theme = reactive(useTheme());
 </script>
 
 <template>

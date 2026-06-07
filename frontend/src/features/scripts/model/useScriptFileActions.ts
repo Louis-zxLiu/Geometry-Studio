@@ -218,13 +218,17 @@ export function useScriptFileActions(options: ScriptFileActionsOptions) {
     }
   }
 
-  async function runCurrentScript() {
+  async function startCurrentRun() {
     if (!options.currentFile.value || options.isRunning.value) {
       return;
     }
 
+    await options.repository.saveAndRun(options.currentFile.value, options.codeContent.value);
+  }
+
+  async function runCurrentScript() {
     try {
-      await options.repository.saveAndRun(options.currentFile.value, options.codeContent.value);
+      await startCurrentRun();
     } catch (error) {
       options.isRunning.value = false;
       options.onError(getErrorMessage(error));
@@ -244,6 +248,7 @@ export function useScriptFileActions(options: ScriptFileActionsOptions) {
     runCurrentScript,
     saveCurrentScript,
     selectScript,
+    startCurrentRun,
     typingScriptName,
     updateCode,
   };

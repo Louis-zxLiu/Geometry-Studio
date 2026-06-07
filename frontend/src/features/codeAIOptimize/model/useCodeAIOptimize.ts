@@ -26,6 +26,8 @@ type CloseContext = {
 
 type AIActivityStatus = {
   isAIGenerating: Ref<boolean>;
+  startChecking: () => void;
+  startWorking: () => void;
   start: () => void;
   stop: () => void;
 };
@@ -35,6 +37,7 @@ type UseCodeAIOptimizeOptions = {
   aiSettings: Ref<AIProviderSettings>;
   codeContent: Ref<string>;
   currentFile: Ref<string>;
+  executeAICodeLoop: () => Promise<boolean>;
   isRunning: Ref<boolean>;
   onApplied: (ranges: ChangedLineRange[]) => void;
   onError: (message: string) => void;
@@ -91,7 +94,7 @@ export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
     }
 
     isDialogOpen.value = false;
-    options.aiActivity.start();
+    options.aiActivity.startWorking();
     try {
       await ensureInitialVersion();
       const result = await optimizeCode({
@@ -103,10 +106,16 @@ export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
       const applied = applyRepairPatch(options.codeContent.value, result.patch);
       options.codeContent.value = applied.code;
       options.onApplied(applied.changedRanges);
+      options.aiActivity.startChecking();
+      const succeeded = await options.executeAICodeLoop();
+      if (!succeeded) {
+        return;
+      }
+
       const version = await createCodeAIVersion({
         sceneName: options.currentFile.value,
         note: instruction,
-        code: applied.code,
+        code: options.codeContent.value,
       });
       versions.value = [...versions.value, version];
       activeVersionId.value = version.id;

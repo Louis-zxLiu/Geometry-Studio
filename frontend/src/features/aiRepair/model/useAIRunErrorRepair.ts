@@ -6,6 +6,8 @@ import { getErrorMessage } from "../../../lib/errors";
 
 type AIActivityStatus = {
   isAIGenerating: Ref<boolean>;
+  startChecking: () => void;
+  startWorking: () => void;
   start: () => void;
   stop: () => void;
 };
@@ -21,12 +23,26 @@ type AIRunErrorRepairOptions = {
   aiSettings: Ref<AIProviderSettings>;
   codeContent: Ref<string>;
   currentFile: Ref<string>;
+  executeAICodeLoop?: () => Promise<boolean>;
   errorDialog: ErrorDialog;
   isRunning: Ref<boolean>;
   onApplied: (ranges: ChangedLineRange[]) => void;
 };
 
 export function useAIRunErrorRepair(options: AIRunErrorRepairOptions) {
+  async function repairCodeWithError(errorText: string) {
+    const result = await repairCodeFromRunError({
+      sceneName: options.currentFile.value,
+      currentCode: options.codeContent.value,
+      errorText,
+      settings: options.aiSettings.value,
+    });
+    const applied = applyRepairPatch(options.codeContent.value, result.patch);
+    options.codeContent.value = applied.code;
+    options.onApplied(applied.changedRanges);
+    return applied;
+  }
+
   async function repairCurrentRunError() {
     if (
       options.aiActivity.isAIGenerating.value ||
@@ -38,18 +54,14 @@ export function useAIRunErrorRepair(options: AIRunErrorRepairOptions) {
 
     const errorText = options.errorDialog.runErrorText.value;
     options.errorDialog.closeRunErrorDialog();
-    options.aiActivity.start();
+    options.aiActivity.startWorking();
 
     try {
-      const result = await repairCodeFromRunError({
-        sceneName: options.currentFile.value,
-        currentCode: options.codeContent.value,
-        errorText,
-        settings: options.aiSettings.value,
-      });
-      const applied = applyRepairPatch(options.codeContent.value, result.patch);
-      options.codeContent.value = applied.code;
-      options.onApplied(applied.changedRanges);
+      await repairCodeWithError(errorText);
+      if (options.executeAICodeLoop) {
+        options.aiActivity.startChecking();
+        await options.executeAICodeLoop();
+      }
     } catch (error) {
       options.errorDialog.openRunErrorDialog(getErrorMessage(error));
     } finally {
@@ -58,6 +70,7 @@ export function useAIRunErrorRepair(options: AIRunErrorRepairOptions) {
   }
 
   return {
+    repairCodeWithError,
     repairCurrentRunError,
   };
 }

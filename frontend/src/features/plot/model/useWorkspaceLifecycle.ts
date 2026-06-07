@@ -38,7 +38,10 @@ type WorkspaceLifecycleOptions = {
   isRunning: Ref<boolean>;
   noteWorkspace: NoteWorkspace;
   onError: (message: string) => void;
-  onRunError: (message: string) => void;
+  onRunFailed: (message: string) => void;
+  onRunFinished: () => void;
+  onRunReady: () => void;
+  onRunStopped: () => void;
   refreshSubscriptionStatus: (force: boolean) => Promise<void>;
   runtime: RuntimeState;
   runtimeRepository: RuntimeRepository;
@@ -94,18 +97,23 @@ export function useWorkspaceLifecycle(options: WorkspaceLifecycleOptions) {
       EventsOn("run:started", () => {
         options.isRunning.value = true;
       }),
+      EventsOn("run:ready", () => {
+        options.onRunReady();
+      }),
       EventsOn("run:finished", () => {
         options.isRunning.value = false;
+        options.onRunFinished();
       }),
       EventsOn("run:stopped", () => {
         options.isRunning.value = false;
+        options.onRunStopped();
       }),
       EventsOn("run:failed", (...payload) => {
         const data = payload[0] as
           | { error?: string; errorType?: string; traceback?: string }
           | undefined;
         options.isRunning.value = false;
-        options.onRunError(data?.traceback ?? data?.error ?? "Python 进程异常退出");
+        options.onRunFailed(data?.traceback ?? data?.error ?? "Python 进程异常退出");
       }),
       EventsOn("app:error", (...payload) => {
         const data = payload[0] as { message?: string } | undefined;

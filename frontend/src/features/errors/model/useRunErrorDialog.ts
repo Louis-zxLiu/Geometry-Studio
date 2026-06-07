@@ -19,6 +19,12 @@ export function useRunErrorDialog() {
     isRunErrorRepairable.value = false;
   }
 
+  function clearRunError() {
+    runErrorText.value = "";
+    isRunErrorCopied.value = false;
+    isRunErrorRepairable.value = false;
+  }
+
   async function copyRunError() {
     const text = runErrorText.value.trim();
     if (!text) {
@@ -42,6 +48,7 @@ export function useRunErrorDialog() {
   }
 
   return {
+    clearRunError,
     closeRunErrorDialog,
     copyRunError,
     isRunErrorCopied,

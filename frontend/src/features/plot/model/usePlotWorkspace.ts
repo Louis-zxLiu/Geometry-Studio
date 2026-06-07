@@ -28,6 +28,11 @@ import { createScriptRepository } from "../../scripts/services/scriptRepository"
 import { useScriptWorkspaceMachine } from "../../scripts/model/useScriptWorkspaceMachine";
 import { getErrorMessage } from "../../../lib/errors";
 import { useAIActivityStatus } from "./useAIActivityStatus";
+import {
+  useAICodeExecutionLoop,
+  type AICodeRunResult,
+} from "../../aiExecution/model/useAICodeExecutionLoop";
+import { useAIRunResultCoordinator } from "./useAIRunResultCoordinator";
 import { useAINoteGeneration } from "./useAINoteGeneration";
 import { useCodeStreaming } from "./useCodeStreaming";
 import { usePackageTransfer } from "./usePackageTransfer";
@@ -70,9 +75,14 @@ export function usePlotWorkspace() {
   const runtimeRepository = createRuntimeRepository();
   const scriptRepository = createScriptRepository();
   const runErrorDialog = useRunErrorDialog();
+  const aiActivity = useAIActivityStatus();
+  const aiRunResultCoordinator = useAIRunResultCoordinator({
+    onManualRunError: (message) => runErrorDialog.openRunErrorDialog(message, { repairable: true }),
+  });
   const scriptWorkspace = useScriptWorkspaceMachine(
     runErrorDialog.openRunErrorDialog,
     isRunning,
+    aiActivity.isAIGenerating,
   );
   const designCardsForNote = ref<DesignCard[]>([]);
   const noteWorkspace = useNoteWorkspace(
@@ -80,13 +90,34 @@ export function usePlotWorkspace() {
     runErrorDialog.openRunErrorDialog,
     designCardsForNote,
   );
-  const aiActivity = useAIActivityStatus();
   const codeStreaming = useCodeStreaming(scriptWorkspace.codeContent);
+  const aiRepair = useAIRunErrorRepair({
+    aiActivity,
+    aiSettings,
+    codeContent: scriptWorkspace.codeContent,
+    currentFile: scriptWorkspace.currentFile,
+    executeAICodeLoop: () => aiCodeExecutionLoop.execute(),
+    errorDialog: runErrorDialog,
+    isRunning,
+    onApplied: animateRepairRanges,
+  });
+  const aiCodeExecutionLoop = useAICodeExecutionLoop({
+    clearRunError: runErrorDialog.clearRunError,
+    currentFile: scriptWorkspace.currentFile,
+    isRunning,
+    maxRepairAttempts: 8,
+    onFailure: ({ message, repairable }) =>
+      runErrorDialog.openRunErrorDialog(message, { repairable }),
+    onInterrupted: () => runErrorDialog.openRunErrorDialog("已中断 AI 检查"),
+    repairCodeWithError: aiRepair.repairCodeWithError,
+    runCurrentCodeAndWait,
+  });
   const codeAIOptimize = useCodeAIOptimize({
     aiActivity,
     aiSettings,
     codeContent: scriptWorkspace.codeContent,
     currentFile: scriptWorkspace.currentFile,
+    executeAICodeLoop: () => aiCodeExecutionLoop.execute(),
     isRunning,
     onApplied: animateRepairRanges,
     onError: runErrorDialog.openRunErrorDialog,
@@ -96,6 +127,7 @@ export function usePlotWorkspace() {
     aiSettings,
     codeContent: scriptWorkspace.codeContent,
     currentFile: scriptWorkspace.currentFile,
+    executeAICodeLoop: () => aiCodeExecutionLoop.execute(),
     isRunning,
     onError: runErrorDialog.openRunErrorDialog,
     streamGeneratedCode: codeStreaming.streamGeneratedCode,
@@ -108,15 +140,6 @@ export function usePlotWorkspace() {
     isRunning,
     noteMarkdown: computed(() => noteWorkspace.currentDocument.value.markdown),
     onError: runErrorDialog.openRunErrorDialog,
-  });
-  const aiRepair = useAIRunErrorRepair({
-    aiActivity,
-    aiSettings,
-    codeContent: scriptWorkspace.codeContent,
-    currentFile: scriptWorkspace.currentFile,
-    errorDialog: runErrorDialog,
-    isRunning,
-    onApplied: animateRepairRanges,
   });
   const packageTransfer = usePackageTransfer({
     noteWorkspace,
@@ -185,12 +208,31 @@ export function usePlotWorkspace() {
     isRunning,
     noteWorkspace,
     onError: runErrorDialog.openRunErrorDialog,
-    onRunError: (message) => runErrorDialog.openRunErrorDialog(message, { repairable: true }),
+    onRunFailed: aiRunResultCoordinator.handleRunFailed,
+    onRunFinished: aiRunResultCoordinator.handleRunFinished,
+    onRunReady: aiRunResultCoordinator.handleRunReady,
+    onRunStopped: aiRunResultCoordinator.handleRunStopped,
     refreshSubscriptionStatus,
     runtime,
     runtimeRepository,
     scriptWorkspace,
   });
+
+  async function runCurrentCodeAndWait(): Promise<AICodeRunResult> {
+    const resultPromise = aiRunResultCoordinator.createPendingAICodeRun();
+
+    try {
+      await scriptWorkspace.startCurrentRun();
+      return await resultPromise;
+    } catch (error) {
+      aiRunResultCoordinator.settlePendingAICodeRun({
+        ok: false,
+        errorText: getErrorMessage(error),
+        reason: "failed",
+      });
+      throw error;
+    }
+  }
 
   function toggleNotePanel() {
     noteWorkspace.togglePanel();

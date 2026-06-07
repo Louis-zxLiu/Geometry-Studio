@@ -294,6 +294,12 @@ func (a *App) SaveAndRun(filename string, code string) error {
 				Message:  "python process started",
 			})
 		},
+		OnReady: func() {
+			a.emit(EventRunReady, EventPayload{
+				Filename: savedName,
+				Message:  "python visualization ready",
+			})
+		},
 		OnFinish: func() {
 			a.emit(EventRunFinished, EventPayload{
 				Filename: savedName,

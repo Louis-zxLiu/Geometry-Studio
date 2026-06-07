@@ -8,6 +8,7 @@ const (
 	EventScriptsLoaded       = "scripts:loaded"
 	EventScriptSaved         = "script:saved"
 	EventRunStarted          = "run:started"
+	EventRunReady            = "run:ready"
 	EventRunFinished         = "run:finished"
 	EventRunStopped          = "run:stopped"
 	EventRunFailed           = "run:failed"

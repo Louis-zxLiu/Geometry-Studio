@@ -10,6 +10,8 @@ import { getErrorMessage } from "../../../lib/errors";
 
 type AIActivityStatus = {
   isAIGenerating: Ref<boolean>;
+  startChecking: () => void;
+  startWorking: () => void;
   start: () => void;
   stop: () => void;
 };
@@ -19,6 +21,7 @@ type AINoteGenerationOptions = {
   aiSettings: Ref<AIProviderSettings>;
   codeContent: Ref<string>;
   currentFile: Ref<string>;
+  executeAICodeLoop: () => Promise<boolean>;
   isRunning: Ref<boolean>;
   onError: (message: string) => void;
   streamGeneratedCode: (generatedCode: string) => Promise<void>;
@@ -35,8 +38,7 @@ export function useAINoteGeneration(options: AINoteGenerationOptions) {
       return;
     }
 
-    options.aiActivity.start();
-
+    options.aiActivity.startWorking();
     try {
       const result = await generateCodeFromSelection({
         kind: request.kind,
@@ -47,6 +49,8 @@ export function useAINoteGeneration(options: AINoteGenerationOptions) {
       });
 
       await options.streamGeneratedCode(result.code);
+      options.aiActivity.startChecking();
+      await options.executeAICodeLoop();
     } catch (error) {
       options.onError(getErrorMessage(error));
     } finally {

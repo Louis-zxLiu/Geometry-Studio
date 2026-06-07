@@ -18,7 +18,11 @@ import {
   type WorkspacePhase,
 } from "./scriptWorkspaceUtils";
 
-export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<boolean>) {
+export function useScriptWorkspaceMachine(
+  onError: ErrorHandler,
+  isRunning: Ref<boolean>,
+  isSyncPaused?: Ref<boolean>,
+) {
   const repository = createScriptRepository() as ScriptWorkspaceRepository;
   const selectionStorage = createScriptSelectionStorage();
   const scripts = ref<string[]>([]);
@@ -70,6 +74,10 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
     preferredFile = currentFile.value,
     options?: { preserveDirtyCurrent?: boolean },
   ) {
+    if (isSyncPaused?.value) {
+      return undefined;
+    }
+
     const previousPhase = workspacePhase.value;
     if (previousPhase === "idle") {
       workspacePhase.value = "syncing";
@@ -95,6 +103,7 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
   useScriptAutoSync({
     codeContent,
     currentFile,
+    isSyncPaused,
     lastLoadedCode,
     onAutoSaveError: (error) => onError(getErrorMessage(error)),
     repository,
@@ -152,6 +161,7 @@ export function useScriptWorkspaceMachine(onError: ErrorHandler, isRunning: Ref<
     saveCurrentScript: scriptFileActions.saveCurrentScript,
     scripts,
     selectScript: scriptFileActions.selectScript,
+    startCurrentRun: scriptFileActions.startCurrentRun,
     switchWorkspace: workspaceActions.switchWorkspace,
     syncWorkspace,
     typingScriptName: scriptFileActions.typingScriptName,

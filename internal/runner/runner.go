@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"os"
@@ -19,6 +20,7 @@ import (
 type Request struct {
 	OnError  func(error)
 	OnFinish func()
+	OnReady  func()
 	OnStart  func()
 	OnStop   func()
 }
@@ -48,6 +50,42 @@ type Runner struct {
 	cmd        *exec.Cmd
 	workspaces *workspaces.Manager
 }
+
+const runReadySentinel = "__PLOTKITYCAT_RUN_READY__"
+
+const pythonBootstrap = `
+import os
+import runpy
+import sys
+
+_PLOTKITYCAT_READY = False
+_PLOTKITYCAT_SENTINEL = os.environ.get("PLOTKITYCAT_RUN_READY_SENTINEL", "__PLOTKITYCAT_RUN_READY__")
+
+def _plotkitycat_emit_ready():
+    global _PLOTKITYCAT_READY
+    if _PLOTKITYCAT_READY:
+        return
+    _PLOTKITYCAT_READY = True
+    print(_PLOTKITYCAT_SENTINEL, flush=True)
+
+def _plotkitycat_patch_matplotlib():
+    try:
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+
+    if getattr(plt, "_plotkitycat_ready_patched", False):
+        return
+
+    original_show = plt.show
+    def wrapped_show(*args, **kwargs):
+        _plotkitycat_emit_ready()
+        return original_show(*args, **kwargs)
+    plt.show = wrapped_show
+    plt._plotkitycat_ready_patched = True
+_plotkitycat_patch_matplotlib()
+runpy.run_path(sys.argv[1], run_name="__main__")
+`
 
 func New(workspaceManager *workspaces.Manager) *Runner {
 	return &Runner{workspaces: workspaceManager}
@@ -86,13 +124,18 @@ func (r *Runner) Run(sceneName string, req Request) error {
 		return err
 	}
 
-	cmd := exec.Command(python, append(args, absScriptPath)...)
+	cmd := exec.Command(python, append(args, "-c", pythonBootstrap, absScriptPath)...)
 	cmd.Dir = sceneDir
 	cmd.Env = buildPythonEnv(runtimeDir)
 	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		r.mu.Unlock()
+		return err
+	}
 
 	r.cmd = cmd
 	r.running = true
@@ -106,6 +149,18 @@ func (r *Runner) Run(sceneName string, req Request) error {
 	if req.OnStart != nil {
 		req.OnStart()
 	}
+
+	go func() {
+		scanner := bufio.NewScanner(stdoutPipe)
+		buffer := make([]byte, 0, 64*1024)
+		scanner.Buffer(buffer, 1024*1024)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == runReadySentinel && req.OnReady != nil {
+				req.OnReady()
+			}
+		}
+	}()
 
 	go func() {
 		waitErr := cmd.Wait()
@@ -209,6 +264,7 @@ func buildPythonEnv(runtimeDir string) []string {
 
 	env = append(env,
 		"MPLBACKEND=Qt5Agg",
+		"PLOTKITYCAT_RUN_READY_SENTINEL="+runReadySentinel,
 		"QT_QPA_PLATFORM_PLUGIN_PATH="+qtPlatformsDir,
 		"QT_PLUGIN_PATH="+qtPluginsDir,
 		"PATH="+qtBinDir+string(os.PathListSeparator)+os.Getenv("PATH"),
