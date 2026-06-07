@@ -30,6 +30,7 @@ const emit = defineEmits<{
 }>();
 
 const editorRoot = ref<HTMLElement | null>(null);
+const searchBar = ref<HTMLElement | null>(null);
 const searchInput = ref<HTMLInputElement | null>(null);
 const isDesignCardDraggingOver = ref(false);
 const normalizedCode = computed(() =>
@@ -48,6 +49,14 @@ const editor = useCodeMirrorEditor({
   shouldIgnoreContextMenu: (target) =>
     target instanceof Element && Boolean(target.closest(".design-card-inline-block")),
 });
+
+const isSearchOpen = computed(() => editor.isSearchOpen.value);
+const searchQuery = computed(() => editor.searchQuery.value);
+const searchMatchLabel = computed(() =>
+  editor.searchMatchCount.value > 0 && editor.searchActiveIndex.value >= 0
+    ? `${editor.searchActiveIndex.value + 1}/${editor.searchMatchCount.value}`
+    : "0/0",
+);
 
 const viewportAnchor = useEditorViewportAnchor({
   editorView: editor.editorView,
@@ -140,7 +149,7 @@ watch(
 );
 
 watch(
-  () => editor.isSearchOpen.value,
+  () => isSearchOpen.value,
   async (isOpen) => {
     if (!isOpen) {
       return;
@@ -150,34 +159,50 @@ watch(
     searchInput.value?.select();
   },
 );
+
+function handlePanelPointerDown(event: PointerEvent) {
+  if (!isSearchOpen.value) {
+    return;
+  }
+
+  const target = event.target;
+  if (!(target instanceof Node)) {
+    return;
+  }
+  if (searchBar.value?.contains(target)) {
+    return;
+  }
+
+  editor.closeSearch();
+}
 </script>
 
 <template>
   <section
     class="editor-panel"
     :class="{ disabled: disabled, streaming: isStreaming, 'dragging-design-card': isDesignCardDraggingOver }"
+    @pointerdown="handlePanelPointerDown"
   >
-    <div v-if="editor.isSearchOpen" class="editor-search-bar">
-      <input
-        ref="searchInput"
-        class="editor-search-input"
-        type="text"
-        :value="editor.searchQuery"
-        placeholder="搜索当前代码"
-        @input="editor.updateSearchQuery(($event.target as HTMLInputElement).value)"
-        @keydown.enter.prevent="($event.shiftKey ? editor.findPreviousMatch() : editor.findNextMatch())"
-        @keydown.escape.prevent="editor.closeSearch()"
-      />
-      <span class="editor-search-status">
-        {{
-          editor.searchMatchCount > 0 && editor.searchActiveIndex >= 0
-            ? `${editor.searchActiveIndex + 1}/${editor.searchMatchCount}`
-            : "0/0"
-        }}
-      </span>
-      <button type="button" class="editor-search-button" @click="editor.findPreviousMatch()">上一个</button>
-      <button type="button" class="editor-search-button" @click="editor.findNextMatch()">下一个</button>
-      <button type="button" class="editor-search-close" @click="editor.closeSearch()">关闭</button>
+    <div v-if="isSearchOpen" ref="searchBar" class="editor-search-bar">
+      <div class="editor-search-input-shell">
+        <input
+          ref="searchInput"
+          class="editor-search-input"
+          type="text"
+          :value="searchQuery"
+          placeholder=""
+          @input="editor.updateSearchQuery(($event.target as HTMLInputElement).value)"
+          @keydown.stop
+          @keydown.enter.prevent="($event.shiftKey ? editor.findPreviousMatch() : editor.findNextMatch())"
+          @keydown.up.prevent.stop="editor.findPreviousMatch()"
+          @keydown.down.prevent.stop="editor.findNextMatch()"
+          @keydown.escape.prevent="editor.closeSearch()"
+        />
+        <span v-if="!searchQuery" class="editor-search-inline-hint" aria-hidden="true">
+          ↑↓ 切换结果&nbsp;&nbsp;&nbsp;esc 退出
+        </span>
+      </div>
+      <span class="editor-search-status">{{ searchMatchLabel }}</span>
     </div>
     <div ref="editorRoot" class="code-editor-surface" />
   </section>
