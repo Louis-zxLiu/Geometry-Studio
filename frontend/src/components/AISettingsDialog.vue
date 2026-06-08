@@ -106,12 +106,10 @@ function updateField(field: "url" | "key" | "model", value: string) {
                 <span class="ai-inline-divider" aria-hidden="true">|</span>
                 <button
                   class="ai-inline-action"
-                  :class="{ disabled: subscriptionStatus.activated }"
                   type="button"
-                  :disabled="subscriptionStatus.activated"
                   @click.stop="emit('purchase-subscription')"
                 >
-                  购买
+                  {{ subscriptionStatus.activated ? '再次购买' : '购买' }}
                 </button>
                 <span class="ai-inline-divider" aria-hidden="true">|</span>
                 <button
