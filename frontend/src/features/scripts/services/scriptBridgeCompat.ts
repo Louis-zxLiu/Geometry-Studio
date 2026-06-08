@@ -42,6 +42,12 @@ export type ImportSceneResultLike = {
   workspace?: WorkspaceSnapshotLike;
 };
 
+export type ImportWorkspaceResultLike = {
+  cancelled?: boolean;
+  importedWorkspaces?: string[];
+  workspace?: WorkspaceSnapshotLike;
+};
+
 type BridgeAppCompat = {
   AddScriptNoteImages?: (filename: string, images: NoteImageInputLike[]) => Promise<NoteDocumentLike>;
   BootstrapWorkspace?: () => Promise<WorkspaceSnapshotLike>;
@@ -50,11 +56,13 @@ type BridgeAppCompat = {
   DeleteScript?: (filename: string) => Promise<WorkspaceSnapshotLike>;
   DeleteWorkspace?: (name: string) => Promise<WorkspaceSnapshotLike>;
   ExportScenePackage?: (sceneName: string) => Promise<{ path?: string; sceneName?: string }>;
+  ExportWorkspacePackage?: (workspaceNames: string[]) => Promise<{ path?: string; workspaces?: string[] }>;
   GetScriptContent?: (filename: string) => Promise<ScriptDocumentLike>;
   GetScriptList?: () => Promise<string[]>;
   GetScriptNote?: (filename: string) => Promise<NoteDocumentLike>;
   ImportScenePackage?: () => Promise<ImportSceneResultLike>;
   ImportScenePackageFromPath?: (path: string) => Promise<ImportSceneResultLike>;
+  ImportWorkspacePackage?: () => Promise<ImportWorkspaceResultLike>;
   RefreshWorkspace?: (currentFile: string) => Promise<WorkspaceSnapshotLike>;
   ReorderScripts?: (scripts: string[], currentFile: string) => Promise<WorkspaceSnapshotLike>;
   RemoveScriptNoteImage?: (filename: string, relativePath: string) => Promise<NoteDocumentLike>;
@@ -94,6 +102,10 @@ export async function exportScenePackage(sceneName: string) {
   return callBridge("ExportScenePackage", (app) => app.ExportScenePackage?.(sceneName));
 }
 
+export async function exportWorkspacePackage(workspaceNames: string[]) {
+  return callBridge("ExportWorkspacePackage", (app) => app.ExportWorkspacePackage?.(workspaceNames));
+}
+
 export async function getScriptContent(filename: string) {
   return callBridge("GetScriptContent", (app) => app.GetScriptContent?.(filename));
 }
@@ -108,6 +120,10 @@ export async function importScenePackage() {
 
 export async function importScenePackageFromPath(path: string) {
   return callBridge("ImportScenePackageFromPath", (app) => app.ImportScenePackageFromPath?.(path));
+}
+
+export async function importWorkspacePackage() {
+  return callBridge("ImportWorkspacePackage", (app) => app.ImportWorkspacePackage?.());
 }
 
 export async function refreshWorkspace(currentFile = "") {

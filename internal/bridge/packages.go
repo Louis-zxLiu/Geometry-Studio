@@ -13,6 +13,11 @@ type PackageTransferResult struct {
 	SceneName string `json:"sceneName"`
 }
 
+type WorkspacePackageTransferResult struct {
+	Path       string   `json:"path"`
+	Workspaces []string `json:"workspaces"`
+}
+
 func (a *App) ExportScenePackage(sceneName string) (PackageTransferResult, error) {
 	if err := a.requireContext(); err != nil {
 		return PackageTransferResult{}, err
@@ -112,5 +117,101 @@ func (a *App) importScenePackageFromPath(archivePath string) (ImportSceneResult,
 	return ImportSceneResult{
 		Cancelled: false,
 		Workspace: workspace,
+	}, nil
+}
+
+func (a *App) ExportWorkspacePackage(workspaceNames []string) (WorkspacePackageTransferResult, error) {
+	if err := a.requireContext(); err != nil {
+		return WorkspacePackageTransferResult{}, err
+	}
+	if a.runner.IsRunning() {
+		return WorkspacePackageTransferResult{}, errors.New("请先停止当前 Python 进程，再导出工作区")
+	}
+	if len(workspaceNames) == 0 {
+		return WorkspacePackageTransferResult{}, errors.New("请选择至少一个工作区")
+	}
+
+	defaultFilename := "plotkitycat-workspaces.pkcw"
+	if len(workspaceNames) == 1 && strings.TrimSpace(workspaceNames[0]) != "" {
+		defaultFilename = workspaceNames[0] + ".pkcw"
+	}
+
+	targetPath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "导出 PlotKityCat 工作区包",
+		DefaultFilename: defaultFilename,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "PlotKityCat Workspace Package (*.pkcw)",
+				Pattern:     "*.pkcw",
+			},
+		},
+	})
+	if err != nil {
+		return WorkspacePackageTransferResult{}, err
+	}
+	if targetPath == "" {
+		return WorkspacePackageTransferResult{}, nil
+	}
+	if !strings.EqualFold(filepath.Ext(targetPath), ".pkcw") {
+		targetPath += ".pkcw"
+	}
+
+	if err := a.fileStore.ExportWorkspacePackage(workspaceNames, targetPath); err != nil {
+		return WorkspacePackageTransferResult{}, err
+	}
+
+	return WorkspacePackageTransferResult{
+		Path:       targetPath,
+		Workspaces: workspaceNames,
+	}, nil
+}
+
+func (a *App) ImportWorkspacePackage() (ImportWorkspaceResult, error) {
+	if err := a.requireContext(); err != nil {
+		return ImportWorkspaceResult{}, err
+	}
+	if a.runner.IsRunning() {
+		return ImportWorkspaceResult{}, errors.New("请先停止当前 Python 进程，再导入工作区")
+	}
+
+	archivePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "导入 PlotKityCat 工作区包",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "PlotKityCat Workspace Package (*.pkcw)",
+				Pattern:     "*.pkcw",
+			},
+		},
+	})
+	if err != nil {
+		return ImportWorkspaceResult{}, err
+	}
+	if archivePath == "" {
+		return ImportWorkspaceResult{Cancelled: true}, nil
+	}
+	if !strings.EqualFold(filepath.Ext(archivePath), ".pkcw") {
+		return ImportWorkspaceResult{}, errors.New("只能导入 .pkcw 工作区包")
+	}
+
+	imported, err := a.fileStore.ImportWorkspacePackage(archivePath)
+	if err != nil {
+		return ImportWorkspaceResult{}, err
+	}
+	if len(imported) == 0 {
+		return ImportWorkspaceResult{}, errors.New(".pkcw 工作区包中没有可导入的工作区")
+	}
+	if err := a.workspaceManager.Switch(imported[0]); err != nil {
+		return ImportWorkspaceResult{}, err
+	}
+
+	workspace, err := a.workspaceSnapshot("")
+	if err != nil {
+		return ImportWorkspaceResult{}, err
+	}
+
+	return ImportWorkspaceResult{
+		Cancelled:          false,
+		ImportedWorkspaces: imported,
+		Workspace:          workspace,
 	}, nil
 }

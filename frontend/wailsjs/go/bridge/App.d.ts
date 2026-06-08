@@ -26,6 +26,8 @@ export function DownloadUpdate():Promise<bridge.UpdateStatus>;
 
 export function ExportScenePackage(arg1:string):Promise<bridge.PackageTransferResult>;
 
+export function ExportWorkspacePackage(arg1:Array<string>):Promise<bridge.WorkspacePackageTransferResult>;
+
 export function GenerateDesignCardFromSelection(arg1:bridge.AIDesignCardGenerationRequest):Promise<bridge.AIDesignCardResult>;
 
 export function GetAISettings():Promise<bridge.AIProviderSettings>;
@@ -47,6 +49,8 @@ export function GetUpdateStatus():Promise<bridge.UpdateStatus>;
 export function ImportScenePackage():Promise<bridge.ImportSceneResult>;
 
 export function ImportScenePackageFromPath(arg1:string):Promise<bridge.ImportSceneResult>;
+
+export function ImportWorkspacePackage():Promise<bridge.ImportWorkspaceResult>;
 
 export function InitializeApp():Promise<bridge.InitSnapshot>;
 

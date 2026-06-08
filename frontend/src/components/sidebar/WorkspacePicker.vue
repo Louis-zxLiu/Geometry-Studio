@@ -6,13 +6,21 @@ const props = defineProps<{
   workspaces: Array<{ name?: string; sceneCount?: number }>;
   isRenaming: boolean;
   isDeleting: boolean;
+  isExportMode: boolean;
+  pendingAction: "" | "import" | "export";
+  selectedWorkspaceNames: string[];
 }>();
 
 const emit = defineEmits<{
   create: [name: string];
   delete: [name: string];
+  "export-package": [];
+  "import-package": [];
   rename: [oldName: string, newName: string];
   switch: [name: string];
+  "toggle-export-mode": [];
+  "cancel-export-mode": [];
+  "toggle-export-selection": [name: string];
 }>();
 
 const isOpen = ref(false);
@@ -39,6 +47,15 @@ watch(
   },
 );
 
+watch(
+  () => props.isExportMode,
+  (isExportMode) => {
+    if (!isExportMode) {
+      closeRowActions(true);
+    }
+  },
+);
+
 onMounted(() => {
   window.addEventListener("click", handleOutsideClick);
 });
@@ -48,7 +65,7 @@ onBeforeUnmount(() => {
 });
 
 function handleOutsideClick() {
-  if (props.isRenaming || props.isDeleting) {
+  if (props.isRenaming || props.isDeleting || props.isExportMode) {
     return;
   }
 
@@ -80,6 +97,11 @@ function select(name?: string) {
     return;
   }
 
+  if (props.isExportMode) {
+    emit("toggle-export-selection", name);
+    return;
+  }
+
   emit("switch", name);
   close();
 }
@@ -87,7 +109,7 @@ function select(name?: string) {
 function openContext(name: string | undefined, event: MouseEvent) {
   event.preventDefault();
   event.stopPropagation();
-  if (!name) {
+  if (!name || props.isExportMode) {
     return;
   }
 
@@ -150,18 +172,49 @@ function requestDelete(name?: string) {
 }
 
 function close() {
+  if (props.isExportMode) {
+    emit("cancel-export-mode");
+  }
   isOpen.value = false;
   search.value = "";
   isCreating.value = false;
   newWorkspaceDraft.value = "";
-  closeRowActions();
+  closeRowActions(true);
 }
 
-function closeRowActions() {
+function closeRowActions(force = false) {
+  if (props.isExportMode && !force) {
+    return;
+  }
   contextWorkspace.value = "";
   renamingWorkspace.value = "";
   renameDraft.value = "";
   deleteConfirmWorkspace.value = "";
+}
+
+function isWorkspaceSelected(name?: string) {
+  return !!name && props.selectedWorkspaceNames.includes(name);
+}
+
+function handleImport() {
+  if (props.pendingAction !== "") {
+    return;
+  }
+
+  emit("import-package");
+}
+
+function handleExport() {
+  if (props.pendingAction !== "") {
+    return;
+  }
+
+  if (!props.isExportMode) {
+    emit("toggle-export-mode");
+    return;
+  }
+
+  emit("export-package");
 }
 </script>
 
@@ -201,9 +254,11 @@ function closeRowActions() {
                 :key="workspace.name"
                 class="workspace-item"
                 :class="{
-                  active: workspace.name === currentWorkspace,
+                  active: !isExportMode && workspace.name === currentWorkspace,
                   contextual: workspace.name === contextWorkspace,
                   renaming: workspace.name === renamingWorkspace,
+                  selectable: isExportMode,
+                  selected: isExportMode && isWorkspaceSelected(workspace.name),
                 }"
                 @click="select(workspace.name)"
                 @contextmenu="openContext(workspace.name, $event)"
@@ -234,12 +289,18 @@ function closeRowActions() {
                 </template>
                 <template v-else>
                   <span class="workspace-item-main">
-                    <span class="workspace-check" aria-hidden="true">{{ workspace.name === currentWorkspace ? "✓" : "" }}</span>
+                    <span
+                      class="workspace-check"
+                      :class="{ boxed: isExportMode, checked: isExportMode && isWorkspaceSelected(workspace.name) }"
+                      aria-hidden="true"
+                    >
+                      {{ isExportMode ? (isWorkspaceSelected(workspace.name) ? "✓" : "") : (workspace.name === currentWorkspace ? "✓" : "") }}
+                    </span>
                     <span class="workspace-name">{{ workspace.name }}</span>
                   </span>
                   <span class="workspace-count">{{ workspace.sceneCount ?? 0 }} 个场景</span>
                   <span
-                    v-if="workspace.name === contextWorkspace"
+                    v-if="workspace.name === contextWorkspace && !isExportMode"
                     class="workspace-actions"
                     @click.stop
                   >
@@ -294,10 +355,34 @@ function closeRowActions() {
                 v-else
                 class="workspace-create-button"
                 type="button"
+                :disabled="isExportMode || pendingAction !== ''"
                 @click="startCreate"
               >
                 ＋ 新建工作区
               </button>
+              <div
+                v-if="!isCreating"
+                class="workspace-package-actions"
+              >
+                <button
+                  class="workspace-package-link"
+                  type="button"
+                  :disabled="pendingAction !== ''"
+                  @click="handleImport"
+                >
+                  {{ pendingAction === "import" ? "导入中" : "导入" }}
+                </button>
+                <span class="workspace-package-divider" aria-hidden="true">|</span>
+                <button
+                  class="workspace-package-link"
+                  :class="{ active: isExportMode }"
+                  type="button"
+                  :disabled="pendingAction !== '' || (isExportMode && selectedWorkspaceNames.length === 0)"
+                  @click="handleExport"
+                >
+                  {{ pendingAction === "export" ? "导出中" : "导出" }}
+                </button>
+              </div>
             </div>
           </section>
         </div>

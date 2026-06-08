@@ -50,6 +50,10 @@ export function ExportScenePackage(arg1) {
   return window['go']['bridge']['App']['ExportScenePackage'](arg1);
 }
 
+export function ExportWorkspacePackage(arg1) {
+  return window['go']['bridge']['App']['ExportWorkspacePackage'](arg1);
+}
+
 export function GenerateDesignCardFromSelection(arg1) {
   return window['go']['bridge']['App']['GenerateDesignCardFromSelection'](arg1);
 }
@@ -92,6 +96,10 @@ export function ImportScenePackage() {
 
 export function ImportScenePackageFromPath(arg1) {
   return window['go']['bridge']['App']['ImportScenePackageFromPath'](arg1);
+}
+
+export function ImportWorkspacePackage() {
+  return window['go']['bridge']['App']['ImportWorkspacePackage']();
 }
 
 export function InitializeApp() {

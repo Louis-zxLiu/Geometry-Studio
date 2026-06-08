@@ -85,6 +85,12 @@ type ImportSceneResult struct {
 	Workspace WorkspaceSnapshot `json:"workspace"`
 }
 
+type ImportWorkspaceResult struct {
+	Cancelled          bool              `json:"cancelled"`
+	ImportedWorkspaces []string          `json:"importedWorkspaces"`
+	Workspace          WorkspaceSnapshot `json:"workspace"`
+}
+
 type RunControlResult struct {
 	Handled bool   `json:"handled"`
 	Message string `json:"message"`

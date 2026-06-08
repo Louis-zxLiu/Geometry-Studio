@@ -85,6 +85,55 @@ func (m *Manager) List() ([]Workspace, error) {
 	return listWorkspaces(root)
 }
 
+func (m *Manager) WorkspaceDir(name string) (string, error) {
+	name = NormalizeName(name)
+	if name == "" {
+		return "", fmt.Errorf("workspace name is empty")
+	}
+
+	root, err := ensureRoot()
+	if err != nil {
+		return "", err
+	}
+	if err := migrateLegacyScenes(root); err != nil {
+		return "", err
+	}
+
+	path := filepath.Join(root, name)
+	if info, err := os.Stat(path); err != nil {
+		return "", err
+	} else if !info.IsDir() {
+		return "", fmt.Errorf("workspace %q is not a directory", name)
+	}
+
+	return path, nil
+}
+
+func (m *Manager) ReserveWorkspaceImport(name string) (string, string, error) {
+	name = NormalizeName(name)
+	if name == "" {
+		name = DefaultName
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	root, err := ensureRoot()
+	if err != nil {
+		return "", "", err
+	}
+	if err := migrateLegacyScenes(root); err != nil {
+		return "", "", err
+	}
+
+	path := nextAvailablePath(root, name)
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		return "", "", err
+	}
+
+	return filepath.Base(path), path, nil
+}
+
 func (m *Manager) Switch(name string) error {
 	name = NormalizeName(name)
 	if name == "" {

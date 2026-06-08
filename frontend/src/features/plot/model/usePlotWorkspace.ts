@@ -25,6 +25,7 @@ import { useRuntimeState } from "../../runtime/model/useRuntimeState";
 import { createScriptRepository } from "../../scripts/services/scriptRepository";
 import { asString } from "../../scripts/model/scriptWorkspaceUtils";
 import { useScriptWorkspaceMachine } from "../../scripts/model/useScriptWorkspaceMachine";
+import { useWorkspacePackageTransfer } from "../../scripts/model/useWorkspacePackageTransfer";
 import { getErrorMessage } from "../../../lib/errors";
 import { useAIActivityStatus } from "./useAIActivityStatus";
 import { usePlotAIWorkflow } from "./usePlotAIWorkflow";
@@ -74,6 +75,13 @@ export function usePlotWorkspace() {
     isRunning,
     aiActivity.isAIGenerating,
   );
+  const workspacePackageTransfer = useWorkspacePackageTransfer({
+    applyWorkspaceSnapshot: scriptWorkspace.applyWorkspaceSnapshot,
+    currentWorkspace: scriptWorkspace.currentWorkspace,
+    onError: runErrorDialog.openRunErrorDialog,
+    repository: scriptRepository,
+    workspaces: scriptWorkspace.workspaces,
+  });
   const designCardsForNote = ref<DesignCard[]>([]);
   const noteWorkspace = useNoteWorkspace(
     scriptWorkspace.currentFile,
@@ -409,6 +417,7 @@ export function usePlotWorkspace() {
     closeCreateDialog: scriptWorkspace.closeCreateDialog,
     closeRunErrorDialog: runErrorDialog.closeRunErrorDialog,
     closeSettings,
+    cancelWorkspaceExportMode: workspacePackageTransfer.cancelExportMode,
     codeAIOptimizeActiveVersionId: plotAIWorkflow.codeAIOptimize.activeVersionId,
     codeAIOptimizeContextMenu: plotAIWorkflow.codeAIOptimize.contextMenu,
     codeAIOptimizeVersions: plotAIWorkflow.codeAIOptimize.versions,
@@ -429,6 +438,7 @@ export function usePlotWorkspace() {
     deleteWorkspace,
     deletingScriptName: scriptWorkspace.deletingScriptName,
     environmentStatus: runtime.environmentStatus,
+    exportSelectedWorkspaces: workspacePackageTransfer.exportSelectedWorkspaces,
     exportCurrentScenePackage: packageTransfer.exportCurrentScenePackage,
     addNoteImages: noteWorkspace.addImages,
     generateCodeFromNoteSelection: plotAIWorkflow.aiGeneration.generateCodeFromNoteSelection,
@@ -446,9 +456,11 @@ export function usePlotWorkspace() {
     isDeletingScript: scriptWorkspace.isDeletingScript,
     isInitializing: runtime.isInitializing,
     importScenePackage: packageTransfer.importScenePackage,
+    importWorkspacePackage: workspacePackageTransfer.importWorkspacePackage,
     isPackageTransferDialogOpen: packageTransfer.isPackageTransferDialogOpen,
     isRebuildingRuntime: runtime.isRebuilding,
     isRenamingScript: scriptWorkspace.isRenamingScript,
+    isWorkspaceExportMode: workspacePackageTransfer.isExportMode,
     packageTransferMessage: packageTransfer.packageTransferMessage,
     packageTransferPendingAction: packageTransfer.packageTransferPendingAction,
     purchaseSubscription,
@@ -471,6 +483,7 @@ export function usePlotWorkspace() {
     openDesignCardOptimizeDialog: designCardWorkspace.openOptimizeDialog,
     openPackageTransferDialog: packageTransfer.openPackageTransferDialog,
     openSettings,
+    openWorkspaceExportMode: workspacePackageTransfer.beginExportMode,
     noteRenderBlocks: noteWorkspace.renderBlocks,
     noteSaveState: noteWorkspace.saveState,
     reorderScripts: scriptWorkspace.reorderScripts,
@@ -494,6 +507,7 @@ export function usePlotWorkspace() {
     switchWorkspace,
     stopCurrentRun: lifecycle.stopCurrentRun,
     subscriptionStatus,
+    toggleWorkspaceExportSelection: workspacePackageTransfer.toggleWorkspaceSelection,
     updateStatus,
     toggleNotePanel,
     typingScriptName: scriptWorkspace.typingScriptName,
@@ -509,6 +523,8 @@ export function usePlotWorkspace() {
     updateDesignCardPlan: designCardWorkspace.updateActivePlan,
     updateNoteMarkdown: noteWorkspace.updateMarkdown,
     workspaces: scriptWorkspace.workspaces,
+    workspacePackagePendingAction: workspacePackageTransfer.pendingAction,
+    workspacePackageSelectedNames: workspacePackageTransfer.selectedWorkspaceNames,
     workspacePhase: scriptWorkspace.workspacePhase,
     refreshSubscriptionStatusManually,
     closeUpdateInstallDialog,
@@ -557,7 +573,7 @@ function normalizeUpdateStatus(status: UpdateStatusLike): AppUpdateStatus {
   const updateAvailable = !!status.updateAvailable;
 
   return {
-    currentVersion: typeof status.currentVersion === "string" ? status.currentVersion : "0.0.2.6",
+    currentVersion: typeof status.currentVersion === "string" ? status.currentVersion : "0.0.2.9-test",
     latestVersion: typeof status.latestVersion === "string" ? status.latestVersion : "",
     notes: typeof status.notes === "string" ? status.notes : "",
     publishedAt: typeof status.publishedAt === "string" ? status.publishedAt : "",
