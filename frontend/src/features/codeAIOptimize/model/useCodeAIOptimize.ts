@@ -2,10 +2,8 @@ import { computed, ref, watch, type Ref } from "vue";
 import {
   createCodeAIVersion,
   listCodeAIVersions,
-  optimizeCode,
-} from "../../ai/services/aiBridgeCompat";
-import type { AIProviderSettings, CodeAIVersion } from "../../ai/services/aiTypes";
-import { applyRepairPatch, type ChangedLineRange } from "../../aiRepair/services/repairPatch";
+} from "../services/codeVersionBridgeCompat";
+import type { CodeAIVersion } from "../../ai/services/aiTypes";
 import { getErrorMessage } from "../../../lib/errors";
 
 export type { CodeAIVersion };
@@ -24,23 +22,11 @@ type CloseContext = {
   target?: string;
 };
 
-type AIActivityStatus = {
-  isAIGenerating: Ref<boolean>;
-  startChecking: () => void;
-  startWorking: () => void;
-  start: () => void;
-  stop: () => void;
-};
-
 type UseCodeAIOptimizeOptions = {
-  aiActivity: AIActivityStatus;
-  aiSettings: Ref<AIProviderSettings>;
   codeContent: Ref<string>;
   currentFile: Ref<string>;
-  executeAICodeLoop: () => Promise<boolean>;
-  isRunning: Ref<boolean>;
-  onApplied: (ranges: ChangedLineRange[]) => void;
   onError: (message: string) => void;
+  startWorkflow: (payload: { instruction: string }) => Promise<boolean>;
 };
 
 export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
@@ -55,8 +41,6 @@ export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
 
   function openContextMenu(position: { x: number; y: number }) {
     if (
-      options.aiActivity.isAIGenerating.value ||
-      options.isRunning.value ||
       !options.currentFile.value
     ) {
       return;
@@ -84,30 +68,14 @@ export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
 
   async function submitOptimization(prompt: string) {
     const instruction = prompt.trim();
-    if (
-      !instruction ||
-      options.aiActivity.isAIGenerating.value ||
-      options.isRunning.value ||
-      !options.currentFile.value
-    ) {
+    if (!instruction || !options.currentFile.value) {
       return;
     }
 
     isDialogOpen.value = false;
-    options.aiActivity.startWorking();
     try {
       await ensureInitialVersion();
-      const result = await optimizeCode({
-        sceneName: options.currentFile.value,
-        currentCode: options.codeContent.value,
-        instruction,
-        settings: options.aiSettings.value,
-      });
-      const applied = applyRepairPatch(options.codeContent.value, result.patch);
-      options.codeContent.value = applied.code;
-      options.onApplied(applied.changedRanges);
-      options.aiActivity.startChecking();
-      const succeeded = await options.executeAICodeLoop();
+      const succeeded = await options.startWorkflow({ instruction });
       if (!succeeded) {
         return;
       }
@@ -121,8 +89,6 @@ export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
       activeVersionId.value = version.id;
     } catch (error) {
       options.onError(getErrorMessage(error));
-    } finally {
-      options.aiActivity.stop();
     }
   }
 
@@ -146,7 +112,8 @@ export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
     try {
       const nextVersions = await listCodeAIVersions(sceneName);
       versions.value = nextVersions;
-      activeVersionId.value = nextVersions.at(-1)?.id ?? "";
+      activeVersionId.value =
+        nextVersions.length > 0 ? nextVersions[nextVersions.length - 1].id : "";
     } catch (error) {
       options.onError(getErrorMessage(error));
     }

@@ -50,10 +50,6 @@ export function ExportScenePackage(arg1) {
   return window['go']['bridge']['App']['ExportScenePackage'](arg1);
 }
 
-export function GenerateCodeFromSelection(arg1) {
-  return window['go']['bridge']['App']['GenerateCodeFromSelection'](arg1);
-}
-
 export function GenerateDesignCardFromSelection(arg1) {
   return window['go']['bridge']['App']['GenerateDesignCardFromSelection'](arg1);
 }
@@ -126,10 +122,6 @@ export function OpenSubscriptionPurchase() {
   return window['go']['bridge']['App']['OpenSubscriptionPurchase']();
 }
 
-export function OptimizeCode(arg1) {
-  return window['go']['bridge']['App']['OptimizeCode'](arg1);
-}
-
 export function OptimizeDesignCard(arg1) {
   return window['go']['bridge']['App']['OptimizeDesignCard'](arg1);
 }
@@ -158,10 +150,6 @@ export function ReorderScripts(arg1, arg2) {
   return window['go']['bridge']['App']['ReorderScripts'](arg1, arg2);
 }
 
-export function RepairCodeFromRunError(arg1) {
-  return window['go']['bridge']['App']['RepairCodeFromRunError'](arg1);
-}
-
 export function SaveAISettings(arg1) {
   return window['go']['bridge']['App']['SaveAISettings'](arg1);
 }
@@ -180,6 +168,14 @@ export function SaveScript(arg1, arg2) {
 
 export function SaveScriptNote(arg1, arg2) {
   return window['go']['bridge']['App']['SaveScriptNote'](arg1, arg2);
+}
+
+export function StartAIWorkflow(arg1) {
+  return window['go']['bridge']['App']['StartAIWorkflow'](arg1);
+}
+
+export function StopAIWorkflow(arg1) {
+  return window['go']['bridge']['App']['StopAIWorkflow'](arg1);
 }
 
 export function StopCurrentRun() {

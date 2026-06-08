@@ -1,5 +1,11 @@
 package bridge
 
+import (
+	"plotkitycat/internal/aicode/patch"
+	"plotkitycat/internal/aicode/runstate"
+	"plotkitycat/internal/aicode/workflow"
+)
+
 type ScriptDocument struct {
 	Filename     string      `json:"filename"`
 	Code         string      `json:"code"`
@@ -104,41 +110,39 @@ type AISelectionPayload struct {
 	Items []AISelectionItem `json:"items"`
 }
 
-type AIGenerationRequest struct {
+type ChangedLineRange = patch.ChangedLineRange
+
+type AIWorkflowRequest struct {
 	Kind        string             `json:"kind"`
 	SceneName   string             `json:"sceneName"`
 	CurrentCode string             `json:"currentCode"`
-	Settings    AIProviderSettings `json:"settings"`
-	Selection   AISelectionPayload `json:"selection"`
-}
-
-type AIGenerationResult struct {
-	Code   string `json:"code"`
-	Source string `json:"source"`
-}
-
-type AIRepairRequest struct {
-	SceneName   string             `json:"sceneName"`
-	CurrentCode string             `json:"currentCode"`
-	ErrorText   string             `json:"errorText"`
-	Settings    AIProviderSettings `json:"settings"`
-}
-
-type AIRepairResult struct {
-	Patch  string `json:"patch"`
-	Source string `json:"source"`
-}
-
-type AIOptimizeRequest struct {
-	SceneName   string             `json:"sceneName"`
-	CurrentCode string             `json:"currentCode"`
 	Instruction string             `json:"instruction"`
+	ErrorText   string             `json:"errorText"`
+	Selection   AISelectionPayload `json:"selection"`
+	MaxAttempts int                `json:"maxAttempts"`
 	Settings    AIProviderSettings `json:"settings"`
 }
 
-type AIOptimizeResult struct {
-	Patch  string `json:"patch"`
-	Source string `json:"source"`
+type AIWorkflowSession struct {
+	SessionID string `json:"sessionId"`
+	State     string `json:"state"`
+}
+
+type AIWorkflowStateChangedEvent = workflow.StateChangedEvent
+
+type AIWorkflowCodeAppliedEvent = workflow.CodeAppliedEvent
+
+type AIWorkflowSucceededEvent = workflow.SucceededEvent
+
+type AIWorkflowInterruptedEvent = workflow.InterruptedEvent
+
+type AIWorkflowFailedEvent struct {
+	SessionID  string               `json:"sessionId"`
+	SceneName  string               `json:"sceneName"`
+	Kind       runstate.FailureKind `json:"kind"`
+	ErrorText  string               `json:"errorText"`
+	Repairable bool                 `json:"repairable"`
+	Attempt    int                  `json:"attempt"`
 }
 
 type AIDesignCardGenerationRequest struct {

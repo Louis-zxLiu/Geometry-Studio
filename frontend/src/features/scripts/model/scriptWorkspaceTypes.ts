@@ -1,7 +1,6 @@
 export type WorkspaceInfoLike = {
   name?: string;
   path?: string;
-  [key: string]: unknown;
 };
 
 export type ScriptDocumentLike = {

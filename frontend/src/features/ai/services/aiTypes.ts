@@ -30,45 +30,75 @@ export type AINoteSceneActionRequest = {
   selection: AINoteSelectionPayload;
 };
 
-export type AIGenerationRequest = {
-  kind: AIGenerationKind;
-  sceneName: string;
-  currentCode: string;
-  settings: AIProviderSettings;
-  selection: AINoteSelectionPayload;
-};
-
 export type AINoteActionRequest = {
   kind: AIGenerationKind;
 } & AINoteSceneActionRequest;
 
-export type AIGenerationResult = {
-  code: string;
-  source: string;
+export type ChangedLineRange = {
+  startLine: number;
+  endLine: number;
 };
 
-export type AIRepairRequest = {
-  sceneName: string;
-  currentCode: string;
-  errorText: string;
-  settings: AIProviderSettings;
-};
+export type AIWorkflowKind = "visualize" | "optimize" | "repair";
 
-export type AIRepairResult = {
-  patch: string;
-  source: string;
-};
-
-export type AIOptimizeRequest = {
+export type AIWorkflowRequest = {
+  kind: AIWorkflowKind;
   sceneName: string;
   currentCode: string;
   instruction: string;
+  errorText: string;
+  selection: AINoteSelectionPayload;
+  maxAttempts: number;
   settings: AIProviderSettings;
 };
 
-export type AIOptimizeResult = {
-  patch: string;
-  source: string;
+export type AIWorkflowSession = {
+  sessionId: string;
+  state: string;
+};
+
+export type AIWorkflowState =
+  | "idle"
+  | "working"
+  | "checking"
+  | "succeeded"
+  | "failed"
+  | "interrupted";
+
+export type AIWorkflowStateChangedEvent = {
+  sessionId: string;
+  state: AIWorkflowState;
+  attempt: number;
+};
+
+export type AIWorkflowCodeAppliedEvent = {
+  sessionId: string;
+  sceneName: string;
+  code: string;
+  changedRanges: ChangedLineRange[];
+  attempt: number;
+};
+
+export type AIWorkflowSucceededEvent = {
+  sessionId: string;
+  sceneName: string;
+  attempt: number;
+};
+
+export type AIWorkflowInterruptedEvent = {
+  sessionId: string;
+  sceneName: string;
+  attempt: number;
+  message: string;
+};
+
+export type AIWorkflowFailedEvent = {
+  sessionId: string;
+  sceneName: string;
+  kind: "run_error" | "interrupted" | "no_ready" | "ai_error" | "patch_error";
+  errorText: string;
+  repairable: boolean;
+  attempt: number;
 };
 
 export type CodeAIVersion = {

@@ -12,11 +12,9 @@ import type {
   AppUpdateStatus,
   AIProviderSettings,
   AISubscriptionStatus,
+  ChangedLineRange,
 } from "../../ai/services/aiTypes";
-import { useAIRunErrorRepair } from "../../aiRepair/model/useAIRunErrorRepair";
-import type { ChangedLineRange } from "../../aiRepair/services/repairPatch";
 import { useRunErrorDialog } from "../../errors/model/useRunErrorDialog";
-import { useCodeAIOptimize } from "../../codeAIOptimize/model/useCodeAIOptimize";
 import { useDesignCardWorkspace } from "../../designCard/model/useDesignCardWorkspace";
 import { extractDesignCardReferenceIDs } from "../../designCard/services/designCardMarkdownCodec";
 import type { DesignCardDragSource } from "../../designCard/services/designCardDragData";
@@ -29,14 +27,7 @@ import { asString } from "../../scripts/model/scriptWorkspaceUtils";
 import { useScriptWorkspaceMachine } from "../../scripts/model/useScriptWorkspaceMachine";
 import { getErrorMessage } from "../../../lib/errors";
 import { useAIActivityStatus } from "./useAIActivityStatus";
-import {
-  useAICodeExecutionLoop,
-  type AICodeRunResult,
-} from "../../aiExecution/model/useAICodeExecutionLoop";
-import { useAIRunResultCoordinator } from "./useAIRunResultCoordinator";
-import { useAINoteGeneration } from "./useAINoteGeneration";
-import { useSceneCodeExecutionTask } from "./useSceneCodeExecutionTask";
-import { useCodeStreaming } from "./useCodeStreaming";
+import { usePlotAIWorkflow } from "./usePlotAIWorkflow";
 import { usePackageTransfer } from "./usePackageTransfer";
 import { usePkcDropImport } from "./usePkcDropImport";
 import { useWorkspaceLifecycle } from "./useWorkspaceLifecycle";
@@ -78,9 +69,6 @@ export function usePlotWorkspace() {
   const scriptRepository = createScriptRepository();
   const runErrorDialog = useRunErrorDialog();
   const aiActivity = useAIActivityStatus();
-  const aiRunResultCoordinator = useAIRunResultCoordinator({
-    onManualRunError: (message) => runErrorDialog.openRunErrorDialog(message, { repairable: true }),
-  });
   const scriptWorkspace = useScriptWorkspaceMachine(
     runErrorDialog.openRunErrorDialog,
     isRunning,
@@ -92,16 +80,9 @@ export function usePlotWorkspace() {
     runErrorDialog.openRunErrorDialog,
     designCardsForNote,
   );
-  const codeStreaming = useCodeStreaming(scriptWorkspace.codeContent, scriptWorkspace.currentFile);
-  const aiRepair = useAIRunErrorRepair({
+  const plotAIWorkflow = usePlotAIWorkflow({
     aiActivity,
     aiSettings,
-    codeContent: scriptWorkspace.codeContent,
-    currentFile: scriptWorkspace.currentFile,
-    executeAICodeLoop: () => aiCodeExecutionLoop.execute(),
-    executeSceneCodeLoop: (sceneName, code) => sceneCodeExecutionTask.execute(sceneName, code),
-    errorDialog: runErrorDialog,
-    isRunning,
     loadSceneCode: async (sceneName) => {
       if (sceneName === scriptWorkspace.currentFile.value) {
         return scriptWorkspace.codeContent.value;
@@ -110,91 +91,9 @@ export function usePlotWorkspace() {
       const document = await scriptRepository.getScriptContent(sceneName);
       return asString(document.code);
     },
-    onApplied: animateRepairRanges,
-    saveSceneCode: async (sceneName, code) => {
-      await scriptRepository.saveScript(sceneName, code);
-      if (sceneName === scriptWorkspace.currentFile.value) {
-        scriptWorkspace.updateCode(code);
-      }
-    },
-  });
-  const aiCodeExecutionLoop = useAICodeExecutionLoop({
-    clearRunError: runErrorDialog.clearRunError,
-    currentFile: scriptWorkspace.currentFile,
-    isRunning,
-    maxRepairAttempts: 8,
-    onFailure: ({ message, repairable }) =>
-      runErrorDialog.openRunErrorDialog(message, { repairable }),
-    onInterrupted: () => runErrorDialog.openRunErrorDialog("已中断 AI 检查"),
-    repairCodeWithError: aiRepair.repairCodeWithError,
-    runCurrentCodeAndWait,
-  });
-  const sceneCodeExecutionTask = useSceneCodeExecutionTask({
-    aiSettings: () => aiSettings.value,
-    clearRunError: runErrorDialog.clearRunError,
-    loadSceneCode: async (sceneName) => {
-      if (sceneName === scriptWorkspace.currentFile.value) {
-        return scriptWorkspace.codeContent.value;
-      }
-
-      const document = await scriptRepository.getScriptContent(sceneName);
-      return asString(document.code);
-    },
-    maxRepairAttempts: 8,
-    onFailure: ({ message, repairable, sceneName }) =>
-      runErrorDialog.openRunErrorDialog(
-        sceneName === scriptWorkspace.currentFile.value
-          ? message
-          : `[${sceneName}] ${message}`,
-        {
-          repairable,
-          repairSceneName: sceneName,
-          repairText: message,
-        },
-      ),
-    onInterrupted: (sceneName) =>
-      runErrorDialog.openRunErrorDialog(
-        sceneName === scriptWorkspace.currentFile.value
-          ? "已中断 AI 检查"
-          : `[${sceneName}] 已中断 AI 检查`,
-      ),
-    runSceneCodeAndWait,
-    saveSceneCode: async (sceneName, code) => {
-      await scriptRepository.saveScript(sceneName, code);
-      if (sceneName === scriptWorkspace.currentFile.value) {
-        scriptWorkspace.updateCode(code);
-      }
-    },
-  });
-  const codeAIOptimize = useCodeAIOptimize({
-    aiActivity,
-    aiSettings,
-    codeContent: scriptWorkspace.codeContent,
-    currentFile: scriptWorkspace.currentFile,
-    executeAICodeLoop: () => aiCodeExecutionLoop.execute(),
-    isRunning,
-    onApplied: animateRepairRanges,
-    onError: runErrorDialog.openRunErrorDialog,
-  });
-  const aiGeneration = useAINoteGeneration({
-    aiActivity,
-    aiSettings,
-    currentFile: scriptWorkspace.currentFile,
-    executeSceneCodeLoop: (sceneName, code) => sceneCodeExecutionTask.execute(sceneName, code),
-    isRunning,
-    onError: runErrorDialog.openRunErrorDialog,
-    resolveSceneCode: async (sceneName) => {
-      if (sceneName === scriptWorkspace.currentFile.value) {
-        return scriptWorkspace.codeContent.value;
-      }
-
-      const document = await scriptRepository.getScriptContent(sceneName);
-      return asString(document.code);
-    },
-    saveSceneCode: async (sceneName, code) => {
-      await scriptRepository.saveScript(sceneName, code);
-    },
-    streamGeneratedCode: codeStreaming.streamGeneratedCode,
+    onAnimateChangedRanges: animateRepairRanges,
+    runErrorDialog,
+    scriptWorkspace,
   });
   const designCardWorkspace = useDesignCardWorkspace({
     aiActivity,
@@ -272,35 +171,21 @@ export function usePlotWorkspace() {
     isRunning,
     noteWorkspace,
     onError: runErrorDialog.openRunErrorDialog,
-    onRunFailed: aiRunResultCoordinator.handleRunFailed,
-    onRunFinished: aiRunResultCoordinator.handleRunFinished,
-    onRunReady: aiRunResultCoordinator.handleRunReady,
-    onRunStopped: aiRunResultCoordinator.handleRunStopped,
+    onRunFailed: (message) => {
+      if (plotAIWorkflow.aiWorkflowSession.isSessionActive.value) {
+        return;
+      }
+
+      runErrorDialog.openRunErrorDialog(message, { repairable: true });
+    },
+    onRunFinished: () => undefined,
+    onRunReady: () => undefined,
+    onRunStopped: () => undefined,
     refreshSubscriptionStatus,
     runtime,
     runtimeRepository,
     scriptWorkspace,
   });
-
-  async function runCurrentCodeAndWait(): Promise<AICodeRunResult> {
-    return runSceneCodeAndWait(scriptWorkspace.currentFile.value, scriptWorkspace.codeContent.value);
-  }
-
-  async function runSceneCodeAndWait(sceneName: string, code: string): Promise<AICodeRunResult> {
-    const resultPromise = aiRunResultCoordinator.createPendingAICodeRun();
-
-    try {
-      await scriptRepository.saveAndRun(sceneName, code);
-      return await resultPromise;
-    } catch (error) {
-      aiRunResultCoordinator.settlePendingAICodeRun({
-        ok: false,
-        errorText: getErrorMessage(error),
-        reason: "failed",
-      });
-      throw error;
-    }
-  }
 
   function toggleNotePanel() {
     noteWorkspace.togglePanel();
@@ -311,17 +196,14 @@ export function usePlotWorkspace() {
   }
 
   async function createScript(name: string) {
-    codeStreaming.cancelStreaming();
     await scriptWorkspace.createScript(name);
   }
 
   async function renameScript(oldName: string, newName: string) {
-    codeStreaming.cancelStreaming();
     await scriptWorkspace.renameScript(oldName, newName);
   }
 
   async function deleteScript(name: string) {
-    codeStreaming.cancelStreaming();
     await scriptWorkspace.deleteScript(name);
   }
 
@@ -347,31 +229,26 @@ export function usePlotWorkspace() {
   }
 
   async function switchWorkspace(name: string) {
-    codeStreaming.cancelStreaming();
     await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     await scriptWorkspace.switchWorkspace(name);
   }
 
   async function createWorkspace(name: string) {
-    codeStreaming.cancelStreaming();
     await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     await scriptWorkspace.createWorkspace(name);
   }
 
   async function renameWorkspace(oldName: string, newName: string) {
-    codeStreaming.cancelStreaming();
     await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     await scriptWorkspace.renameWorkspace(oldName, newName);
   }
 
   async function deleteWorkspace(name: string) {
-    codeStreaming.cancelStreaming();
     await noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     await scriptWorkspace.deleteWorkspace(name);
   }
 
   async function selectScript(name: string) {
-    codeStreaming.cancelStreaming();
     await scriptWorkspace.selectScript(name);
   }
 
@@ -504,7 +381,6 @@ export function usePlotWorkspace() {
   });
 
   onUnmounted(() => {
-    codeStreaming.cancelStreaming();
     void designCardWorkspace.flushPlanSave();
     void noteWorkspace.flushPendingSave(scriptWorkspace.currentFile.value);
     lifecycle.unmount();
@@ -533,11 +409,11 @@ export function usePlotWorkspace() {
     closeCreateDialog: scriptWorkspace.closeCreateDialog,
     closeRunErrorDialog: runErrorDialog.closeRunErrorDialog,
     closeSettings,
-    codeAIOptimizeActiveVersionId: codeAIOptimize.activeVersionId,
-    codeAIOptimizeContextMenu: codeAIOptimize.contextMenu,
-    codeAIOptimizeVersions: codeAIOptimize.versions,
-    closeCodeAIOptimizeContextMenu: codeAIOptimize.closeContextMenu,
-    closeCodeAIOptimizeDialog: codeAIOptimize.closeDialog,
+    codeAIOptimizeActiveVersionId: plotAIWorkflow.codeAIOptimize.activeVersionId,
+    codeAIOptimizeContextMenu: plotAIWorkflow.codeAIOptimize.contextMenu,
+    codeAIOptimizeVersions: plotAIWorkflow.codeAIOptimize.versions,
+    closeCodeAIOptimizeContextMenu: plotAIWorkflow.codeAIOptimize.closeContextMenu,
+    closeCodeAIOptimizeDialog: plotAIWorkflow.codeAIOptimize.closeDialog,
     copyRunError: async () => {
       try {
         await runErrorDialog.copyRunError();
@@ -555,14 +431,14 @@ export function usePlotWorkspace() {
     environmentStatus: runtime.environmentStatus,
     exportCurrentScenePackage: packageTransfer.exportCurrentScenePackage,
     addNoteImages: noteWorkspace.addImages,
-    generateCodeFromNoteSelection: aiGeneration.generateCodeFromNoteSelection,
+    generateCodeFromNoteSelection: plotAIWorkflow.aiGeneration.generateCodeFromNoteSelection,
     generateDesignFromNoteSelection: designCardWorkspace.generateFromNoteSelection,
     hasNoteContent: noteWorkspace.hasContent,
     initProgressMessage: runtime.initProgressMessage,
     initProgressPercent: runtime.initProgressPercent,
     isAIGenerating: aiActivity.isAIGenerating,
     isAISettingsDialogOpen,
-    isCodeAIOptimizeDialogOpen: codeAIOptimize.isDialogOpen,
+    isCodeAIOptimizeDialogOpen: plotAIWorkflow.codeAIOptimize.isDialogOpen,
     isDesignCardOptimizeDialogOpen: designCardWorkspace.isOptimizeDialogOpen,
     isDesignCardReviewRoomOpen: designCardWorkspace.isReviewRoomOpen,
     isCreateDialogOpen: scriptWorkspace.isCreateDialogOpen,
@@ -580,6 +456,7 @@ export function usePlotWorkspace() {
     isRunErrorDialogOpen: runErrorDialog.isRunErrorDialogOpen,
     isRunErrorRepairable: runErrorDialog.isRunErrorRepairable,
     isRunning,
+    isStoppingAIWorkflow: plotAIWorkflow.aiWorkflowSession.isSessionActive,
     isSettingsDialogOpen,
     isUpdateInstallDialogOpen,
     isInstallingUpdate,
@@ -588,8 +465,8 @@ export function usePlotWorkspace() {
     handleUpdateAction,
     openCreateDialog: scriptWorkspace.openCreateDialog,
     openAISettings,
-    openCodeAIOptimizeContextMenu: codeAIOptimize.openContextMenu,
-    openCodeAIOptimizeDialog: codeAIOptimize.openDialog,
+    openCodeAIOptimizeContextMenu: plotAIWorkflow.codeAIOptimize.openContextMenu,
+    openCodeAIOptimizeDialog: plotAIWorkflow.codeAIOptimize.openDialog,
     openDesignCardReviewRoom: designCardWorkspace.openReviewRoom,
     openDesignCardOptimizeDialog: designCardWorkspace.openOptimizeDialog,
     openPackageTransferDialog: packageTransfer.openPackageTransferDialog,
@@ -608,12 +485,12 @@ export function usePlotWorkspace() {
     rebuildRuntime: lifecycle.rebuildRuntime,
     repairAnimationKey,
     repairAnimatedLineRanges,
-    repairCurrentRunError: aiRepair.repairCurrentRunError,
+    repairCurrentRunError: plotAIWorkflow.aiRepair.repairCurrentRunError,
     runCurrentScript: scriptWorkspace.runCurrentScript,
     runErrorText: runErrorDialog.runErrorText,
     scripts: scriptWorkspace.scripts,
     selectScript,
-    selectCodeAIOptimizeVersion: codeAIOptimize.selectVersion,
+    selectCodeAIOptimizeVersion: plotAIWorkflow.codeAIOptimize.selectVersion,
     switchWorkspace,
     stopCurrentRun: lifecycle.stopCurrentRun,
     subscriptionStatus,
@@ -622,7 +499,7 @@ export function usePlotWorkspace() {
     typingScriptName: scriptWorkspace.typingScriptName,
     updateCode: scriptWorkspace.updateCode,
     updateAISettings,
-    submitCodeAIOptimize: codeAIOptimize.submitOptimization,
+    submitCodeAIOptimize: plotAIWorkflow.codeAIOptimize.submitOptimization,
     submitDesignCardOptimize: designCardWorkspace.submitOptimization,
     closeDesignCardOptimizeDialog: designCardWorkspace.closeOptimizeDialog,
     closeDesignCardReviewRoom: designCardWorkspace.closeReviewRoom,
@@ -636,6 +513,7 @@ export function usePlotWorkspace() {
     refreshSubscriptionStatusManually,
     closeUpdateInstallDialog,
     installUpdateAndRestart: installPreparedUpdate,
+    stopAIWorkflow: plotAIWorkflow.aiWorkflowSession.stopActiveWorkflow,
   };
 }
 

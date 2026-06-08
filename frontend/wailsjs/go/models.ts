@@ -196,15 +196,21 @@ export namespace bridge {
 		    return a;
 		}
 	}
-	export class AIGenerationRequest {
+	
+	
+	
+	export class AIWorkflowRequest {
 	    kind: string;
 	    sceneName: string;
 	    currentCode: string;
-	    settings: AIProviderSettings;
+	    instruction: string;
+	    errorText: string;
 	    selection: AISelectionPayload;
+	    maxAttempts: number;
+	    settings: AIProviderSettings;
 	
 	    static createFrom(source: any = {}) {
-	        return new AIGenerationRequest(source);
+	        return new AIWorkflowRequest(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -212,108 +218,10 @@ export namespace bridge {
 	        this.kind = source["kind"];
 	        this.sceneName = source["sceneName"];
 	        this.currentCode = source["currentCode"];
-	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
-	        this.selection = this.convertValues(source["selection"], AISelectionPayload);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class AIGenerationResult {
-	    code: string;
-	    source: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new AIGenerationResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.code = source["code"];
-	        this.source = source["source"];
-	    }
-	}
-	export class AIOptimizeRequest {
-	    sceneName: string;
-	    currentCode: string;
-	    instruction: string;
-	    settings: AIProviderSettings;
-	
-	    static createFrom(source: any = {}) {
-	        return new AIOptimizeRequest(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.sceneName = source["sceneName"];
-	        this.currentCode = source["currentCode"];
 	        this.instruction = source["instruction"];
-	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class AIOptimizeResult {
-	    patch: string;
-	    source: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new AIOptimizeResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.patch = source["patch"];
-	        this.source = source["source"];
-	    }
-	}
-	
-	export class AIRepairRequest {
-	    sceneName: string;
-	    currentCode: string;
-	    errorText: string;
-	    settings: AIProviderSettings;
-	
-	    static createFrom(source: any = {}) {
-	        return new AIRepairRequest(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.sceneName = source["sceneName"];
-	        this.currentCode = source["currentCode"];
 	        this.errorText = source["errorText"];
+	        this.selection = this.convertValues(source["selection"], AISelectionPayload);
+	        this.maxAttempts = source["maxAttempts"];
 	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
 	    }
 	
@@ -335,22 +243,20 @@ export namespace bridge {
 		    return a;
 		}
 	}
-	export class AIRepairResult {
-	    patch: string;
-	    source: string;
+	export class AIWorkflowSession {
+	    sessionId: string;
+	    state: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new AIRepairResult(source);
+	        return new AIWorkflowSession(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.patch = source["patch"];
-	        this.source = source["source"];
+	        this.sessionId = source["sessionId"];
+	        this.state = source["state"];
 	    }
 	}
-	
-	
 	export class CodeAIVersion {
 	    id: string;
 	    label: string;

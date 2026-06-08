@@ -12,6 +12,12 @@ const (
 	EventRunFinished         = "run:finished"
 	EventRunStopped          = "run:stopped"
 	EventRunFailed           = "run:failed"
+	EventAIWorkflowStarted   = "ai:workflow_started"
+	EventAIWorkflowState     = "ai:workflow_state_changed"
+	EventAIWorkflowApplied   = "ai:workflow_code_applied"
+	EventAIWorkflowSucceeded = "ai:workflow_succeeded"
+	EventAIWorkflowFailed    = "ai:workflow_failed"
+	EventAIWorkflowStopped   = "ai:workflow_interrupted"
 )
 
 type EventPayload struct {

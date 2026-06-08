@@ -146,7 +146,9 @@ export function useWorkspaceLifecycle(options: WorkspaceLifecycleOptions) {
     try {
       const status = await options.runtimeRepository.rebuildRuntime();
       options.runtime.applyEnvironmentStatus(status);
-      options.runtime.finishInitialization(status.summary ?? "Runtime rebuilt");
+      options.runtime.finishInitialization(
+        typeof status.summary === "string" ? status.summary : "Runtime rebuilt",
+      );
     } catch (error) {
       const message = getErrorMessage(error);
       options.runtime.failInitialization(message);

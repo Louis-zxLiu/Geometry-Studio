@@ -69,6 +69,7 @@ const theme = reactive(useTheme());
           />
 
           <EditorPane
+            :key="workspace.currentFile || '__empty_scene__'"
             :code="workspace.codeContent"
             :design-cards="workspace.designCards"
             :design-card-placements="workspace.designCardPlacements"
@@ -99,6 +100,7 @@ const theme = reactive(useTheme());
         </section>
 
         <NotePanel
+          :key="workspace.currentFile || '__empty_scene__'"
           :current-file="workspace.currentFile"
           :document="workspace.currentNoteDocument"
           :design-cards="workspace.designCards"

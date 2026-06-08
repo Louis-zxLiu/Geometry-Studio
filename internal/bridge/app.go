@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"plotkitycat/internal/ai"
+	"plotkitycat/internal/aicode/workflow"
 	"plotkitycat/internal/codeversions"
 	"plotkitycat/internal/designcards"
 	designai "plotkitycat/internal/designcards/ai"
@@ -23,6 +24,7 @@ import (
 type App struct {
 	ctx                 context.Context
 	aiService           *ai.Service
+	aiWorkflow          *workflow.Service
 	codeVersionStore    *codeversions.Store
 	designCardService   *designcards.Service
 	deviceService       *device.Service
@@ -41,7 +43,7 @@ func NewApp() *App {
 	workspaceManager := workspaces.NewManager()
 	fileStore := filestore.NewStore(workspaceManager)
 	designCardStore := designcards.NewStore(fileStore)
-	return &App{
+	app := &App{
 		aiService:           ai.NewService(subscriptionService),
 		codeVersionStore:    codeversions.NewStore(fileStore),
 		designCardService:   designcards.NewService(designCardStore, designai.NewService(subscriptionService)),
@@ -54,6 +56,9 @@ func NewApp() *App {
 		updateService:       updater.NewService(),
 		workspaceManager:    workspaceManager,
 	}
+
+	app.aiWorkflow = newAIWorkflowService(app)
+	return app
 }
 
 func (a *App) Startup(ctx context.Context) {

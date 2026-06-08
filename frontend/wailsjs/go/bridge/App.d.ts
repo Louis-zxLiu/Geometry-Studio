@@ -26,8 +26,6 @@ export function DownloadUpdate():Promise<bridge.UpdateStatus>;
 
 export function ExportScenePackage(arg1:string):Promise<bridge.PackageTransferResult>;
 
-export function GenerateCodeFromSelection(arg1:bridge.AIGenerationRequest):Promise<bridge.AIGenerationResult>;
-
 export function GenerateDesignCardFromSelection(arg1:bridge.AIDesignCardGenerationRequest):Promise<bridge.AIDesignCardResult>;
 
 export function GetAISettings():Promise<bridge.AIProviderSettings>;
@@ -64,8 +62,6 @@ export function ListDesignCards(arg1:string):Promise<Array<bridge.DesignCard>>;
 
 export function OpenSubscriptionPurchase():Promise<bridge.SubscriptionPurchaseResult>;
 
-export function OptimizeCode(arg1:bridge.AIOptimizeRequest):Promise<bridge.AIOptimizeResult>;
-
 export function OptimizeDesignCard(arg1:bridge.AIDesignCardOptimizeRequest):Promise<bridge.AIDesignCardResult>;
 
 export function RebuildRuntime():Promise<bridge.EnvironmentStatus>;
@@ -80,8 +76,6 @@ export function RenameWorkspace(arg1:string,arg2:string):Promise<bridge.Workspac
 
 export function ReorderScripts(arg1:Array<string>,arg2:string):Promise<bridge.WorkspaceSnapshot>;
 
-export function RepairCodeFromRunError(arg1:bridge.AIRepairRequest):Promise<bridge.AIRepairResult>;
-
 export function SaveAISettings(arg1:bridge.AIProviderSettings):Promise<bridge.AIProviderSettings>;
 
 export function SaveAndRun(arg1:string,arg2:string):Promise<void>;
@@ -91,6 +85,10 @@ export function SaveDesignCardPlacements(arg1:string,arg2:Array<bridge.DesignCar
 export function SaveScript(arg1:string,arg2:string):Promise<void>;
 
 export function SaveScriptNote(arg1:string,arg2:string):Promise<void>;
+
+export function StartAIWorkflow(arg1:bridge.AIWorkflowRequest):Promise<bridge.AIWorkflowSession>;
+
+export function StopAIWorkflow(arg1:string):Promise<void>;
 
 export function StopCurrentRun():Promise<bridge.RunControlResult>;
 
