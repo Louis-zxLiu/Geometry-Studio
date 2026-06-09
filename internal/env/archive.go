@@ -7,11 +7,16 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"plotkitycat/internal/paths"
 	"plotkitycat/internal/processutil"
 )
+
+var archiveProgressPattern = regexp.MustCompile(`(?:^|\D)(\d{1,3})%(?:$|\D)`)
 
 func (m *Manager) ensureRuntimeExtracted(onProgress func(Progress)) error {
 	reportProgress(onProgress, Progress{
@@ -208,16 +213,18 @@ func extractArchive(archivePath string, extractorPath string, targetDir string, 
 	})
 
 	outputDirArg := "-o" + targetDir
-	cmd := exec.Command(extractorPath, "x", archivePath, outputDirArg, "-y")
+	cmd := exec.Command(extractorPath, "x", archivePath, outputDirArg, "-y", "-bsp1")
 	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
 	cmd.Dir = filepath.Dir(extractorPath)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	progressParser := newArchiveProgressParser(onProgress)
+	cmd.Stdout = io.MultiWriter(&stdout, progressParser)
+	cmd.Stderr = io.MultiWriter(&stderr, progressParser)
 
 	if err := cmd.Run(); err != nil {
+		progressParser.Flush()
 		message := stderr.String()
 		if message == "" {
 			message = stdout.String()
@@ -228,6 +235,7 @@ func extractArchive(archivePath string, extractorPath string, targetDir string, 
 
 		return fmt.Errorf("extract runtime archive with 7z: %s", message)
 	}
+	progressParser.Flush()
 
 	reportProgress(onProgress, Progress{
 		Stage:   "extracting",
@@ -236,4 +244,80 @@ func extractArchive(archivePath string, extractorPath string, targetDir string, 
 	})
 
 	return nil
+}
+
+type archiveProgressParser struct {
+	lastPercent int
+	onProgress  func(Progress)
+	pending     string
+}
+
+func newArchiveProgressParser(onProgress func(Progress)) *archiveProgressParser {
+	return &archiveProgressParser{
+		lastPercent: -1,
+		onProgress:  onProgress,
+	}
+}
+
+func (p *archiveProgressParser) Write(data []byte) (int, error) {
+	text := strings.ReplaceAll(string(data), "\r", "\n")
+	p.pending += text
+
+	for {
+		lineEnd := strings.IndexByte(p.pending, '\n')
+		if lineEnd < 0 {
+			break
+		}
+
+		p.consume(strings.TrimSpace(p.pending[:lineEnd]))
+		p.pending = p.pending[lineEnd+1:]
+	}
+
+	if len(p.pending) > 512 {
+		p.consume(strings.TrimSpace(p.pending))
+		p.pending = ""
+	}
+
+	return len(data), nil
+}
+
+func (p *archiveProgressParser) Flush() {
+	p.consume(strings.TrimSpace(p.pending))
+	p.pending = ""
+}
+
+func (p *archiveProgressParser) consume(line string) {
+	if line == "" || p.onProgress == nil {
+		return
+	}
+
+	matches := archiveProgressPattern.FindAllStringSubmatch(line, -1)
+	if len(matches) == 0 {
+		return
+	}
+
+	lastMatch := matches[len(matches)-1]
+	rawPercent, err := strconv.Atoi(lastMatch[1])
+	if err != nil {
+		return
+	}
+
+	if rawPercent < 0 {
+		rawPercent = 0
+	}
+	if rawPercent > 100 {
+		rawPercent = 100
+	}
+
+	mappedPercent := 24 + int(float64(rawPercent)*62.0/100.0)
+	if mappedPercent <= p.lastPercent {
+		return
+	}
+
+	p.lastPercent = mappedPercent
+	reportProgress(p.onProgress, Progress{
+		Stage:   "extracting",
+		Message: fmt.Sprintf("Extracting runtime %d%%", rawPercent),
+		Percent: mappedPercent,
+	})
 }

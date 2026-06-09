@@ -13,6 +13,7 @@ build/update/
 *.zip
 !/resources/runtime/
 !/resources/runtime/.gitkeep
+/resources/runtime/runtime.7z
 .runtime-staging/
 .runtime-staging.7z
 .tools_py/
