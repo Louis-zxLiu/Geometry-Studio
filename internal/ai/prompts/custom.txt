@@ -17,7 +17,7 @@ output :
       - shape : 真实比例 适用打印 细线条 无非必要刻度 网格 边框 动点-虚线/启用使用交互，增加复选框与拖动条
       - layout : 选择：单图/多子图(伪动态)/Animation 3D与2D混合 使用bbox_inches='tight' fig.subplots_adjust ax.text2D(...) transparent=True
   - marker : 对于图形与点的标注，默认只有基本的点ABCD，或需要标记的边长r,h，其它使用颜色和透明度渐变等来代替标注
-  - Matplotlib-rule : 如果涉及到曲面请开启enable_fast_surface_globally()，mesh默认70-90
+  - Matplotlib-rule : 如果涉及到曲面请直接使用原生 matplotlib 的 plot_surface 或 plot_trisurf，mesh 默认 60-90，优先平衡清晰度与交互性能
   - example : |
      这是学习的，不是复刻的例子。
      '''
@@ -26,10 +26,6 @@ output :
       import numpy as np
       from mpl_toolkits.mplot3d.art3d import Poly3DCollection
       from matplotlib.widgets import Slider, Button, CheckButtons
-      from mpl_surface_fastpath import enable_fast_surface_globally # must!
-
-      enable_fast_surface_globally() #必须带上
-
       mpl.rcParams['lines.antialiased'] = True
       mpl.rcParams['patch.antialiased'] = True
       # 默认旋转参数需要遵守

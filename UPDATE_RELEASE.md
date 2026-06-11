@@ -29,7 +29,7 @@ runtime 约定：
 
 ```json
 {
-  "appVersion": "0.0.1.9"
+  "appVersion": "0.0.3.1"
 }
 ```
 
@@ -50,7 +50,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\build-versioned-app.ps1
 或者显式指定版本：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\build-versioned-app.ps1 -Version 0.0.1.9
+powershell -ExecutionPolicy Bypass -File .\tools\build-versioned-app.ps1 -Version 0.0.3.1
 ```
 
 产物：
@@ -68,7 +68,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\prepare-update-release.ps1
 或者：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\prepare-update-release.ps1 -Version 0.0.1.9
+powershell -ExecutionPolicy Bypass -File .\tools\prepare-update-release.ps1 -Version 0.0.3.1
 ```
 
 产物目录：
@@ -77,7 +77,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\prepare-update-release.ps1 -Ver
 
 对应版本目录里会生成：
 
-- `PlotKityCat-0.0.1.9-windows-amd64.exe`
+- `PlotKityCat-0.0.3.1-windows-amd64.exe`
 - `manifest.json`
 
 说明：
@@ -96,13 +96,13 @@ powershell -ExecutionPolicy Bypass -File .\tools\package-release.ps1
 或者：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\package-release.ps1 -Version 0.0.1.9
+powershell -ExecutionPolicy Bypass -File .\tools\package-release.ps1 -Version 0.0.3.1
 ```
 
 产物：
 
-- 便携目录：`build/release/PlotKityCat-v0.0.1.9`
-- 压缩包：`build/release/PlotKityCat-v0.0.1.9.zip`
+- 便携目录：`build/release/PlotKityCat-v0.0.3.1`
+- 压缩包：`build/release/PlotKityCat-v0.0.3.1.zip`
 
 说明：
 
@@ -124,13 +124,13 @@ powershell -ExecutionPolicy Bypass -File .\tools\package-release.ps1 -Version 0.
 先上传版本 exe：
 
 ```powershell
-scp .\build\update\0.0.1.9\PlotKityCat-0.0.1.9-windows-amd64.exe root@149.28.135.102:/var/www/update.5051001.xyz/plotkitycat/releases/
+scp .\build\update\0.0.3.1\PlotKityCat-0.0.3.1-windows-amd64.exe root@149.28.135.102:/var/www/update.5051001.xyz/plotkitycat/releases/
 ```
 
 再上传 manifest：
 
 ```powershell
-scp .\build\update\0.0.1.9\manifest.json root@149.28.135.102:/var/www/update.5051001.xyz/plotkitycat/stable/manifest.json
+scp .\build\update\0.0.3.1\manifest.json root@149.28.135.102:/var/www/update.5051001.xyz/plotkitycat/stable/manifest.json
 ```
 
 注意：
@@ -149,7 +149,7 @@ curl.exe -I https://update.5051001.xyz/plotkitycat/stable/manifest.json
 再验证 exe：
 
 ```powershell
-curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.1.9-windows-amd64.exe
+curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.3.1-windows-amd64.exe
 ```
 
 如果都返回 `200 OK`，说明更新源可用。
@@ -173,7 +173,7 @@ curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.1.9-
 - 完整发布包 zip 格式：`build/release/PlotKityCat-v版本号.zip`
 - runtime release 页面格式：`https://github.com/Wing900/PlotKityCat/releases/tag/v版本号`
 - runtime 下载地址格式：`https://github.com/Wing900/PlotKityCat/releases/download/v版本号/runtime.7z`
-- 当前示例：`https://github.com/Wing900/PlotKityCat/releases/download/v0.0.2.6/runtime.7z`
+- 当前示例：`https://github.com/Wing900/PlotKityCat/releases/download/v0.0.3.1/runtime.7z`
 
 ## 9. 只发完整包，不更新在线更新
 

@@ -42,7 +42,7 @@ wails dev
 - 元数据文件：`runtime.version.json`
 - `resources/runtime/runtime.7z` 默认不提交到 Git
 - runtime 应通过 GitHub Release asset 或其他制品存储分发
-- 仓库仅跟踪 runtime 脚本、元数据和第三方补丁源码
+- 仓库仅跟踪 runtime 脚本和元数据
 
 准备 runtime 压缩包：
 
@@ -85,9 +85,9 @@ wails dev
 如果要覆盖默认版本：
 
 ```powershell
-.\tools\build-versioned-app.ps1 -Version 0.0.2.1
-.\tools\package-release.ps1 -Version 0.0.2.1
-.\tools\prepare-update-release.ps1 -Version 0.0.2.1
+.\tools\build-versioned-app.ps1 -Version 0.0.3.1
+.\tools\package-release.ps1 -Version 0.0.3.1
+.\tools\prepare-update-release.ps1 -Version 0.0.3.1
 ```
 
 ## 发布前检查
