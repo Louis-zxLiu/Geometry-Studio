@@ -425,7 +425,7 @@ function New-7ZipRuntimeArchive {
     $workingDirectory = Split-Path -Parent $SourceDirectory
     $sourcePattern = (Join-Path $SourceDirectory "*")
 
-    & $sevenZipExe a -t7z $ArchivePath $sourcePattern -mx=9 -m0=lzma2 -md=512m -mfb=273 -ms=on -mmt=on
+    & $sevenZipExe a -t7z $ArchivePath $sourcePattern -mx=9 -m0=lzma2 -md=128m -mfb=273 -ms=on -mmt=on
     if ($LASTEXITCODE -ne 0) {
         throw "7-Zip failed while creating runtime archive: exit code $LASTEXITCODE"
     }
