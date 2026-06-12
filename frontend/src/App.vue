@@ -26,25 +26,14 @@ const theme = reactive(useTheme());
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'screening-active': workspace.isScreeningActive }">
+  <div class="app-shell">
     <RuntimeLoadingScreen
       v-if="workspace.isInitializing"
       :progress="workspace.initProgressPercent"
       :message="workspace.initProgressMessage"
     />
 
-    <button
-      v-if="workspace.isScreeningActive"
-      class="screening-floating-exit"
-      type="button"
-      :disabled="workspace.isStoppingScreening"
-      @click="workspace.stopScreening"
-    >
-      X
-    </button>
-
     <SidebarPanel
-      v-if="!workspace.isScreeningActive"
       :scripts="workspace.scripts"
       :workspaces="workspace.workspaces"
       :current-file="workspace.currentFile"
@@ -82,7 +71,6 @@ const theme = reactive(useTheme());
       >
         <section class="editor-workspace-column">
           <TopBar
-            v-if="!workspace.isScreeningActive"
             :is-running="workspace.isRunning"
             :is-screening-active="workspace.isScreeningActive"
             @packages="workspace.openPackageTransferDialog"
@@ -123,7 +111,6 @@ const theme = reactive(useTheme());
         </section>
 
         <NotePanel
-          v-if="!workspace.isScreeningActive"
           :key="workspace.currentFile || '__empty_scene__'"
           :current-file="workspace.currentFile"
           :document="workspace.currentNoteDocument"

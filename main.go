@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"log"
 	"os"
 
 	"plotkitycat/internal/bridge"
@@ -19,6 +20,8 @@ import (
 var assets embed.FS
 
 func main() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err := fmt.Errorf("%v", recovered)

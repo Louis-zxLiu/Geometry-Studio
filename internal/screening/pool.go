@@ -2,6 +2,7 @@ package screening
 
 import (
 	"fmt"
+	"time"
 
 	"plotkitycat/internal/windowctrl"
 )
@@ -16,12 +17,12 @@ func (s *Service) createPool() error {
 	s.mu.Unlock()
 
 	for _, index := range indices {
+		s.debugf("create-pool ensure index=%d scene=%s", index, s.sceneNameAt(index))
 		if err := s.ensureEntry(index); err != nil {
 			return err
 		}
 	}
-
-	return s.syncVisibleWindow()
+	return nil
 }
 
 func (s *Service) ensureEntry(index int) error {
@@ -33,14 +34,18 @@ func (s *Service) ensureEntry(index int) error {
 
 	sceneName := s.sceneNames[index]
 	if _, exists := s.pool[sceneName]; exists {
+		s.debugf("ensure-entry skip existing scene=%s index=%d", sceneName, index)
 		s.mu.Unlock()
 		return nil
 	}
 	s.mu.Unlock()
 
 	process, err := launchSceneProcess(s.workspaces, sceneName, processCallbacks{
-		onReady: func() {
-			s.onProcessReady(sceneName)
+		onWindowReady: func() {
+			s.onProcessWindowReady(sceneName)
+		},
+		onFrameReady: func() {
+			s.onProcessFrameReady(sceneName)
 		},
 		onNext: func() {
 			_, _ = s.Next()
@@ -61,6 +66,7 @@ func (s *Service) ensureEntry(index int) error {
 	if err != nil {
 		return err
 	}
+	s.debugf("ensure-entry launched scene=%s index=%d", sceneName, index)
 
 	entry := &poolEntry{
 		sceneName: sceneName,
@@ -76,6 +82,7 @@ func (s *Service) ensureEntry(index int) error {
 	}
 	s.pool[sceneName] = entry
 	s.mu.Unlock()
+	s.debugf("ensure-entry registered scene=%s index=%d", sceneName, index)
 	return nil
 }
 
@@ -85,46 +92,29 @@ func (s *Service) reconcilePool() error {
 		s.mu.Unlock()
 		return nil
 	}
-
-	desiredScenes := s.desiredSceneSetLocked()
-	extraEntries := make([]*poolEntry, 0)
 	missingIndices := make([]int, 0)
 
-	for sceneName, entry := range s.pool {
-		if _, keep := desiredScenes[sceneName]; !keep {
-			extraEntries = append(extraEntries, entry)
-			delete(s.pool, sceneName)
-		}
-	}
-
-	for _, index := range s.targetIndicesLocked() {
+	for index := range s.sceneNames {
 		if index < 0 || index >= len(s.sceneNames) {
 			continue
 		}
 		sceneName := s.sceneNames[index]
 		if _, exists := s.pool[sceneName]; !exists {
+			s.debugf("reconcile mark-missing scene=%s index=%d", sceneName, index)
 			missingIndices = append(missingIndices, index)
 		}
 	}
 	s.mu.Unlock()
-
-	for _, entry := range extraEntries {
-		if entry.hwnd != 0 {
-			_ = windowctrl.HideWindow(entry.hwnd)
-			_ = windowctrl.CloseWindow(entry.hwnd)
-		}
-		if entry.process != nil {
-			_ = entry.process.stop()
-		}
-	}
 
 	for _, index := range missingIndices {
 		if err := s.ensureEntry(index); err != nil {
 			return err
 		}
 	}
-
-	return s.syncVisibleWindow()
+	if s.scheduler != nil {
+		s.scheduler.requestLayout(120 * time.Millisecond)
+	}
+	return nil
 }
 
 func (s *Service) desiredSceneSetLocked() map[string]struct{} {
@@ -135,4 +125,45 @@ func (s *Service) desiredSceneSetLocked() map[string]struct{} {
 		}
 	}
 	return desiredScenes
+}
+
+func (s *Service) releaseEntry(entry *poolEntry) {
+	if entry == nil {
+		return
+	}
+	s.debugf("release-entry scene=%s hwnd=%#x pid=%d", entry.sceneName, entry.hwnd, entryPID(entry))
+	if entry.hwnd != 0 {
+		_ = windowctrl.SendWindowToPoolLayer(entry.hwnd)
+	}
+	s.markEntryStackedBelow(entry.sceneName, 0)
+	go func(entry *poolEntry) {
+		time.Sleep(1500 * time.Millisecond)
+		if entry.hwnd != 0 {
+			_ = windowctrl.MinimizeWindow(entry.hwnd)
+		}
+		time.Sleep(120 * time.Millisecond)
+		if entry.hwnd != 0 {
+			_ = windowctrl.CloseWindow(entry.hwnd)
+		}
+		if entry.process != nil {
+			_ = entry.process.stop()
+		}
+		s.debugf("release-entry completed scene=%s", entry.sceneName)
+	}(entry)
+}
+
+func (s *Service) sceneNameAt(index int) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if index < 0 || index >= len(s.sceneNames) {
+		return ""
+	}
+	return s.sceneNames[index]
+}
+
+func entryPID(entry *poolEntry) int {
+	if entry == nil || entry.process == nil {
+		return 0
+	}
+	return entry.process.pid
 }

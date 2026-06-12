@@ -22,27 +22,35 @@ func StripWindowFrame(hwnd uintptr) error {
 	return nil
 }
 
-func MaximizeWindow(hwnd uintptr) error {
-	return nil
-}
-
-func HideWindow(hwnd uintptr) error {
-	return nil
-}
-
-func ShowWindow(hwnd uintptr) error {
-	return nil
-}
-
-func BringWindowToFront(hwnd uintptr) error {
-	return nil
-}
-
 func CloseWindow(hwnd uintptr) error {
 	return nil
 }
 
-func PreparePresentationWindow(hwnd uintptr) error {
+func MinimizeWindow(hwnd uintptr) error {
+	return nil
+}
+
+func PrepareStackedWindow(hwnd uintptr) error {
+	return nil
+}
+
+func ActivateWindow(hwnd uintptr) error {
+	return nil
+}
+
+func RaiseWindowWithoutFocus(hwnd uintptr) error {
+	return nil
+}
+
+func ActivateForegroundWindow(hwnd uintptr) error {
+	return nil
+}
+
+func StackWindowBelow(hwnd uintptr, anchor uintptr) error {
+	return nil
+}
+
+func SendWindowToPoolLayer(hwnd uintptr) error {
 	return nil
 }
 

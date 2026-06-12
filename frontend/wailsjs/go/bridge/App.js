@@ -70,6 +70,10 @@ export function GetEnvironmentStatus() {
   return window['go']['bridge']['App']['GetEnvironmentStatus']();
 }
 
+export function GetScreeningState() {
+  return window['go']['bridge']['App']['GetScreeningState']();
+}
+
 export function GetScriptContent(arg1) {
   return window['go']['bridge']['App']['GetScriptContent'](arg1);
 }
@@ -126,12 +130,20 @@ export function ListDesignCards(arg1) {
   return window['go']['bridge']['App']['ListDesignCards'](arg1);
 }
 
+export function NextScreeningPage() {
+  return window['go']['bridge']['App']['NextScreeningPage']();
+}
+
 export function OpenSubscriptionPurchase() {
   return window['go']['bridge']['App']['OpenSubscriptionPurchase']();
 }
 
 export function OptimizeDesignCard(arg1) {
   return window['go']['bridge']['App']['OptimizeDesignCard'](arg1);
+}
+
+export function PreviousScreeningPage() {
+  return window['go']['bridge']['App']['PreviousScreeningPage']();
 }
 
 export function RebuildRuntime() {
@@ -182,12 +194,20 @@ export function StartAIWorkflow(arg1) {
   return window['go']['bridge']['App']['StartAIWorkflow'](arg1);
 }
 
+export function StartScreening(arg1) {
+  return window['go']['bridge']['App']['StartScreening'](arg1);
+}
+
 export function StopAIWorkflow(arg1) {
   return window['go']['bridge']['App']['StopAIWorkflow'](arg1);
 }
 
 export function StopCurrentRun() {
   return window['go']['bridge']['App']['StopCurrentRun']();
+}
+
+export function StopScreening() {
+  return window['go']['bridge']['App']['StopScreening']();
 }
 
 export function SwitchWorkspace(arg1) {

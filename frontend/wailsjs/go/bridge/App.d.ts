@@ -36,6 +36,8 @@ export function GetDesignCard(arg1:string,arg2:string):Promise<bridge.DesignCard
 
 export function GetEnvironmentStatus():Promise<bridge.EnvironmentStatus>;
 
+export function GetScreeningState():Promise<bridge.ScreeningSessionState>;
+
 export function GetScriptContent(arg1:string):Promise<bridge.ScriptDocument>;
 
 export function GetScriptList():Promise<Array<string>>;
@@ -64,9 +66,13 @@ export function ListDesignCardVersions(arg1:string,arg2:string):Promise<Array<br
 
 export function ListDesignCards(arg1:string):Promise<Array<bridge.DesignCard>>;
 
+export function NextScreeningPage():Promise<bridge.ScreeningSessionState>;
+
 export function OpenSubscriptionPurchase():Promise<bridge.SubscriptionPurchaseResult>;
 
 export function OptimizeDesignCard(arg1:bridge.AIDesignCardOptimizeRequest):Promise<bridge.AIDesignCardResult>;
+
+export function PreviousScreeningPage():Promise<bridge.ScreeningSessionState>;
 
 export function RebuildRuntime():Promise<bridge.EnvironmentStatus>;
 
@@ -92,9 +98,13 @@ export function SaveScriptNote(arg1:string,arg2:string):Promise<void>;
 
 export function StartAIWorkflow(arg1:bridge.AIWorkflowRequest):Promise<bridge.AIWorkflowSession>;
 
+export function StartScreening(arg1:bridge.ScreeningStartRequest):Promise<bridge.ScreeningSessionState>;
+
 export function StopAIWorkflow(arg1:string):Promise<void>;
 
 export function StopCurrentRun():Promise<bridge.RunControlResult>;
+
+export function StopScreening():Promise<bridge.ScreeningStopResult>;
 
 export function SwitchWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;
 

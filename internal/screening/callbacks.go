@@ -7,9 +7,11 @@ import (
 	"plotkitycat/internal/windowctrl"
 )
 
-func (s *Service) onProcessReady(sceneName string) {
+func (s *Service) onProcessWindowReady(sceneName string) {
+	s.debugf("window-ready received scene=%s", sceneName)
 	entry := s.getPoolEntry(sceneName)
 	if entry == nil || entry.process == nil {
+		s.debugf("window-ready ignored scene=%s reason=missing-entry", sceneName)
 		return
 	}
 
@@ -19,13 +21,27 @@ func (s *Service) onProcessReady(sceneName string) {
 		return
 	}
 
-	_ = windowctrl.PreparePresentationWindow(hwnd)
-
-	isCurrent := s.markEntryReady(sceneName, hwnd)
-	if !isCurrent {
-		_ = windowctrl.HideWindow(hwnd)
+	if err := windowctrl.PrepareStackedWindow(hwnd); err != nil {
+		s.emitError(fmt.Errorf("准备 %s 放映窗口失败: %w", sceneName, err))
+		return
 	}
 
+	s.markEntryWindowReady(sceneName, hwnd)
+	s.debugf("window prepared scene=%s pid=%d hwnd=%#x", sceneName, entry.process.pid, hwnd)
+	if s.scheduler != nil {
+		s.debugf("window-ready enqueued layout scene=%s", sceneName)
+		s.scheduler.requestLayout(140 * time.Millisecond)
+	}
+	s.emitStateChange()
+}
+
+func (s *Service) onProcessFrameReady(sceneName string) {
+	s.debugf("frame-ready received scene=%s", sceneName)
+	s.markEntryFrameReady(sceneName)
+	if s.scheduler != nil {
+		s.debugf("frame-ready enqueued layout scene=%s", sceneName)
+		s.scheduler.requestLayout(220 * time.Millisecond)
+	}
 	s.emitStateChange()
 }
 
@@ -38,6 +54,7 @@ func (s *Service) onProcessExited(sceneName string) {
 	s.mu.Unlock()
 
 	if active {
+		s.debugf("process exited while active scene=%s triggering reconcile", sceneName)
 		_ = s.reconcilePool()
 	}
 }
@@ -48,19 +65,38 @@ func (s *Service) getPoolEntry(sceneName string) *poolEntry {
 	return s.pool[sceneName]
 }
 
-func (s *Service) markEntryReady(sceneName string, hwnd uintptr) bool {
+func (s *Service) markEntryWindowReady(sceneName string, hwnd uintptr) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	currentScene := ""
-	if s.currentIndex >= 0 && s.currentIndex < len(s.sceneNames) {
-		currentScene = s.sceneNames[s.currentIndex]
-	}
 	entry := s.pool[sceneName]
 	if entry != nil {
 		entry.hwnd = hwnd
-		entry.ready = true
+		entry.windowReady = true
+		entry.activatedAt = time.Time{}
+		entry.stackedBelow = 0
 	}
+}
 
-	return currentScene == sceneName
+func (s *Service) markEntryFrameReady(sceneName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry := s.pool[sceneName]
+	if entry != nil {
+		entry.frameReady = true
+		if entry.frameReadyAt.IsZero() {
+			entry.frameReadyAt = time.Now()
+		}
+	}
+}
+
+func (s *Service) hasReadyCurrentWindow() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.active || s.currentIndex < 0 || s.currentIndex >= len(s.sceneNames) {
+		return false
+	}
+	entry := s.pool[s.sceneNames[s.currentIndex]]
+	return entry != nil && entry.windowReady && entry.frameReady && entry.hwnd != 0
 }

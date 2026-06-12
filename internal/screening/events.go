@@ -1,5 +1,7 @@
 package screening
 
+import "log"
+
 func (s *Service) emitStateChange() {
 	if s.callbacks.OnStateChanged == nil {
 		return
@@ -22,4 +24,8 @@ func (s *Service) emitError(err error) {
 		return
 	}
 	s.callbacks.OnError(err)
+}
+
+func (s *Service) debugf(format string, args ...any) {
+	log.Printf("[screening] "+format, args...)
 }

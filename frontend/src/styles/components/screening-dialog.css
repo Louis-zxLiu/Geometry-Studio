@@ -82,49 +82,6 @@
   margin-top: 0;
 }
 
-.screening-floating-exit {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  z-index: 40;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid color-mix(in srgb, #f7f0ea, transparent 36%);
-  background: color-mix(in srgb, #161616, transparent 38%);
-  color: #f7f0ea;
-  backdrop-filter: blur(10px);
-  cursor: pointer;
-  letter-spacing: 0.12em;
-}
-
-.screening-floating-exit:hover {
-  background: color-mix(in srgb, #161616, transparent 18%);
-}
-
-.app-shell.screening-active {
-  grid-template-columns: 1fr;
-}
-
-.app-shell.screening-active .workspace-body {
-  grid-template-columns: 1fr;
-}
-
-.app-shell.screening-active .workspace-body > .editor-workspace-column {
-  min-width: 0;
-}
-
-.screening-status-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 31px;
-  padding: 6px 14px;
-  border: 1px solid color-mix(in srgb, var(--text), transparent 76%);
-  color: color-mix(in srgb, var(--text), transparent 8%);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-}
-
 @media (max-width: 960px) {
   .screening-dialog {
     width: min(90vw, 560px);

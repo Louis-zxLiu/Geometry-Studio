@@ -58,11 +58,14 @@ function closeWindow() {
         <span>{{ isRunning ? "停止运行" : "运行场景" }}</span>
       </button>
 
-      <button class="run-button" type="button" :disabled="isScreeningActive" @click="emit('screening')">
-        <span>放映模式</span>
+      <button
+        class="run-button"
+        type="button"
+        :class="{ stopping: isScreeningActive }"
+        @click="emit('screening')"
+      >
+        <span>{{ isScreeningActive ? "放映中" : "放映模式" }}</span>
       </button>
-
-      <span v-if="isScreeningActive" class="screening-status-pill">放映中</span>
     </div>
 
     <div class="topbar-drag-region" aria-hidden="true"></div>

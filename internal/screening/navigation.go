@@ -3,16 +3,38 @@ package screening
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"plotkitycat/internal/windowctrl"
 )
+
+func (s *Service) handleSchedulerCommand(cmd schedulerCommand) {
+	switch cmd.kind {
+	case schedulerCommandLayout:
+		s.debugf("scheduler layout tick")
+		if err := s.syncVisibleWindow(); err != nil {
+			s.debugf("scheduler layout skipped err=%v", err)
+		}
+	case schedulerCommandNext:
+		s.debugf("scheduler next tick")
+		if _, err := s.navigate(1); err != nil {
+			s.debugf("scheduler next failed err=%v", err)
+		}
+	case schedulerCommandPrev:
+		s.debugf("scheduler prev tick")
+		if _, err := s.navigate(-1); err != nil {
+			s.debugf("scheduler prev failed err=%v", err)
+		}
+	}
+}
 
 func (s *Service) navigate(delta int) (SessionState, error) {
 	targetIndex, state, ready, err := s.beginNavigation(delta)
 	if err != nil || !ready {
 		return state, err
 	}
+	s.debugf("navigate begin delta=%d targetIndex=%d", delta, targetIndex)
 
 	defer s.finishNavigation()
 
@@ -27,9 +49,14 @@ func (s *Service) navigate(delta int) (SessionState, error) {
 	if err := s.waitUntilReady(toEntry.sceneName, 8*time.Second); err != nil {
 		return SessionState{}, err
 	}
+	s.debugf("navigate target ready from=%s to=%s fromHwnd=%#x toHwnd=%#x animation=%s", sceneNameOf(fromEntry), toEntry.sceneName, entryWindow(fromEntry), entryWindow(toEntry), animation)
 
 	if err := windowctrl.AnimateTransition(entryWindow(fromEntry), entryWindow(toEntry), windowctrl.Animation(animation)); err != nil {
 		return SessionState{}, err
+	}
+	s.markEntryActivated(toEntry.sceneName)
+	if fromEntry != nil {
+		s.markEntryStackedBelow(fromEntry.sceneName, entryWindow(toEntry))
 	}
 
 	s.mu.Lock()
@@ -41,6 +68,7 @@ func (s *Service) navigate(delta int) (SessionState, error) {
 		return state, err
 	}
 
+	s.debugf("navigate committed current=%s index=%d", state.CurrentSceneName, state.CurrentIndex)
 	s.emitStateChange()
 	return state, nil
 }
@@ -53,11 +81,13 @@ func (s *Service) beginNavigation(delta int) (targetIndex int, state SessionStat
 		return 0, SessionState{}, false, errors.New("当前没有放映会话")
 	}
 	if s.navInProgress {
+		s.debugf("navigate skipped reason=in-progress")
 		return 0, s.stateLocked(), false, nil
 	}
 
 	targetIndex = s.currentIndex + delta
 	if targetIndex < 0 || targetIndex >= len(s.sceneNames) {
+		s.debugf("navigate skipped reason=out-of-range targetIndex=%d", targetIndex)
 		return 0, s.stateLocked(), false, nil
 	}
 
@@ -89,20 +119,34 @@ func (s *Service) syncVisibleWindow() error {
 	if currentEntry == nil {
 		return nil
 	}
+	s.debugf("sync-visible current=%s entries=%d", currentScene, len(entries))
 	if err := s.waitUntilReady(currentScene, 8*time.Second); err != nil {
 		return err
 	}
 
-	for _, entry := range entries {
-		if entry.sceneName == currentScene {
-			if err := windowctrl.PreparePresentationWindow(entry.hwnd); err != nil {
-				return err
-			}
+	if s.needsActivation(currentEntry.sceneName) {
+		if err := windowctrl.ActivateWindow(currentEntry.hwnd); err != nil {
+			return err
+		}
+		s.markEntryActivated(currentEntry.sceneName)
+		s.debugf("activate current scene=%s hwnd=%#x", currentEntry.sceneName, currentEntry.hwnd)
+	}
+
+	anchor := currentEntry.hwnd
+	for _, entry := range orderedStackEntries(entries, currentScene) {
+		if entry.hwnd == 0 || !entry.windowReady {
 			continue
 		}
-		if entry.hwnd != 0 {
-			_ = windowctrl.HideWindow(entry.hwnd)
+		if !s.needsStackBelow(entry.sceneName, anchor) {
+			anchor = entry.hwnd
+			continue
 		}
+		if err := windowctrl.StackWindowBelow(entry.hwnd, anchor); err != nil {
+			return err
+		}
+		s.markEntryStackedBelow(entry.sceneName, anchor)
+		s.debugf("stack below scene=%s hwnd=%#x anchor=%#x", entry.sceneName, entry.hwnd, anchor)
+		anchor = entry.hwnd
 	}
 
 	return nil
@@ -134,12 +178,76 @@ func (s *Service) waitUntilReady(sceneName string, timeout time.Duration) error 
 	for time.Now().Before(deadline) {
 		s.mu.Lock()
 		entry := s.pool[sceneName]
-		ready := entry != nil && entry.ready && entry.hwnd != 0
+		ready := entry != nil &&
+			entry.windowReady &&
+			entry.frameReady &&
+			entry.hwnd != 0 &&
+			!entry.frameReadyAt.IsZero() &&
+			time.Since(entry.frameReadyAt) >= 220*time.Millisecond
 		s.mu.Unlock()
 		if ready {
+			s.debugf("wait-ready satisfied scene=%s hwnd=%#x warmFor=%s", sceneName, entry.hwnd, time.Since(entry.frameReadyAt).Round(10*time.Millisecond))
 			return nil
 		}
 		time.Sleep(120 * time.Millisecond)
 	}
 	return fmt.Errorf("场景 %s 窗口准备超时", sceneName)
+}
+
+func (s *Service) markEntryActivated(sceneName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry := s.pool[sceneName]
+	if entry != nil {
+		entry.activatedAt = time.Now()
+		entry.stackedBelow = 0
+	}
+}
+
+func (s *Service) markEntryStackedBelow(sceneName string, anchor uintptr) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry := s.pool[sceneName]
+	if entry != nil {
+		entry.stackedBelow = anchor
+	}
+}
+
+func (s *Service) needsActivation(sceneName string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry := s.pool[sceneName]
+	return entry != nil && entry.activatedAt.IsZero()
+}
+
+func (s *Service) needsStackBelow(sceneName string, anchor uintptr) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry := s.pool[sceneName]
+	return entry != nil && entry.stackedBelow != anchor
+}
+
+func sceneNameOf(entry *poolEntry) string {
+	if entry == nil {
+		return ""
+	}
+	return entry.sceneName
+}
+
+func orderedStackEntries(entries []*poolEntry, currentScene string) []*poolEntry {
+	ordered := make([]*poolEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry == nil || entry.sceneName == currentScene {
+			continue
+		}
+		ordered = append(ordered, entry)
+	}
+	slices.SortFunc(ordered, func(a *poolEntry, b *poolEntry) int {
+		return a.index - b.index
+	})
+	return ordered
 }

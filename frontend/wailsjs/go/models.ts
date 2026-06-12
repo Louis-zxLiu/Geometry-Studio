@@ -687,6 +687,60 @@ export namespace bridge {
 	        this.message = source["message"];
 	    }
 	}
+	export class ScreeningSessionState {
+	    active: boolean;
+	    sceneNames: string[];
+	    currentIndex: number;
+	    currentSceneName: string;
+	    poolSize: number;
+	    animation: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScreeningSessionState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.active = source["active"];
+	        this.sceneNames = source["sceneNames"];
+	        this.currentIndex = source["currentIndex"];
+	        this.currentSceneName = source["currentSceneName"];
+	        this.poolSize = source["poolSize"];
+	        this.animation = source["animation"];
+	    }
+	}
+	export class ScreeningStartRequest {
+	    sceneNames: string[];
+	    startIndex: number;
+	    poolSize: number;
+	    animation: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScreeningStartRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sceneNames = source["sceneNames"];
+	        this.startIndex = source["startIndex"];
+	        this.poolSize = source["poolSize"];
+	        this.animation = source["animation"];
+	    }
+	}
+	export class ScreeningStopResult {
+	    handled: boolean;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScreeningStopResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.handled = source["handled"];
+	        this.message = source["message"];
+	    }
+	}
 	
 	export class SubscriptionPurchaseResult {
 	    configured: boolean;
