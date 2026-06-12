@@ -90,13 +90,3 @@ func (s *Service) markEntryFrameReady(sceneName string) {
 		}
 	}
 }
-
-func (s *Service) hasReadyCurrentWindow() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if !s.active || s.currentIndex < 0 || s.currentIndex >= len(s.sceneNames) {
-		return false
-	}
-	entry := s.pool[s.sceneNames[s.currentIndex]]
-	return entry != nil && entry.windowReady && entry.frameReady && entry.hwnd != 0
-}

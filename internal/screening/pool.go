@@ -117,16 +117,6 @@ func (s *Service) reconcilePool() error {
 	return nil
 }
 
-func (s *Service) desiredSceneSetLocked() map[string]struct{} {
-	desiredScenes := map[string]struct{}{}
-	for _, index := range s.targetIndicesLocked() {
-		if index >= 0 && index < len(s.sceneNames) {
-			desiredScenes[s.sceneNames[index]] = struct{}{}
-		}
-	}
-	return desiredScenes
-}
-
 func (s *Service) releaseEntry(entry *poolEntry) {
 	if entry == nil {
 		return
