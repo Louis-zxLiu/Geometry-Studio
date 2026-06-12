@@ -12,145 +12,255 @@ output :
   - control : 任何图形，不能以直觉写代码，必须要按照analysis的代数结果来确定！
   - ignore : 忽略svg里面的具体内容，关注其子图布局即可，因为其内容很可能是错误的（设计者不会写svg） 
   - style :
-      - beauty : 莫兰迪色系 塔夫特 半透明投影 默认无任何文字 如果有指令默认宋体与cm字体 
+      - color: |
+        马卡龙莫兰迪浅色系
+        本色系采用 HSL 色彩空间下的粉彩化生成模型。背景采用偏黄暖白色，明度 L > 0.96；文字采用中性深灰，明度 L ≈ 0.29。主色固定在若干柔和色相锚点 H ∈ {4°, 24°, 83°, 159°, 228°}，并约束为高明度 L ≈ 0.80 ~ 0.90、低到中饱和度 S ≈ 0.35 ~ 0.60。
+        每个主色由公式 Color_i = (1 - α) × HSL(H_i, S, L) + α × BG 生成，即先在 HSL 空间得到基础色，再与暖白背景色进行线性混合，以获得统一的马卡龙粉彩效果。辅助线采用低饱和灰蓝；强调色保持同色相或邻近色相，但降低背景混合比例 α，使其在统一风格中具备更高识别度。
+      - beauty : 塔夫特 半透明投影 默认无任何文字 如果有指令默认宋体与cm字体 不解释 以图形代替语言 
       - logic : 正交投影 无透视畸变 经典的立体几何考卷视角
       - shape : 真实比例 适用打印 细线条 无非必要刻度 网格 边框 动点-虚线/启用使用交互，增加复选框与拖动条
       - layout : 选择：单图/多子图(伪动态)/Animation 3D与2D混合 使用bbox_inches='tight' fig.subplots_adjust ax.text2D(...) transparent=True
-  - marker : 对于图形与点的标注，默认只有基本的点ABCD，或需要标记的边长r,h，其它使用颜色和透明度渐变等来代替标注
+  - marker : 对于图形与点的标注，默认只有基本的点$A$$B$$C$$D$，或需要标记的边长r,h，其它使用颜色和透明度渐变等来代替标注
   - Matplotlib-rule : 如果涉及到曲面请直接使用原生 matplotlib 的 plot_surface 或 plot_trisurf，mesh 默认 60-90，优先平衡清晰度与交互性能
   - example : |
      这是学习的，不是复刻的例子。
      '''
-      import matplotlib as mpl
-      import matplotlib.pyplot as plt
-      import numpy as np
-      from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-      from matplotlib.widgets import Slider, Button, CheckButtons
-      mpl.rcParams['lines.antialiased'] = True
-      mpl.rcParams['patch.antialiased'] = True
-      # 默认旋转参数需要遵守
-      mpl.rcParams["axes3d.mouserotationstyle"] = "azel"
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        from matplotlib.widgets import Slider, Button, CheckButtons
 
-      plt.rcParams.update({
-          "font.family": "SimSun", 
-          "mathtext.fontset": "stix", 
-          "axes.unicode_minus": False, 
-          "font.size": 11
-      })
+        mpl.rcParams['lines.antialiased'] = True
+        mpl.rcParams['patch.antialiased'] = True
 
-      MORANDI = {
-          'plane_alpha': '#D0C8C6',  # 灰粉 
-          'plane_beta': '#B5BDB5',   # 豆绿 
-          'plane_gamma': '#A8B1C2',  # 雾蓝 
-          'line_main': '#333333',    # 深灰 
-          'line_aux': '#999999',     # 浅灰 
-      }
+        # 默认参数需要遵守--------------
+        mpl.rcParams["axes3d.mouserotationstyle"] = "azel"
+        plt.rcParams.update({
+            "font.family": "SimHei",
+            "mathtext.fontset": "cm",   
+            "axes.unicode_minus": False,
+            "font.size": 11
+        })
+        # ------------------------------------
+        # 色系公式计算
+        MORANDI = {
+            'plane_alpha': '#BFD4E6', 
+            'plane_beta':  '#B8DCCF', 
+            'plane_gamma': '#AFC4E8',
+            'line_main':   '#2F3A40', 
+            'line_aux':    '#AEB9BF', 
+            'bg':          '#F7FAFA', 
+            'track':       '#E8EEEE', 
+        }
 
-      def calc_intersection(theta_deg):
-          """计算动平面绕横轴旋转切割单位正方体的截面"""
-          theta = np.radians(theta_deg)
-          t = np.tan(theta)
-          if t <= 1:
-              return [(0, 0, 0), (1, 0, 0), (1, 1, t), (0, 1, t)], np.sqrt(1 + t ** 2)
-          return [(0, 0, 0), (1, 0, 0), (1, 1/t, 1), (0, 1/t, 1)], np.sqrt((1/t) ** 2 + 1)
+        def calc_intersection(theta_deg):
+            """计算动平面绕横轴旋转切割单位正方体的截面"""
+            theta = np.radians(theta_deg)
+            t = np.tan(theta)
+            if t <= 1:
+                return [(0, 0, 0), (1, 0, 0), (1, 1, t), (0, 1, t)], np.sqrt(1 + t ** 2)
+            return [(0, 0, 0), (1, 0, 0), (1, 1/t, 1), (0, 1/t, 1)], np.sqrt((1/t) ** 2 + 1)
 
-      fig = plt.figure(figsize=(10, 5), facecolor='white')
-
-      # [左图]: 3D 正交视图
-      ax1 = fig.add_axes([0.02, 0.22, 0.45, 0.7], projection='3d', proj_type='ortho')
-      ax1.set_axis_off()
-      ax1.view_init(elev=20, azim=-45)
-      ax1.set_xlim(0, 1); ax1.set_ylim(0, 1); ax1.set_zlim(0, 1)
-      ax1.text2D(0.5, 0.95, "空间几何: 动平面截面演化", transform=ax1.transAxes, ha='center', fontsize=13)
-
-      # [右图]: 2D 曲线
-      ax2 = fig.add_axes([0.55, 0.25, 0.38, 0.6])
-      ax2.spines['top'].set_visible(False)
-      ax2.spines['right'].set_visible(False)
-      ax2.spines['left'].set_color(MORANDI['line_aux'])
-      ax2.spines['bottom'].set_color(MORANDI['line_aux'])
-      ax2.set_title("截面积曲线 $S(\\theta)$", pad=15, fontsize=13)
-      ax2.set_xlabel("$\\theta (^{\\circ})$", color=MORANDI['line_main'])
+        fig = plt.figure(figsize=(10, 5), facecolor=MORANDI['bg'])
 
 
-      cube_lines = []
-      for p in [0, 1]:
-          cube_lines.append(ax1.plot([0, 1], [p, p], [0, 0], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
-          cube_lines.append(ax1.plot([0, 1], [p, p], [1, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
-          cube_lines.append(ax1.plot([p, p], [0, 1], [0, 0], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
-          cube_lines.append(ax1.plot([p, p], [0, 1], [1, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
-          cube_lines.append(ax1.plot([p, p], [0, 0], [0, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
-          cube_lines.append(ax1.plot([p, p], [1, 1], [0, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+        # 默认投影为'ortho',聚焦研究立体空间请用'persp'
+        ax1 = fig.add_axes([0.02, 0.22, 0.45, 0.7], projection='3d', proj_type='ortho')
+        ax1.set_axis_off()
+        ax1.set_facecolor(MORANDI['bg'])
+        ax1.view_init(elev=20, azim=-45)
 
-      # 初始化截面、2D 曲线与面积填充
-      init_verts, init_area = calc_intersection(30)
-      poly3d = Poly3DCollection([init_verts], facecolors=MORANDI['plane_alpha'], edgecolors=MORANDI['line_main'], linewidths=1.2, alpha=0.4)
-      ax1.add_collection3d(poly3d)
+        ax1.set_xlim(0, 1)
+        ax1.set_ylim(0, 1)
+        ax1.set_zlim(0, 1)
 
-      thetas = np.linspace(0, 89.9, 200)
-      areas = [calc_intersection(th)[1] for th in thetas]
-      ax2.plot(thetas, areas, color=MORANDI['plane_gamma'], lw=1.2)
-      dot2d, = ax2.plot([30], [init_area], 'o', color=MORANDI['line_main'], ms=5)
+        ax1.text2D(
+            0.5, 0.95,
+            "空间几何: 动平面截面演化",
+            transform=ax1.transAxes,
+            ha='center',
+            fontsize=13,
+            color=MORANDI['line_main']
+        )
 
-      # 使用经典通用的 fill_between 填充阴影面积
-      fill_area = ax2.fill_between(thetas, areas, where=(thetas <= 30), color=MORANDI['plane_gamma'], alpha=0.15)
+        # [右图]: 2D 曲线
+        ax2 = fig.add_axes([0.55, 0.25, 0.38, 0.6])
+        ax2.set_facecolor(MORANDI['bg'])
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+        ax2.spines['left'].set_color(MORANDI['line_aux'])
+        ax2.spines['bottom'].set_color(MORANDI['line_aux'])
+        ax2.tick_params(colors=MORANDI['line_main'])
 
-      # 4. 布局交互 UI 组件
-      ax_slider = fig.add_axes([0.15, 0.08, 0.40, 0.02])  
-      ax_chk    = fig.add_axes([0.62, 0.05, 0.15, 0.08])  
-      ax_btn    = fig.add_axes([0.82, 0.06, 0.08, 0.05])  
+        ax2.set_title("截面积曲线 $S(\\theta)$", pad=15, fontsize=13, color=MORANDI['line_main'])
+        ax2.set_xlabel("$\\theta (^{\\circ})$", color=MORANDI['line_main'])
 
-      # 滑块配置
-      slider = Slider(ax_slider, '旋转角 $\\theta$', 0, 89.9, valinit=30, color=MORANDI['plane_beta'], track_color='#EFEFEF')
-      ax_slider.set_axis_off()
-      slider.valtext.set_color(MORANDI['line_main'])
 
-      # 复选框配置：使用通用、安全的传统 API 避坑
-      chk = CheckButtons(ax_chk, ['辅助框线'], [True])
-      ax_chk.set_axis_off()
+        cube_lines = []
+        for p in [0, 1]:
+            cube_lines.append(ax1.plot([0, 1], [p, p], [0, 0], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+            cube_lines.append(ax1.plot([0, 1], [p, p], [1, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+            cube_lines.append(ax1.plot([p, p], [0, 1], [0, 0], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+            cube_lines.append(ax1.plot([p, p], [0, 1], [1, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+            cube_lines.append(ax1.plot([p, p], [0, 0], [0, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
+            cube_lines.append(ax1.plot([p, p], [1, 1], [0, 1], color=MORANDI['line_aux'], lw=0.8, ls='--')[0])
 
-      # 通过 ax_chk 内部的线条和图形对象直接、安全地修改样式
-      for patch in ax_chk.patches:
-          patch.set_edgecolor(MORANDI['line_aux'])
-          patch.set_linewidth(0.8)
-          patch.set_facecolor('white')
-      for line in ax_chk.lines:
-          line.set_color(MORANDI['line_main'])
-          line.set_linewidth(1.2)
 
-      # 重置按钮配置
-      btn = Button(ax_btn, '重置', color='white', hovercolor='#F5F5F5')
-      for spine in ax_btn.spines.values(): 
-          spine.set_color(MORANDI['line_aux'])
-          spine.set_linewidth(0.8)
-      btn.label.set_color(MORANDI['line_main'])
+        init_verts, init_area = calc_intersection(30)
 
-      # 紧凑的高效回调逻辑
-      def update(val):
-          theta = slider.val
-          verts, area = calc_intersection(theta)
-          poly3d.set_verts([verts])
-          dot2d.set_data([theta], [area])
-          
-          # 动态刷新阴影：先移除旧的，再一行 fill_between 重新绘制
-          global fill_area
-          fill_area.remove()
-          fill_area = ax2.fill_between(thetas, areas, where=(thetas <= theta), color=MORANDI['plane_gamma'], alpha=0.15)
-          fig.canvas.draw_idle()
+        poly3d = Poly3DCollection(
+            [init_verts],
+            facecolors=MORANDI['plane_alpha'],
+            edgecolors=MORANDI['line_main'],
+            linewidths=1.2,
+            alpha=0.4
+        )
+        ax1.add_collection3d(poly3d)
 
-      def toggle_visibility(label):
-          state = chk.get_status()[0]
-          for line in cube_lines:
-              line.set_visible(state)
-          fig.canvas.draw_idle()
 
-      slider.on_changed(update)
-      chk.on_clicked(toggle_visibility)
-      btn.on_clicked(lambda event: slider.reset())
+        # 顶点标签使用美元 $A$ $B$ $C$ $D$
+        vertex_labels = []
 
-      plt.show()
-      '''
+        def draw_vertex_labels(verts):
+            global vertex_labels
+
+            for txt in vertex_labels:
+                txt.remove()
+            vertex_labels = []
+
+            labels = [r"$A$", r"$B$", r"$C$", r"$D$"]
+
+            for label, (x, y, z) in zip(labels, verts):
+                dx = -0.04 if x == 0 else 0.04
+                dy = -0.04 if y == 0 else 0.04
+                dz = -0.04 if z == 0 else 0.04
+
+                txt = ax1.text(
+                    x + dx, y + dy, z + dz,
+                    label,
+                    fontsize=13,
+                    color=MORANDI['line_main'],
+                    ha='center',
+                    va='center'
+                )
+                vertex_labels.append(txt)
+
+        draw_vertex_labels(init_verts)
+
+
+        thetas = np.linspace(0, 89.9, 200)
+        areas = [calc_intersection(th)[1] for th in thetas]
+
+        ax2.plot(thetas, areas, color=MORANDI['plane_gamma'], lw=1.2)
+        dot2d, = ax2.plot([30], [init_area], 'o', color=MORANDI['line_main'], ms=5)
+
+        # 使用经典通用的 fill_between 填充阴影面积
+        fill_area = ax2.fill_between(
+            thetas,
+            areas,
+            where=(thetas <= 30),
+            color=MORANDI['plane_gamma'],
+            alpha=0.15
+        )
+
+
+        # 布局交互 UI 组件
+        ax_slider = fig.add_axes([0.15, 0.08, 0.40, 0.02])
+        ax_chk    = fig.add_axes([0.62, 0.05, 0.15, 0.08])
+        ax_btn    = fig.add_axes([0.82, 0.06, 0.08, 0.05])
+
+        ax_slider.set_facecolor(MORANDI['bg'])
+        ax_chk.set_facecolor(MORANDI['bg'])
+        ax_btn.set_facecolor(MORANDI['bg'])
+
+
+        # 滑块配置
+        slider = Slider(
+            ax_slider,
+            '旋转角 $\\theta$',
+            0,
+            89.9,
+            valinit=30,
+            color=MORANDI['plane_beta'],
+            track_color=MORANDI['track']
+        )
+
+        ax_slider.set_axis_off()
+        slider.label.set_color(MORANDI['line_main'])
+        slider.valtext.set_color(MORANDI['line_main'])
+
+
+        # 复选框配置：使用通用、安全的传统 API 避坑
+        chk = CheckButtons(ax_chk, ['辅助框线'], [True])
+        ax_chk.set_axis_off()
+
+        for text in chk.labels:
+            text.set_color(MORANDI['line_main'])
+
+        # 通过 ax_chk 内部的线条和图形对象直接、安全地修改样式
+        for patch in ax_chk.patches:
+            patch.set_edgecolor(MORANDI['line_aux'])
+            patch.set_linewidth(0.8)
+            patch.set_facecolor('white')
+
+        for line in ax_chk.lines:
+            line.set_color(MORANDI['line_main'])
+            line.set_linewidth(1.2)
+
+
+        # 重置按钮配置
+        btn = Button(ax_btn, '重置', color='white', hovercolor='#F1F6F6')
+
+        for spine in ax_btn.spines.values():
+            spine.set_color(MORANDI['line_aux'])
+            spine.set_linewidth(0.8)
+
+        btn.label.set_color(MORANDI['line_main'])
+
+
+        # 紧凑的高效回调逻辑
+        def update(val):
+            theta = slider.val
+            verts, area = calc_intersection(theta)
+
+            poly3d.set_verts([verts])
+            draw_vertex_labels(verts)
+
+            dot2d.set_data([theta], [area])
+
+            # 动态刷新阴影：先移除旧的，再一行 fill_between 重新绘制
+            global fill_area
+            fill_area.remove()
+            fill_area = ax2.fill_between(
+                thetas,
+                areas,
+                where=(thetas <= theta),
+                color=MORANDI['plane_gamma'],
+                alpha=0.15
+            )
+
+            fig.canvas.draw_idle()
+
+
+        def toggle_visibility(label):
+            state = chk.get_status()[0]
+
+            for line in cube_lines:
+                line.set_visible(state)
+
+            fig.canvas.draw_idle()
+
+
+        slider.on_changed(update)
+        chk.on_clicked(toggle_visibility)
+        btn.on_clicked(lambda event: slider.reset())
+
+        plt.show()
+    '''
 notice : 
+  - 请按直觉写出颜色，不要在代码中计算颜色
+  - 收起你的喧嚣的介绍文字，真正的美是潜移默化的传递而深入人心的
   - 代码需要用一对三反引号包括，不要二次使用两对三反引号```去写代码片段引起误解；
   - 把“中文”从 $...$ 和 \text{} 中拿出来，中文和数学符号分开写，r"1. 将圆等分成 $n$ 个扇形" + "\n"，中文不支持任何的latex命令，$S_{中文}$ 是完全错误的
   - 考虑Matplotlib的常见参数和方法，不要使用可能出现幻觉的，例如matplotlib.widgets.Slider 控件没有 valcolor 这个参数。
