@@ -47,11 +47,20 @@ func (s *Service) onProcessFrameReady(sceneName string) {
 
 func (s *Service) onProcessExited(sceneName string) {
 	s.mu.Lock()
+	_, retiring := s.retiring[sceneName]
+	if retiring {
+		delete(s.retiring, sceneName)
+	}
 	if _, exists := s.pool[sceneName]; exists {
 		delete(s.pool, sceneName)
 	}
 	active := s.active
 	s.mu.Unlock()
+
+	if retiring {
+		s.debugf("process exited retired scene=%s", sceneName)
+		return
+	}
 
 	if active {
 		s.debugf("process exited while active scene=%s triggering reconcile", sceneName)

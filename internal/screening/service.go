@@ -42,6 +42,7 @@ type Service struct {
 	poolSize      int
 	animation     Animation
 	pool          map[string]*poolEntry
+	retiring      map[string]struct{}
 	navInProgress bool
 	stopping      bool
 }
@@ -52,6 +53,7 @@ func NewService(workspaces *workspaces.Manager, runner runController, callbacks 
 		runner:     runner,
 		callbacks:  callbacks,
 		pool:       map[string]*poolEntry{},
+		retiring:   map[string]struct{}{},
 	}
 	service.scheduler = newScheduler(service)
 	return service
@@ -71,8 +73,5 @@ func (s *Service) Next() (SessionState, error) {
 }
 
 func (s *Service) Previous() (SessionState, error) {
-	if s.scheduler != nil {
-		s.scheduler.requestPrevious()
-	}
 	return s.State(), nil
 }

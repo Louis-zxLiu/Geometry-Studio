@@ -4,7 +4,6 @@ const (
 	screeningWindowReadySentinel = "__PLOTKITYCAT_SCREENING_WINDOW_READY__"
 	screeningFrameReadySentinel  = "__PLOTKITYCAT_SCREENING_FRAME_READY__"
 	screeningNextSentinel        = "__PLOTKITYCAT_SCREENING_NEXT__"
-	screeningPrevSentinel        = "__PLOTKITYCAT_SCREENING_PREV__"
 	screeningStopSentinel        = "__PLOTKITYCAT_SCREENING_STOP__"
 )
 
@@ -18,10 +17,12 @@ import time
 WINDOW_READY = os.environ.get("PLOTKITYCAT_SCREENING_WINDOW_READY_SENTINEL", "__PLOTKITYCAT_SCREENING_WINDOW_READY__")
 FRAME_READY = os.environ.get("PLOTKITYCAT_SCREENING_FRAME_READY_SENTINEL", "__PLOTKITYCAT_SCREENING_FRAME_READY__")
 NEXT = os.environ.get("PLOTKITYCAT_SCREENING_NEXT_SENTINEL", "__PLOTKITYCAT_SCREENING_NEXT__")
-PREV = os.environ.get("PLOTKITYCAT_SCREENING_PREV_SENTINEL", "__PLOTKITYCAT_SCREENING_PREV__")
 STOP = os.environ.get("PLOTKITYCAT_SCREENING_STOP_SENTINEL", "__PLOTKITYCAT_SCREENING_STOP__")
 EMITTED_WINDOW_READY = False
 EMITTED_FRAME_READY = False
+DOUBLE_CLICK_THRESHOLD_SECONDS = 1.0
+HOT_CORNER_WIDTH_RATIO = 0.18
+HOT_CORNER_HEIGHT_RATIO = 0.22
 
 def emit_window_ready():
     global EMITTED_WINDOW_READY
@@ -59,20 +60,45 @@ def patch_matplotlib():
                 continue
 
             def on_click(event, canvas=canvas):
-                if not getattr(event, "dblclick", False):
+                button = getattr(event, "button", None)
+                if button == 3:
+                    emit_navigation(STOP)
                     return
-                width = 0
+                if button != 1:
+                    return
+
+                now = time.monotonic()
+                last_click_at = getattr(canvas, "_plotkitycat_last_click_at", 0.0)
+                canvas._plotkitycat_last_click_at = now
+                interval = now - last_click_at
+                if interval > DOUBLE_CLICK_THRESHOLD_SECONDS:
+                    return
+
                 try:
-                    width = canvas.width()
+                    width = float(canvas.width())
+                    height = float(canvas.height())
                 except Exception:
-                    width = 0
-                if width and event.x is not None and event.x < width / 2:
-                    emit_navigation(PREV)
+                    width = 0.0
+                    height = 0.0
+
+                x = getattr(event, "x", None)
+                y = getattr(event, "y", None)
+                in_hot_corner = False
+                if width > 0 and height > 0 and x is not None and y is not None:
+                    in_hot_corner = (
+                        x <= width * HOT_CORNER_WIDTH_RATIO and
+                        y >= height * (1 - HOT_CORNER_HEIGHT_RATIO)
+                    )
+
+                if in_hot_corner:
+                    emit_navigation(NEXT)
                     return
+
                 emit_navigation(NEXT)
 
             def on_key(event):
-                if getattr(event, "key", "") == "escape":
+                key = str(getattr(event, "key", "")).lower()
+                if key == "escape":
                     emit_navigation(STOP)
 
             def on_draw(event):
@@ -85,6 +111,7 @@ def patch_matplotlib():
 
     def wrapped_show(*args, **kwargs):
         install_callbacks()
+
         emit_window_ready()
 
         def request_first_frame():

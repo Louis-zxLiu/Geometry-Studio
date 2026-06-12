@@ -57,3 +57,7 @@ func SendWindowToPoolLayer(hwnd uintptr) error {
 func AnimateTransition(from uintptr, to uintptr, animation Animation) error {
 	return nil
 }
+
+func AnimateExit(from uintptr, animation Animation) error {
+	return nil
+}

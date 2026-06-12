@@ -3,7 +3,6 @@ package screening
 import (
 	"bufio"
 	"bytes"
-	"log"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -58,7 +57,6 @@ func launchSceneProcess(workspaceManager *workspaces.Manager, sceneName string, 
 		"PLOTKITYCAT_SCREENING_WINDOW_READY_SENTINEL="+screeningWindowReadySentinel,
 		"PLOTKITYCAT_SCREENING_FRAME_READY_SENTINEL="+screeningFrameReadySentinel,
 		"PLOTKITYCAT_SCREENING_NEXT_SENTINEL="+screeningNextSentinel,
-		"PLOTKITYCAT_SCREENING_PREV_SENTINEL="+screeningPrevSentinel,
 		"PLOTKITYCAT_SCREENING_STOP_SENTINEL="+screeningStopSentinel,
 	)
 	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
@@ -107,7 +105,6 @@ func (p *sceneProcess) watchStdout(stdoutPipe interface {
 		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		for scanner.Scan() {
 			token := strings.TrimSpace(scanner.Text())
-			logScreeningf("process stdout scene=%s pid=%d token=%s", p.sceneName, p.pid, token)
 			switch token {
 			case screeningWindowReadySentinel:
 				if callbacks.onWindowReady != nil {
@@ -120,10 +117,6 @@ func (p *sceneProcess) watchStdout(stdoutPipe interface {
 			case screeningNextSentinel:
 				if callbacks.onNext != nil {
 					callbacks.onNext()
-				}
-			case screeningPrevSentinel:
-				if callbacks.onPrev != nil {
-					callbacks.onPrev()
 				}
 			case screeningStopSentinel:
 				if callbacks.onStop != nil {
@@ -160,5 +153,4 @@ func (p *sceneProcess) watchExit(callbacks processCallbacks) {
 }
 
 func logScreeningf(format string, args ...any) {
-	log.Printf("[screening] "+format, args...)
 }

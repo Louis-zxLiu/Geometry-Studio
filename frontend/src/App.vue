@@ -74,7 +74,7 @@ const theme = reactive(useTheme());
             :is-running="workspace.isRunning"
             :is-screening-active="workspace.isScreeningActive"
             @packages="workspace.openPackageTransferDialog"
-            @screening="workspace.openScreeningDialog"
+            @screening="workspace.triggerScreeningAction"
             @stop="workspace.stopCurrentRun"
             @run="workspace.runCurrentScript"
           />

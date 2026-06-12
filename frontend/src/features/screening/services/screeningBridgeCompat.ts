@@ -22,7 +22,6 @@ export type ScreeningStopResultLike = {
 type BridgeAppCompat = {
   GetScreeningState?: () => Promise<ScreeningSessionStateLike>;
   NextScreeningPage?: () => Promise<ScreeningSessionStateLike>;
-  PreviousScreeningPage?: () => Promise<ScreeningSessionStateLike>;
   StartScreening?: (request: ScreeningStartRequestLike) => Promise<ScreeningSessionStateLike>;
   StopScreening?: () => Promise<ScreeningStopResultLike>;
 };
@@ -37,10 +36,6 @@ export async function startScreening(request: ScreeningStartRequestLike) {
 
 export async function nextScreeningPage() {
   return callBridge("NextScreeningPage", (app) => app.NextScreeningPage?.());
-}
-
-export async function previousScreeningPage() {
-  return callBridge("PreviousScreeningPage", (app) => app.PreviousScreeningPage?.());
 }
 
 export async function stopScreening() {

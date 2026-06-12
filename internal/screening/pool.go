@@ -50,9 +50,7 @@ func (s *Service) ensureEntry(index int) error {
 		onNext: func() {
 			_, _ = s.Next()
 		},
-		onPrev: func() {
-			_, _ = s.Previous()
-		},
+		onPrev: func() {},
 		onStop: func() {
 			_, _ = s.Stop()
 		},
@@ -92,19 +90,30 @@ func (s *Service) reconcilePool() error {
 		s.mu.Unlock()
 		return nil
 	}
+	desired := s.desiredSceneSetLocked()
 	missingIndices := make([]int, 0)
+	releasedEntries := make([]*poolEntry, 0)
 
 	for index := range s.sceneNames {
-		if index < 0 || index >= len(s.sceneNames) {
+		sceneName := s.sceneNames[index]
+		if _, keep := desired[sceneName]; !keep {
+			if entry, exists := s.pool[sceneName]; exists {
+				s.debugf("reconcile mark-extra scene=%s index=%d", sceneName, index)
+				releasedEntries = append(releasedEntries, entry)
+				delete(s.pool, sceneName)
+			}
 			continue
 		}
-		sceneName := s.sceneNames[index]
 		if _, exists := s.pool[sceneName]; !exists {
 			s.debugf("reconcile mark-missing scene=%s index=%d", sceneName, index)
 			missingIndices = append(missingIndices, index)
 		}
 	}
 	s.mu.Unlock()
+
+	for _, entry := range releasedEntries {
+		s.releaseEntry(entry)
+	}
 
 	for _, index := range missingIndices {
 		if err := s.ensureEntry(index); err != nil {
@@ -118,11 +127,22 @@ func (s *Service) reconcilePool() error {
 }
 
 func (s *Service) releaseEntry(entry *poolEntry) {
+	s.releaseEntryWithMode(entry, true)
+}
+
+func (s *Service) releaseEntryWithoutPooling(entry *poolEntry) {
+	s.releaseEntryWithMode(entry, false)
+}
+
+func (s *Service) releaseEntryWithMode(entry *poolEntry, sendToPool bool) {
 	if entry == nil {
 		return
 	}
-	s.debugf("release-entry scene=%s hwnd=%#x pid=%d", entry.sceneName, entry.hwnd, entryPID(entry))
-	if entry.hwnd != 0 {
+	s.debugf("release-entry scene=%s hwnd=%#x pid=%d sendToPool=%t", entry.sceneName, entry.hwnd, entryPID(entry), sendToPool)
+	s.mu.Lock()
+	s.retiring[entry.sceneName] = struct{}{}
+	s.mu.Unlock()
+	if sendToPool && entry.hwnd != 0 {
 		_ = windowctrl.SendWindowToPoolLayer(entry.hwnd)
 	}
 	s.markEntryStackedBelow(entry.sceneName, 0)
@@ -149,6 +169,16 @@ func (s *Service) sceneNameAt(index int) string {
 		return ""
 	}
 	return s.sceneNames[index]
+}
+
+func (s *Service) desiredSceneSetLocked() map[string]struct{} {
+	desired := make(map[string]struct{}, s.poolSize)
+	for _, index := range s.targetIndicesLocked() {
+		if index >= 0 && index < len(s.sceneNames) {
+			desired[s.sceneNames[index]] = struct{}{}
+		}
+	}
+	return desired
 }
 
 func entryPID(entry *poolEntry) int {

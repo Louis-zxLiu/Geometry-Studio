@@ -4,7 +4,6 @@ import { getErrorMessage } from "../../../lib/errors";
 import {
   getScreeningState,
   nextScreeningPage,
-  previousScreeningPage,
   startScreening,
   stopScreening,
   type ScreeningSessionStateLike,
@@ -45,6 +44,14 @@ export function useScreeningWorkspace(options: ScreeningWorkspaceOptions) {
   function openDialog() {
     seedSelection();
     isDialogOpen.value = true;
+  }
+
+  function triggerScreeningAction() {
+    if (isActive.value) {
+      void endScreening();
+      return;
+    }
+    openDialog();
   }
 
   function closeDialog() {
@@ -124,14 +131,6 @@ export function useScreeningWorkspace(options: ScreeningWorkspaceOptions) {
     }
   }
 
-  async function goPrevious() {
-    try {
-      applyState(await previousScreeningPage());
-    } catch (error) {
-      options.onError(getErrorMessage(error));
-    }
-  }
-
   function applyState(state?: ScreeningSessionStateLike) {
     isActive.value = !!state?.active;
     currentSceneName.value =
@@ -168,12 +167,12 @@ export function useScreeningWorkspace(options: ScreeningWorkspaceOptions) {
     currentScreeningIndex: currentIndex,
     currentScreeningSceneName: currentSceneName,
     goToNextScreeningPage: goNext,
-    goToPreviousScreeningPage: goPrevious,
     isScreeningActive: isActive,
     isScreeningDialogOpen: isDialogOpen,
     isStartingScreening: isStarting,
     isStoppingScreening: isStopping,
     openScreeningDialog: openDialog,
+    triggerScreeningAction,
     screeningDialogItems: dialogItems,
     selectedScreeningScenes: selectedScenes,
     stopScreening: endScreening,

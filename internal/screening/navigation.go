@@ -18,6 +18,9 @@ func (s *Service) handleSchedulerCommand(cmd schedulerCommand) {
 		}
 	case schedulerCommandNext:
 		s.debugf("scheduler next tick")
+		if s.finishOnNextAtEnd() {
+			return
+		}
 		if _, err := s.navigate(1); err != nil {
 			s.debugf("scheduler next failed err=%v", err)
 		}
@@ -27,6 +30,78 @@ func (s *Service) handleSchedulerCommand(cmd schedulerCommand) {
 			s.debugf("scheduler prev failed err=%v", err)
 		}
 	}
+}
+
+func (s *Service) finishOnNextAtEnd() bool {
+	s.mu.Lock()
+	atEnd := s.active && len(s.sceneNames) > 0 && s.currentIndex >= len(s.sceneNames)-1
+	s.mu.Unlock()
+	if !atEnd {
+		return false
+	}
+
+	s.debugf("next-at-end finishing session")
+	if err := s.finishSessionAfterFinalPage(); err != nil {
+		s.debugf("next-at-end finish failed err=%v", err)
+	}
+	return true
+}
+
+func (s *Service) finishSessionAfterFinalPage() error {
+	sceneName, entry, animation, entries, state, shouldStop, alreadyStopping := s.finalPageFinishContext()
+	if alreadyStopping || !shouldStop {
+		return nil
+	}
+
+	if entry != nil && entry.hwnd != 0 {
+		s.debugf("final-page animate-exit scene=%s hwnd=%#x animation=%s", sceneName, entry.hwnd, animation)
+		if err := windowctrl.AnimateExit(entry.hwnd, windowctrl.Animation(animation)); err != nil {
+			return err
+		}
+	}
+
+	for _, poolEntry := range entries {
+		s.releaseEntryWithoutPooling(poolEntry)
+	}
+
+	s.mu.Lock()
+	s.stopping = false
+	s.mu.Unlock()
+	s.emitStopped(state)
+	s.debugf("final-page finish completed")
+	return nil
+}
+
+func (s *Service) finalPageFinishContext() (string, *poolEntry, Animation, []*poolEntry, SessionState, bool, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.active && len(s.pool) == 0 {
+		return "", nil, "", nil, SessionState{}, false, false
+	}
+	if s.stopping {
+		return "", nil, "", nil, SessionState{}, false, true
+	}
+
+	currentScene := ""
+	if s.currentIndex >= 0 && s.currentIndex < len(s.sceneNames) {
+		currentScene = s.sceneNames[s.currentIndex]
+	}
+	currentEntry := s.pool[currentScene]
+	animation := s.animation
+
+	s.stopping = true
+	entries := make([]*poolEntry, 0, len(s.pool))
+	for _, entry := range s.pool {
+		entries = append(entries, entry)
+	}
+	s.pool = map[string]*poolEntry{}
+	s.active = false
+	s.sceneNames = nil
+	s.currentIndex = 0
+	s.navInProgress = false
+
+	return currentScene, currentEntry, animation, entries, s.stateLocked(), true, false
 }
 
 func (s *Service) navigate(delta int) (SessionState, error) {
