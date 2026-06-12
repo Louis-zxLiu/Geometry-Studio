@@ -18,6 +18,7 @@ const (
 	EventAIWorkflowSucceeded = "ai:workflow_succeeded"
 	EventAIWorkflowFailed    = "ai:workflow_failed"
 	EventAIWorkflowStopped   = "ai:workflow_interrupted"
+	EventScreeningState      = "screening:state"
 )
 
 type EventPayload struct {

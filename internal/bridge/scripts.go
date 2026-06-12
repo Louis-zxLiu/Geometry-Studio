@@ -268,6 +268,9 @@ func (a *App) SaveAndRun(filename string, code string) error {
 	if err := a.requireContext(); err != nil {
 		return err
 	}
+	if a.screeningService != nil && a.screeningService.State().Active {
+		return errors.New("请先退出放映模式，再运行单个场景")
+	}
 
 	environment, err := a.GetEnvironmentStatus()
 	if err != nil {
@@ -333,6 +336,17 @@ func (a *App) SaveAndRun(filename string, code string) error {
 }
 
 func (a *App) StopCurrentRun() (RunControlResult, error) {
+	if a.screeningService != nil && a.screeningService.State().Active {
+		result, err := a.screeningService.Stop()
+		if err != nil {
+			return RunControlResult{}, err
+		}
+		return RunControlResult{
+			Handled: result.Handled,
+			Message: result.Message,
+		}, nil
+	}
+
 	handled, err := a.runner.Stop()
 	if err != nil {
 		return RunControlResult{}, err

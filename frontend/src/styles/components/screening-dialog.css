@@ -1,0 +1,133 @@
+.screening-dialog {
+  width: min(52vw, 620px);
+  min-height: 420px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 22px;
+}
+
+.screening-dialog-header {
+  display: grid;
+  gap: 10px;
+}
+
+.screening-dialog-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  letter-spacing: 0.05em;
+}
+
+.screening-scene-list {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-height: 220px;
+}
+
+.screening-scene-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 18px 0 0;
+  border: 1px solid color-mix(in srgb, var(--dialog-line), transparent 24%);
+  background: color-mix(in srgb, var(--dialog-input-bg), transparent 8%);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.screening-scene-row:hover {
+  border-color: color-mix(in srgb, var(--text), transparent 72%);
+  transform: translateX(3px);
+}
+
+.screening-scene-row.selected {
+  border-color: color-mix(in srgb, var(--accent), var(--text) 22%);
+  background: color-mix(in srgb, var(--dialog-input-focus), transparent 6%);
+}
+
+.screening-scene-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  color: var(--text);
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--dialog-line), transparent 28%);
+}
+
+.screening-scene-order.empty {
+  color: transparent;
+}
+
+.screening-scene-name {
+  padding-left: 18px;
+  color: var(--text);
+  font-size: 0.94rem;
+  letter-spacing: 0.06em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.screening-dialog-actions {
+  margin-top: 0;
+}
+
+.screening-floating-exit {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 40;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, #f7f0ea, transparent 36%);
+  background: color-mix(in srgb, #161616, transparent 38%);
+  color: #f7f0ea;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  letter-spacing: 0.12em;
+}
+
+.screening-floating-exit:hover {
+  background: color-mix(in srgb, #161616, transparent 18%);
+}
+
+.app-shell.screening-active {
+  grid-template-columns: 1fr;
+}
+
+.app-shell.screening-active .workspace-body {
+  grid-template-columns: 1fr;
+}
+
+.app-shell.screening-active .workspace-body > .editor-workspace-column {
+  min-width: 0;
+}
+
+.screening-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 31px;
+  padding: 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--text), transparent 76%);
+  color: color-mix(in srgb, var(--text), transparent 8%);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+@media (max-width: 960px) {
+  .screening-dialog {
+    width: min(90vw, 560px);
+    min-height: 380px;
+  }
+}

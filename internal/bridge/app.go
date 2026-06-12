@@ -13,6 +13,7 @@ import (
 	"plotkitycat/internal/env"
 	filestore "plotkitycat/internal/files/store"
 	"plotkitycat/internal/runner"
+	"plotkitycat/internal/screening"
 	settingspkg "plotkitycat/internal/settings"
 	"plotkitycat/internal/subscription"
 	"plotkitycat/internal/updater"
@@ -31,6 +32,7 @@ type App struct {
 	envManager          *env.Manager
 	fileStore           *filestore.Store
 	runner              *runner.Runner
+	screeningService    *screening.Service
 	aiSettingsStore     *settingspkg.AIStore
 	subscriptionService *subscription.Service
 	updateService       *updater.Service
@@ -56,6 +58,19 @@ func NewApp() *App {
 		updateService:       updater.NewService(),
 		workspaceManager:    workspaceManager,
 	}
+	app.screeningService = screening.NewService(workspaceManager, app.runner, screening.Callbacks{
+		OnError: func(err error) {
+			app.emit(EventRunFailed, RunErrorPayload{
+				Error: err.Error(),
+			})
+		},
+		OnStateChanged: func(state screening.SessionState) {
+			app.emit(EventScreeningState, mapScreeningState(state))
+		},
+		OnStopped: func(state screening.SessionState) {
+			app.emit(EventScreeningState, mapScreeningState(state))
+		},
+	})
 
 	app.aiWorkflow = newAIWorkflowService(app)
 	return app
@@ -67,6 +82,9 @@ func (a *App) Startup(ctx context.Context) {
 
 func (a *App) Shutdown(ctx context.Context) {
 	a.runner.Shutdown()
+	if a.screeningService != nil {
+		_, _ = a.screeningService.Stop()
+	}
 }
 
 func (a *App) emit(name string, payload any) {
@@ -348,5 +366,16 @@ func mapUpdateStatus(status updater.Status) UpdateStatus {
 		UpdateAvailable: status.UpdateAvailable,
 		Downloaded:      status.Downloaded,
 		ReadyToInstall:  status.ReadyToInstall,
+	}
+}
+
+func mapScreeningState(state screening.SessionState) ScreeningSessionState {
+	return ScreeningSessionState{
+		Active:           state.Active,
+		SceneNames:       append([]string(nil), state.SceneNames...),
+		CurrentIndex:     state.CurrentIndex,
+		CurrentSceneName: state.CurrentSceneName,
+		PoolSize:         state.PoolSize,
+		Animation:        state.Animation,
 	}
 }

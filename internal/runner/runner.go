@@ -237,6 +237,10 @@ func (r *Runner) finish() bool {
 }
 
 func resolvePythonCommand() (string, []string, error) {
+	return ResolvePythonCommand()
+}
+
+func ResolvePythonCommand() (string, []string, error) {
 	runtimeDir, err := paths.RuntimeDir()
 	if err != nil {
 		return "", nil, err
@@ -256,6 +260,10 @@ func resolvePythonCommand() (string, []string, error) {
 }
 
 func buildPythonEnv(runtimeDir string) []string {
+	return BuildPythonEnv(runtimeDir)
+}
+
+func BuildPythonEnv(runtimeDir string) []string {
 	env := append([]string{}, os.Environ()...)
 	qtRoot := filepath.Join(runtimeDir, "Lib", "site-packages", "PyQt5", "Qt5")
 	qtBinDir := filepath.Join(qtRoot, "bin")
@@ -274,6 +282,10 @@ func buildPythonEnv(runtimeDir string) []string {
 }
 
 func killProcessTree(pid int) error {
+	return KillProcessTree(pid)
+}
+
+func KillProcessTree(pid int) error {
 	if pid <= 0 {
 		return nil
 	}

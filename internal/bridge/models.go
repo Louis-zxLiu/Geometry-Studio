@@ -96,6 +96,27 @@ type RunControlResult struct {
 	Message string `json:"message"`
 }
 
+type ScreeningStartRequest struct {
+	SceneNames []string `json:"sceneNames"`
+	StartIndex int      `json:"startIndex"`
+	PoolSize   int      `json:"poolSize"`
+	Animation  string   `json:"animation"`
+}
+
+type ScreeningSessionState struct {
+	Active           bool     `json:"active"`
+	SceneNames       []string `json:"sceneNames"`
+	CurrentIndex     int      `json:"currentIndex"`
+	CurrentSceneName string   `json:"currentSceneName"`
+	PoolSize         int      `json:"poolSize"`
+	Animation        string   `json:"animation"`
+}
+
+type ScreeningStopResult struct {
+	Handled bool   `json:"handled"`
+	Message string `json:"message"`
+}
+
 type AIProviderSettings struct {
 	Mode  string `json:"mode"`
 	URL   string `json:"url"`

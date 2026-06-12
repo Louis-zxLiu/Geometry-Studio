@@ -22,6 +22,7 @@ import type { DesignCard } from "../../designCard/services/designCardTypes";
 import { useNoteWorkspace } from "../../notebook/model/useNoteWorkspace";
 import { createRuntimeRepository } from "../../runtime/services/runtimeRepository";
 import { useRuntimeState } from "../../runtime/model/useRuntimeState";
+import { useScreeningWorkspace } from "../../screening/model/useScreeningWorkspace";
 import { createScriptRepository } from "../../scripts/services/scriptRepository";
 import { asString } from "../../scripts/model/scriptWorkspaceUtils";
 import { useScriptWorkspaceMachine } from "../../scripts/model/useScriptWorkspaceMachine";
@@ -75,6 +76,11 @@ export function usePlotWorkspace() {
     isRunning,
     aiActivity.isAIGenerating,
   );
+  const screeningWorkspace = useScreeningWorkspace({
+    currentFile: scriptWorkspace.currentFile,
+    onError: runErrorDialog.openRunErrorDialog,
+    scripts: scriptWorkspace.scripts,
+  });
   const workspacePackageTransfer = useWorkspacePackageTransfer({
     applyWorkspaceSnapshot: scriptWorkspace.applyWorkspaceSnapshot,
     currentWorkspace: scriptWorkspace.currentWorkspace,
@@ -416,6 +422,7 @@ export function usePlotWorkspace() {
     closePackageTransferDialog: packageTransfer.closePackageTransferDialog,
     closeCreateDialog: scriptWorkspace.closeCreateDialog,
     closeRunErrorDialog: runErrorDialog.closeRunErrorDialog,
+    closeScreeningDialog: screeningWorkspace.closeScreeningDialog,
     closeSettings,
     cancelWorkspaceExportMode: workspacePackageTransfer.cancelExportMode,
     codeAIOptimizeActiveVersionId: plotAIWorkflow.codeAIOptimize.activeVersionId,
@@ -432,7 +439,11 @@ export function usePlotWorkspace() {
     },
     createScript,
     createWorkspace,
+    beginScreening: screeningWorkspace.beginScreening,
+    canStartScreening: screeningWorkspace.canStartScreening,
     currentFile: scriptWorkspace.currentFile,
+    currentScreeningIndex: screeningWorkspace.currentScreeningIndex,
+    currentScreeningSceneName: screeningWorkspace.currentScreeningSceneName,
     currentWorkspace: scriptWorkspace.currentWorkspace,
     deleteScript,
     deleteWorkspace,
@@ -443,6 +454,8 @@ export function usePlotWorkspace() {
     addNoteImages: noteWorkspace.addImages,
     generateCodeFromNoteSelection: plotAIWorkflow.aiGeneration.generateCodeFromNoteSelection,
     generateDesignFromNoteSelection: designCardWorkspace.generateFromNoteSelection,
+    goToNextScreeningPage: screeningWorkspace.goToNextScreeningPage,
+    goToPreviousScreeningPage: screeningWorkspace.goToPreviousScreeningPage,
     hasNoteContent: noteWorkspace.hasContent,
     initProgressMessage: runtime.initProgressMessage,
     initProgressPercent: runtime.initProgressPercent,
@@ -460,6 +473,10 @@ export function usePlotWorkspace() {
     isPackageTransferDialogOpen: packageTransfer.isPackageTransferDialogOpen,
     isRebuildingRuntime: runtime.isRebuilding,
     isRenamingScript: scriptWorkspace.isRenamingScript,
+    isScreeningActive: screeningWorkspace.isScreeningActive,
+    isScreeningDialogOpen: screeningWorkspace.isScreeningDialogOpen,
+    isStartingScreening: screeningWorkspace.isStartingScreening,
+    isStoppingScreening: screeningWorkspace.isStoppingScreening,
     isWorkspaceExportMode: workspacePackageTransfer.isExportMode,
     packageTransferMessage: packageTransfer.packageTransferMessage,
     packageTransferPendingAction: packageTransfer.packageTransferPendingAction,
@@ -482,6 +499,7 @@ export function usePlotWorkspace() {
     openDesignCardReviewRoom: designCardWorkspace.openReviewRoom,
     openDesignCardOptimizeDialog: designCardWorkspace.openOptimizeDialog,
     openPackageTransferDialog: packageTransfer.openPackageTransferDialog,
+    openScreeningDialog: screeningWorkspace.openScreeningDialog,
     openSettings,
     openWorkspaceExportMode: workspacePackageTransfer.beginExportMode,
     noteRenderBlocks: noteWorkspace.renderBlocks,
@@ -501,12 +519,16 @@ export function usePlotWorkspace() {
     repairCurrentRunError: plotAIWorkflow.aiRepair.repairCurrentRunError,
     runCurrentScript: scriptWorkspace.runCurrentScript,
     runErrorText: runErrorDialog.runErrorText,
+    screeningDialogItems: screeningWorkspace.screeningDialogItems,
     scripts: scriptWorkspace.scripts,
+    selectedScreeningScenes: screeningWorkspace.selectedScreeningScenes,
     selectScript,
     selectCodeAIOptimizeVersion: plotAIWorkflow.codeAIOptimize.selectVersion,
     switchWorkspace,
     stopCurrentRun: lifecycle.stopCurrentRun,
+    stopScreening: screeningWorkspace.stopScreening,
     subscriptionStatus,
+    toggleScreeningScene: screeningWorkspace.toggleScreeningScene,
     toggleWorkspaceExportSelection: workspacePackageTransfer.toggleWorkspaceSelection,
     updateStatus,
     toggleNotePanel,

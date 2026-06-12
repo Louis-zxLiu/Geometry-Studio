@@ -15,6 +15,7 @@ import "./styles/components/dialog-enter.css";
 import "./styles/components/dialog-exit.css";
 import "./styles/components/notebook/index.css";
 import "./styles/components/runtime-loading.css";
+import "./styles/components/screening-dialog.css";
 
 installZoomGuards();
 createApp(App).mount("#app");
