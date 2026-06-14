@@ -25,7 +25,6 @@ const animatedNames = ref<Record<string, string>>({});
 const draggingScript = ref("");
 const armedDragScript = ref("");
 const dropTarget = ref<{ script: string; position: "before" | "after" } | null>(null);
-const sceneItemElements = new Map<string, HTMLElement>();
 const dragPreview = ref({ left: 0, top: 0, width: 0 });
 let dragArmTimer: number | null = null;
 let activePointerId: number | null = null;
@@ -174,7 +173,7 @@ function armDrag(script: string, event: PointerEvent) {
   closeContextOnly();
   activePointerId = event.pointerId;
   dragArmTimer = window.setTimeout(() => {
-    const sourceElement = sceneItemElements.get(script);
+    const sourceElement = resolveSceneItemElement(script);
     const sourceBounds = sourceElement?.getBoundingClientRect();
     if (sourceBounds) {
       dragPointerOffsetY = event.clientY - sourceBounds.top;
@@ -228,7 +227,7 @@ function updateDropTarget(pointerY: number) {
     .filter((script) => script.name !== draggingScript.value)
     .map((script) => ({
       script: script.name,
-      element: sceneItemElements.get(script.name),
+      element: resolveSceneItemElement(script.name),
     }))
     .filter((entry): entry is { script: string; element: HTMLElement } => !!entry.element);
 
@@ -316,13 +315,15 @@ function handleSelect(script: string) {
   emit("select", script);
 }
 
-function setSceneItemElement(script: string, element: Element | null) {
-  if (!(element instanceof HTMLElement)) {
-    sceneItemElements.delete(script);
-    return;
+function resolveSceneItemElement(script: string) {
+  const items = document.querySelectorAll<HTMLElement>(".scene-list [data-scene-name]");
+  for (const item of items) {
+    if (item.dataset.sceneName === script) {
+      return item;
+    }
   }
 
-  sceneItemElements.set(script, element);
+  return null;
 }
 
 function animateTyping(script: string) {
@@ -390,7 +391,7 @@ function reorderScripts(
     <div
       v-for="script in visibleScripts"
       :key="script.name"
-      :ref="(element) => setSceneItemElement(script.name, element)"
+      :data-scene-name="script.name"
       class="scene-item"
       :class="{
         active: script.name === currentFile,
