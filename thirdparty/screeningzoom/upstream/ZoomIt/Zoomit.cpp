@@ -135,11 +135,17 @@ static const TCHAR* g_RecordingFormats[] = {
 };
 
 float g_ZoomLevels[] = {
-    1.25,
-    1.50,
-    1.75,
+    1.05,
+    1.10,
+    1.20,
+    1.30,
+    1.45,
+    1.60,
+    1.80,
     2.00,
-    3.00,
+    2.30,
+    2.70,
+    3.20,
     4.00
 };
 
@@ -201,6 +207,16 @@ bool	g_LiveZoomLevelOne = false;
 // True if ZoomIt was started by PowerToys instead of standalone.
 BOOLEAN g_StartedByPowerToys = FALSE;
 BOOLEAN g_running = TRUE;
+bool g_ScreeningZoomEnabled = false;
+HHOOK g_ScreeningZoomMouseHook = nullptr;
+bool g_ScreeningZoomInternalEscape = false;
+bool g_ScreeningZoomRightButtonDown = false;
+DWORD g_ScreeningZoomLastWheelTick = 0;
+
+constexpr UINT SCREENINGZOOM_MENU_ENTER_LIVEZOOM = 0x5001;
+constexpr UINT SCREENINGZOOM_MENU_EXIT_LIVEZOOM = 0x5002;
+constexpr UINT SCREENINGZOOM_MENU_ENTER_DRAW = 0x5003;
+constexpr UINT SCREENINGZOOM_MENU_EXIT_DRAW = 0x5004;
 
 // Screen recording globals
 #define DEFAULT_RECORDING_FILE		L"Recording.mp4"
@@ -385,6 +401,201 @@ void OutputDebug(const TCHAR* format, ...)
 
     OutputDebugString(msg);
 #endif
+}
+
+void ScreeningZoomPrint(const wchar_t* format, ...)
+{
+    wchar_t message[1024];
+    va_list args;
+    va_start(args, format);
+    _vsnwprintf_s(message, _countof(message), _TRUNCATE, format, args);
+    va_end(args);
+
+    fwprintf(stdout, L"[ScreeningZoomHelper] %ls\n", message);
+    fflush(stdout);
+}
+
+static bool ScreeningZoomParseCommandLine( PWSTR commandLine )
+{
+    int argc = 0;
+    PWSTR* argv = CommandLineToArgvW( GetCommandLineW(), &argc );
+    if( argv == nullptr )
+    {
+        return false;
+    }
+
+    for( int index = 1; index < argc; ++index )
+    {
+        const std::wstring argument = argv[index] != nullptr ? argv[index] : L"";
+        if( argument == L"--plotkitycat" )
+        {
+            g_ScreeningZoomEnabled = true;
+        }
+    }
+
+    LocalFree( argv );
+
+    UNREFERENCED_PARAMETER( commandLine );
+    return g_ScreeningZoomEnabled;
+}
+
+static bool ScreeningZoomShouldHandlePoint( POINT point )
+{
+    UNREFERENCED_PARAMETER( point );
+    return g_ScreeningZoomEnabled;
+}
+
+static void ScreeningZoomEnterLiveZoom( HWND hWnd )
+{
+    if( g_hWndLiveZoom != nullptr && IsWindowVisible( g_hWndLiveZoom ) )
+    {
+        return;
+    }
+
+    PostMessage( hWnd, WM_HOTKEY, LIVE_HOTKEY, 1 );
+}
+
+static void ScreeningZoomExitLiveZoom( HWND hWnd )
+{
+    if( g_hWndLiveZoom == nullptr || !IsWindowVisible( g_hWndLiveZoom ) )
+    {
+        ScreeningZoomPrint( L"exit-livezoom ignored: live zoom window missing or hidden" );
+        return;
+    }
+
+    // Route through ZoomIt's native live-zoom toggle path instead of binding menu
+    // semantics to the user's Esc key.
+    ScreeningZoomPrint( L"exit-livezoom triggered: posting LIVE_HOTKEY" );
+    PostMessage( hWnd, WM_HOTKEY, LIVE_HOTKEY, 0 );
+}
+
+static void ScreeningZoomSendInternalEscape( HWND hWnd )
+{
+    g_ScreeningZoomInternalEscape = true;
+    SendMessage( hWnd, WM_KEYDOWN, VK_ESCAPE, 0 );
+    g_ScreeningZoomInternalEscape = false;
+}
+
+static void ScreeningZoomEnterDraw( HWND hWnd )
+{
+    if( g_hWndLiveZoom != nullptr && IsWindowVisible( g_hWndLiveZoom ) )
+    {
+        PostMessage( hWnd, WM_HOTKEY, LIVE_DRAW_HOTKEY, 1 );
+    }
+    else
+    {
+        PostMessage( hWnd, WM_HOTKEY, DRAW_HOTKEY, 1 );
+    }
+}
+
+static void ScreeningZoomExitDraw( HWND hWnd )
+{
+    // This is ZoomIt's native path for leaving draw/type modes.
+    SendMessage( hWnd, WM_USER_EXIT_MODE, 0, 0 );
+    SendMessage( hWnd, WM_USER_EXIT_MODE, 0, 0 );
+}
+
+static LRESULT CALLBACK ScreeningZoomMouseHookProc( int code, WPARAM wParam, LPARAM lParam )
+{
+    if( code < 0 || !g_ScreeningZoomEnabled || lParam == 0 )
+    {
+        return CallNextHookEx( g_ScreeningZoomMouseHook, code, wParam, lParam );
+    }
+
+    const auto* mouseInfo = reinterpret_cast<MSLLHOOKSTRUCT*>( lParam );
+    const POINT point = mouseInfo->pt;
+
+    switch( wParam )
+    {
+    case WM_RBUTTONDOWN:
+        if( !ScreeningZoomShouldHandlePoint( point ) )
+        {
+            break;
+        }
+        g_ScreeningZoomRightButtonDown = true;
+        ScreeningZoomPrint( L"mouse rbutton-down point=(%ld,%ld)", point.x, point.y );
+        return 1;
+
+    case WM_RBUTTONUP:
+    {
+        if( !g_ScreeningZoomRightButtonDown )
+        {
+            break;
+        }
+        g_ScreeningZoomRightButtonDown = false;
+        ScreeningZoomPrint( L"mouse rbutton-up point=(%ld,%ld)", point.x, point.y );
+        auto* menuPoint = new POINT{ point.x, point.y };
+        PostMessage( g_hWndMain, WM_USER_SCREENINGZOOM_SHOW_MENU, 0, reinterpret_cast<LPARAM>( menuPoint ) );
+        return 1;
+    }
+
+    case WM_MOUSEWHEEL:
+    {
+        if( g_hWndLiveZoom != nullptr && IsWindowVisible( g_hWndLiveZoom ) )
+        {
+            // Bridge real wheel input to LiveZoom's native zoom hotkey entrypoints.
+            // A tiny debounce keeps high-resolution wheels from over-firing.
+            const DWORD now = GetTickCount();
+            if( now - g_ScreeningZoomLastWheelTick < 16 )
+            {
+                return 1;
+            }
+            g_ScreeningZoomLastWheelTick = now;
+
+            const short wheelDelta = GET_WHEEL_DELTA_WPARAM( mouseInfo->mouseData );
+            if( wheelDelta > 0 )
+            {
+                PostMessage( g_hWndLiveZoom, WM_HOTKEY, 0, 0 );
+            }
+            else if( wheelDelta < 0 )
+            {
+                PostMessage( g_hWndLiveZoom, WM_HOTKEY, 1, 0 );
+            }
+            return 1;
+        }
+        break;
+    }
+    }
+
+    return CallNextHookEx( g_ScreeningZoomMouseHook, code, wParam, lParam );
+}
+
+static void ScreeningZoomInstallMouseHook()
+{
+    if( !g_ScreeningZoomEnabled || g_ScreeningZoomMouseHook != nullptr )
+    {
+        return;
+    }
+
+    g_ScreeningZoomMouseHook = SetWindowsHookExW( WH_MOUSE_LL, ScreeningZoomMouseHookProc, nullptr, 0 );
+    ScreeningZoomPrint( L"mouse hook install success=%d", g_ScreeningZoomMouseHook != nullptr ? 1 : 0 );
+}
+
+static void ScreeningZoomUninstallMouseHook()
+{
+    if( g_ScreeningZoomMouseHook == nullptr )
+    {
+        return;
+    }
+
+    UnhookWindowsHookEx( g_ScreeningZoomMouseHook );
+    g_ScreeningZoomMouseHook = nullptr;
+}
+
+static int FindNearestZoomLevelIndex( float zoomLevel )
+{
+    int bestIndex = 0;
+    float bestDistance = FLT_MAX;
+    for( int index = 0; index < static_cast<int>(_countof(g_ZoomLevels)); ++index )
+    {
+        const float distance = fabsf( g_ZoomLevels[index] - zoomLevel );
+        if( distance < bestDistance )
+        {
+            bestDistance = distance;
+            bestIndex = index;
+        }
+    }
+    return bestIndex;
 }
 
 const wchar_t* HotkeyIdToString( WPARAM hotkeyId )
@@ -7660,7 +7871,7 @@ LRESULT APIENTRY MainWndProc(
         g_SnipOcrToggleMod = GetKeyMod( g_SnipOcrToggleKey );
         g_RecordToggleMod = GetKeyMod( g_RecordToggleKey );
 
-        if( !g_OptionsShown && !g_StartedByPowerToys ) {
+        if( !g_OptionsShown && !g_StartedByPowerToys && !g_ScreeningZoomEnabled ) {
             // First run should show options when running as standalone. If not running as standalone,
             // options screen won't show and we should register keys instead.
             SendMessage( hWnd, WM_COMMAND, IDC_OPTIONS, 0 );
@@ -7752,11 +7963,55 @@ LRESULT APIENTRY MainWndProc(
         }
         SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL );
         wmTaskbarCreated = RegisterWindowMessage(_T("TaskbarCreated"));
+        ScreeningZoomInstallMouseHook();
         return TRUE;
 
     case WM_CLOSE:
         // Do not allow users to close the main window, for example with Alt-F4.
         return 0;
+
+    case WM_USER_SCREENINGZOOM_SHOW_MENU:
+    {
+        std::unique_ptr<POINT> menuPoint( reinterpret_cast<POINT*>( lParam ) );
+        const POINT fallbackPoint{};
+        const POINT& point = menuPoint ? *menuPoint : fallbackPoint;
+
+        HMENU screeningZoomMenu = CreatePopupMenu();
+        InsertMenu( screeningZoomMenu, 0, MF_BYPOSITION, SCREENINGZOOM_MENU_EXIT_DRAW, L"\x9000\x51FA\x753b\x7B14" );
+        InsertMenu( screeningZoomMenu, 0, MF_BYPOSITION, SCREENINGZOOM_MENU_ENTER_DRAW, L"\x8FDB\x5165\x753b\x7B14" );
+        InsertMenu( screeningZoomMenu, 0, MF_BYPOSITION, SCREENINGZOOM_MENU_EXIT_LIVEZOOM, L"\x9000\x51FA\x653E\x5927\x89C6\x89D2" );
+        InsertMenu( screeningZoomMenu, 0, MF_BYPOSITION, SCREENINGZOOM_MENU_ENTER_LIVEZOOM, L"\x8FDB\x5165\x653E\x5927\x89C6\x89D2" );
+        ApplyDarkModeToMenu( screeningZoomMenu );
+        SetForegroundWindow( hWnd );
+        const UINT selected = TrackPopupMenu( screeningZoomMenu,
+                                              TPM_RETURNCMD | TPM_NONOTIFY,
+                                              point.x,
+                                              point.y,
+                                              0,
+                                              hWnd,
+                                              nullptr );
+        DestroyMenu( screeningZoomMenu );
+        PostMessage( hWnd, WM_NULL, 0, 0 );
+        ScreeningZoomPrint( L"menu closed selected=%u", selected );
+        switch( selected )
+        {
+        case SCREENINGZOOM_MENU_ENTER_LIVEZOOM:
+            ScreeningZoomEnterLiveZoom( hWnd );
+            break;
+        case SCREENINGZOOM_MENU_EXIT_LIVEZOOM:
+            ScreeningZoomExitLiveZoom( hWnd );
+            break;
+        case SCREENINGZOOM_MENU_ENTER_DRAW:
+            ScreeningZoomEnterDraw( hWnd );
+            break;
+        case SCREENINGZOOM_MENU_EXIT_DRAW:
+            ScreeningZoomExitDraw( hWnd );
+            break;
+        default:
+            break;
+        }
+        return 0;
+    }
 
     case WM_HOTKEY:
         OutputDebug( L"[Hotkey] WM_HOTKEY id=%ld(%s) lParam=0x%llX\n",
@@ -8083,7 +8338,7 @@ LRESULT APIENTRY MainWndProc(
                 if( GetWindowLong( hWnd, GWL_EXSTYLE ) & WS_EX_LAYERED )
                 {
                     OutputDebug( L"Exiting liveDraw after snip\n" );
-                    SendMessage( hWnd, WM_KEYDOWN, VK_ESCAPE, 0 );
+                    ScreeningZoomSendInternalEscape( hWnd );
                 }
             }
             break;
@@ -8156,7 +8411,7 @@ LRESULT APIENTRY MainWndProc(
                 if( GetWindowLong( hWnd, GWL_EXSTYLE ) & WS_EX_LAYERED )
                 {
                     OutputDebug( L"Exiting liveDraw after snip OCR\n" );
-                    SendMessage( hWnd, WM_KEYDOWN, VK_ESCAPE, 0 );
+                    ScreeningZoomSendInternalEscape( hWnd );
                 }
             }
             break;
@@ -8242,7 +8497,7 @@ LRESULT APIENTRY MainWndProc(
             // If LiveZoom and LiveDraw are active then exit both
             if( g_Zoomed && IsWindowVisible( g_hWndLiveZoom ) && ( GetWindowLongPtr( hWnd, GWL_EXSTYLE ) & WS_EX_LAYERED ) )
             {
-                SendMessage( hWnd, WM_KEYDOWN, VK_ESCAPE, 0 );
+                ScreeningZoomSendInternalEscape( hWnd );
                 PostMessage(hWnd, WM_HOTKEY, LIVE_HOTKEY, 0);
                 break;
             }
@@ -8281,7 +8536,7 @@ LRESULT APIENTRY MainWndProc(
                             g_LiveZoomLevel = g_ZoomLevels[g_SliderZoomLevel];
 #endif
                         // Unzoom
-                        SendMessage( g_hWndLiveZoom, WM_KEYDOWN, VK_ESCAPE, 0 );
+                        ScreeningZoomSendInternalEscape( g_hWndLiveZoom );
 
                     } else {
 
@@ -8876,6 +9131,11 @@ LRESULT APIENTRY MainWndProc(
         else
             wParam += (WHEEL_DELTA-1) << 16;
         delta = GET_WHEEL_DELTA_WPARAM(wParam)/WHEEL_DELTA;
+        ScreeningZoomPrint( L"mousewheel received: delta=%d zoomed=%d drawing=%d layered=%d",
+                            delta,
+                            g_Zoomed ? 1 : 0,
+                            g_Drawing ? 1 : 0,
+                            ( GetWindowLongPtr( hWnd, GWL_EXSTYLE ) & WS_EX_LAYERED ) ? 1 : 0 );
         OutputDebug( L"mousewheel: wParam: %d delta: %d\n",
                 GET_WHEEL_DELTA_WPARAM(wParam), delta );
         if( g_Zoomed ) {
@@ -9457,6 +9717,10 @@ LRESULT APIENTRY MainWndProc(
             break;
 
         case VK_ESCAPE:
+            if( g_ScreeningZoomEnabled && !g_ScreeningZoomInternalEscape ) {
+                ScreeningZoomPrint( L"ignore escape in main window" );
+                return TRUE;
+            }
             if( g_TypeMode != TypeModeOff) {
 
                 // Turn off
@@ -9482,6 +9746,11 @@ LRESULT APIENTRY MainWndProc(
         return TRUE;
 
     case WM_RBUTTONDOWN:
+        ScreeningZoomPrint( L"WM_RBUTTONDOWN hwnd=%p zoomed=%d drawing=%d tracing=%d", hWnd, g_Zoomed, g_Drawing, g_Tracing );
+        if( g_ScreeningZoomEnabled )
+        {
+            return 0;
+        }
         SendMessage( hWnd, WM_USER_EXIT_MODE, 0, 0 );
         break;
 
@@ -10137,6 +10406,7 @@ LRESULT APIENTRY MainWndProc(
 
         switch( lParam ) {
         case WM_RBUTTONUP:
+            ScreeningZoomPrint( L"tray WM_RBUTTONUP opening menu" );
         case WM_LBUTTONUP:
         case WM_CONTEXTMENU:
         {
@@ -10146,19 +10416,34 @@ LRESULT APIENTRY MainWndProc(
             SetForegroundWindow( hWndOptions ? hWndOptions : hWnd );
 
             // Pop up context menu
+            ScreeningZoomPrint( L"build tray menu startedByPowerToys=%d recordToggle=%d", g_StartedByPowerToys, g_RecordToggle );
             POINT pt;
             GetCursorPos( &pt );
             hPopupMenu = CreatePopupMenu();
-            if(!g_StartedByPowerToys) {
+            if( g_ScreeningZoomEnabled )
+            {
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION, SCREENINGZOOM_MENU_EXIT_DRAW, L"\x9000\x51FA\x753b\x7B14" );
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION, SCREENINGZOOM_MENU_ENTER_DRAW, L"\x8FDB\x5165\x753b\x7B14" );
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION, SCREENINGZOOM_MENU_EXIT_LIVEZOOM, L"\x9000\x51FA\x653E\x5927\x89C6\x89D2" );
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION, SCREENINGZOOM_MENU_ENTER_LIVEZOOM, L"\x8FDB\x5165\x653E\x5927\x89C6\x89D2" );
+            }
+            else if(!g_StartedByPowerToys) {
                 // Exiting will happen through disabling in PowerToys, not the context menu.
                 InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDCANCEL, L"E&xit" );
                 InsertMenu( hPopupMenu, 0, MF_BYPOSITION|MF_SEPARATOR, 0, NULL );
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION | ( g_RecordToggle ? MF_CHECKED : 0 ), IDC_RECORD, L"&Record" );
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDC_ZOOM, L"&Zoom" );
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDC_DRAW, L"&Draw" );
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDC_BREAK, L"&Break Timer" );
             }
-            InsertMenu( hPopupMenu, 0, MF_BYPOSITION | ( g_RecordToggle ? MF_CHECKED : 0 ), IDC_RECORD, L"&Record" );
-            InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDC_ZOOM, L"&Zoom" );
-            InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDC_DRAW, L"&Draw" );
-            InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDC_BREAK, L"&Break Timer" );
-            if(!g_StartedByPowerToys) {
+            else
+            {
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION | ( g_RecordToggle ? MF_CHECKED : 0 ), IDC_RECORD, L"&Record" );
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDC_ZOOM, L"&Zoom" );
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDC_DRAW, L"&Draw" );
+                InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDC_BREAK, L"&Break Timer" );
+            }
+            if(!g_StartedByPowerToys && !g_ScreeningZoomEnabled) {
                 // When started by PowerToys, options are configured through the PowerToys Settings.
                 InsertMenu( hPopupMenu, 0, MF_BYPOSITION|MF_SEPARATOR, 0, NULL );
                 InsertMenu( hPopupMenu, 0, MF_BYPOSITION, IDC_OPTIONS, L"&Options" );
@@ -10166,6 +10451,8 @@ LRESULT APIENTRY MainWndProc(
             // Apply dark mode theme to the menu
             ApplyDarkModeToMenu( hPopupMenu );
             TrackPopupMenu( hPopupMenu, 0, pt.x , pt.y, 0, hWnd, NULL );
+            PostMessage( hWnd, WM_NULL, 0, 0 );
+            ScreeningZoomPrint( L"tray menu closed" );
             DestroyMenu( hPopupMenu );
             break;
         }
@@ -10222,6 +10509,7 @@ LRESULT APIENTRY MainWndProc(
         break;
 
     case WM_USER_EXIT_MODE:
+        ScreeningZoomPrint( L"WM_USER_EXIT_MODE hwnd=%p zoomed=%d drawing=%d typeMode=%d", hWnd, g_Zoomed, g_Drawing, g_TypeMode );
         if( g_Zoomed )
         {
             // Turn off
@@ -10795,6 +11083,22 @@ LRESULT APIENTRY MainWndProc(
             PostMessage( hWnd, WM_HOTKEY, ZOOM_HOTKEY, 1 );
             break;
 
+        case SCREENINGZOOM_MENU_ENTER_LIVEZOOM:
+            ScreeningZoomEnterLiveZoom( hWnd );
+            break;
+
+        case SCREENINGZOOM_MENU_EXIT_LIVEZOOM:
+            ScreeningZoomExitLiveZoom( hWnd );
+            break;
+
+        case SCREENINGZOOM_MENU_ENTER_DRAW:
+            ScreeningZoomEnterDraw( hWnd );
+            break;
+
+        case SCREENINGZOOM_MENU_EXIT_DRAW:
+            ScreeningZoomExitDraw( hWnd );
+            break;
+
         case IDC_RECORD:
             PostMessage( hWnd, WM_HOTKEY, RECORD_HOTKEY, 1 );
             break;
@@ -11249,6 +11553,7 @@ LRESULT APIENTRY MainWndProc(
         // break screensaver was still active.
         if( HasOrphanedScreenSaverSettings() )
             RestoreScreenSaverSettings();
+        ScreeningZoomUninstallMouseHook();
         WTSUnRegisterSessionNotification( hWnd );
         CleanupDarkModeResources();
         PostQuitMessage( 0 );
@@ -11656,23 +11961,22 @@ LRESULT CALLBACK LiveZoomWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
         float newZoomLevel = zoomLevel;
         switch( wParam ) {
         case 0:
-            // zoom in
-            if( newZoomLevel < ZOOM_LEVEL_MAX )
-                newZoomLevel *= 2;
+        {
+            const int currentIndex = FindNearestZoomLevelIndex( newZoomLevel );
+            const int nextIndex = min( currentIndex + 1, static_cast<int>(_countof(g_ZoomLevels)) - 1 );
+            newZoomLevel = g_ZoomLevels[nextIndex];
             zoomTelescopeStep = ZOOM_LEVEL_STEP_IN;
             break;
+        }
 
         case 1:
-            if( newZoomLevel > 2 )
-                newZoomLevel /= 2;
-            else {
-
-                newZoomLevel *= .75;
-                if( newZoomLevel < ZOOM_LEVEL_MIN )
-                    newZoomLevel = ZOOM_LEVEL_MIN;
-            }
+        {
+            const int currentIndex = FindNearestZoomLevelIndex( newZoomLevel );
+            const int prevIndex = max( currentIndex - 1, 0 );
+            newZoomLevel = g_ZoomLevels[prevIndex];
             zoomTelescopeStep = ZOOM_LEVEL_STEP_OUT;
             break;
+        }
         }
         zoomTelescopeTarget = newZoomLevel;
         if( !dwmEnabled ) {
@@ -11686,6 +11990,11 @@ LRESULT CALLBACK LiveZoomWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
     case WM_KEYDOWN:
         switch( wParam ) {
         case VK_ESCAPE:
+            if( g_ScreeningZoomEnabled && !g_ScreeningZoomInternalEscape )
+            {
+                ScreeningZoomPrint( L"ignore escape in livezoom" );
+                return TRUE;
+            }
             zoomTelescopeStep = ZOOM_LEVEL_STEP_OUT;
             zoomTelescopeTarget = 1.0;
             if( !dwmEnabled ) {
@@ -11966,6 +12275,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 {
     MSG					msg;
     HACCEL				hAccel;
+    ScreeningZoomPrint( L"helper start cmdline=%ls", lpCmdLine ? lpCmdLine : L"" );
+    ScreeningZoomParseCommandLine( lpCmdLine );
 
     // Enable panorama frame/log dumps in release builds when requested.
     if( lpCmdLine != nullptr && wcsstr( lpCmdLine, L"/panorama-debug" ) != nullptr )
@@ -12001,7 +12312,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     }
 #endif // _DEBUG
 
-    if( !ShowEula( APPNAME, NULL, NULL )) return 1;
+    if( !g_ScreeningZoomEnabled && !ShowEula( APPNAME, NULL, NULL )) return 1;
 
 #ifdef __ZOOMIT_POWERTOYS__
     if (powertoys_gpo::getConfiguredZoomItEnabledValue() == powertoys_gpo::gpo_rule_configured_disabled)
@@ -12057,11 +12368,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
     // Single instance per desktop
 
-    if( !CreateEvent( NULL, FALSE, FALSE, _T("Local\\ZoomitActive"))) {
+    const wchar_t* singleInstanceEventName = g_ScreeningZoomEnabled ? L"Local\\ScreeningZoomHelperActive" : L"Local\\ZoomitActive";
+    const wchar_t* singleInstanceFallbackName = g_ScreeningZoomEnabled ? L"ScreeningZoomHelperActive" : L"ZoomitActive";
+    if( !CreateEvent( NULL, FALSE, FALSE, singleInstanceEventName )) {
 
-        CreateEvent( NULL, FALSE, FALSE, _T("ZoomitActive"));
+        CreateEvent( NULL, FALSE, FALSE, singleInstanceFallbackName );
     }
     if( GetLastError() == ERROR_ALREADY_EXISTS ) {
+        if( g_ScreeningZoomEnabled )
+        {
+            ScreeningZoomPrint( L"screeningzoom helper instance already running" );
+            return 0;
+        }
         if (g_StartedByPowerToys)
         {
             MessageBox(NULL, L"We've detected another instance of ZoomIt is already running.\nCan't start a new ZoomIt instance from PowerToys.",
