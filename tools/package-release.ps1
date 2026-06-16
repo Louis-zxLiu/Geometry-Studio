@@ -38,6 +38,7 @@ $binExe = Join-Path $repoRoot "build/bin/PlotKityCat.exe"
 $runtimeArchive = Join-Path $repoRoot "resources/runtime/runtime.7z"
 $runtime7ZipDir = Join-Path $repoRoot "tools/7zip/extra/x64"
 $screeningZoomResourceDir = Join-Path $repoRoot "resources/screeningzoom"
+$screeningZoomHelperExe = Join-Path $screeningZoomResourceDir "screeningzoom-helper.exe"
 $scriptsDir = Join-Path $repoRoot "Scripts"
 
 if (-not (Test-Path $binExe)) {
@@ -71,8 +72,9 @@ Copy-Item -LiteralPath $runtimeArchive -Destination (Join-Path $releaseRoot "res
 Copy-Item -LiteralPath (Join-Path $runtime7ZipDir "7za.exe") -Destination (Join-Path $releaseRoot "resources/runtime/7zip/7za.exe") -Force
 Copy-Item -LiteralPath (Join-Path $runtime7ZipDir "7za.dll") -Destination (Join-Path $releaseRoot "resources/runtime/7zip/7za.dll") -Force
 
-if (Test-Path $screeningZoomResourceDir) {
-    Copy-Item -LiteralPath $screeningZoomResourceDir -Destination (Join-Path $releaseRoot "resources/screeningzoom") -Recurse -Force
+if (Test-Path $screeningZoomHelperExe) {
+    New-Item -ItemType Directory -Path (Join-Path $releaseRoot "resources/screeningzoom") -Force | Out-Null
+    Copy-Item -LiteralPath $screeningZoomHelperExe -Destination (Join-Path $releaseRoot "resources/screeningzoom/screeningzoom-helper.exe") -Force
 }
 
 if ($IncludeScripts -and (Test-Path $scriptsDir)) {
