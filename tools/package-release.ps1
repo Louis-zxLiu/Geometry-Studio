@@ -37,6 +37,7 @@ $releaseZip = "$releaseRoot.zip"
 $binExe = Join-Path $repoRoot "build/bin/PlotKityCat.exe"
 $runtimeArchive = Join-Path $repoRoot "resources/runtime/runtime.7z"
 $runtime7ZipDir = Join-Path $repoRoot "tools/7zip/extra/x64"
+$screeningZoomResourceDir = Join-Path $repoRoot "resources/screeningzoom"
 $scriptsDir = Join-Path $repoRoot "Scripts"
 
 if (-not (Test-Path $binExe)) {
@@ -69,6 +70,10 @@ Copy-Item -LiteralPath $binExe -Destination (Join-Path $releaseRoot "PlotKityCat
 Copy-Item -LiteralPath $runtimeArchive -Destination (Join-Path $releaseRoot "resources/runtime/runtime.7z") -Force
 Copy-Item -LiteralPath (Join-Path $runtime7ZipDir "7za.exe") -Destination (Join-Path $releaseRoot "resources/runtime/7zip/7za.exe") -Force
 Copy-Item -LiteralPath (Join-Path $runtime7ZipDir "7za.dll") -Destination (Join-Path $releaseRoot "resources/runtime/7zip/7za.dll") -Force
+
+if (Test-Path $screeningZoomResourceDir) {
+    Copy-Item -LiteralPath $screeningZoomResourceDir -Destination (Join-Path $releaseRoot "resources/screeningzoom") -Recurse -Force
+}
 
 if ($IncludeScripts -and (Test-Path $scriptsDir)) {
     Copy-Item -LiteralPath $scriptsDir -Destination (Join-Path $releaseRoot "Scripts") -Recurse -Force
