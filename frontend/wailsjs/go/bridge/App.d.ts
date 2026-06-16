@@ -8,6 +8,8 @@ export function BootstrapWorkspace():Promise<bridge.WorkspaceSnapshot>;
 
 export function CheckForUpdates(arg1:boolean):Promise<bridge.UpdateStatus>;
 
+export function ClearScreeningZoomSourceRect():Promise<void>;
+
 export function CreateCodeAIVersion(arg1:bridge.CreateCodeAIVersionRequest):Promise<bridge.CodeAIVersion>;
 
 export function CreateScript(arg1:string):Promise<bridge.ScriptDocument>;
@@ -37,6 +39,8 @@ export function GetDesignCard(arg1:string,arg2:string):Promise<bridge.DesignCard
 export function GetEnvironmentStatus():Promise<bridge.EnvironmentStatus>;
 
 export function GetScreeningState():Promise<bridge.ScreeningSessionState>;
+
+export function GetScreeningZoomStatus():Promise<bridge.ScreeningZoomStatus>;
 
 export function GetScriptContent(arg1:string):Promise<bridge.ScriptDocument>;
 
@@ -95,6 +99,8 @@ export function SaveDesignCardPlacements(arg1:string,arg2:Array<bridge.DesignCar
 export function SaveScript(arg1:string,arg2:string):Promise<void>;
 
 export function SaveScriptNote(arg1:string,arg2:string):Promise<void>;
+
+export function SetScreeningZoomSourceRect(arg1:bridge.ScreeningZoomRect):Promise<void>;
 
 export function StartAIWorkflow(arg1:bridge.AIWorkflowRequest):Promise<bridge.AIWorkflowSession>;
 

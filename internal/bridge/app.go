@@ -14,6 +14,8 @@ import (
 	filestore "plotkitycat/internal/files/store"
 	"plotkitycat/internal/runner"
 	"plotkitycat/internal/screening"
+	"plotkitycat/internal/screeningzoom"
+	"plotkitycat/internal/screeningzoombridge"
 	settingspkg "plotkitycat/internal/settings"
 	"plotkitycat/internal/subscription"
 	"plotkitycat/internal/updater"
@@ -23,20 +25,22 @@ import (
 )
 
 type App struct {
-	ctx                 context.Context
-	aiService           *ai.Service
-	aiWorkflow          *workflow.Service
-	codeVersionStore    *codeversions.Store
-	designCardService   *designcards.Service
-	deviceService       *device.Service
-	envManager          *env.Manager
-	fileStore           *filestore.Store
-	runner              *runner.Runner
-	screeningService    *screening.Service
-	aiSettingsStore     *settingspkg.AIStore
-	subscriptionService *subscription.Service
-	updateService       *updater.Service
-	workspaceManager    *workspaces.Manager
+	ctx                  context.Context
+	aiService            *ai.Service
+	aiWorkflow           *workflow.Service
+	codeVersionStore     *codeversions.Store
+	designCardService    *designcards.Service
+	deviceService        *device.Service
+	envManager           *env.Manager
+	fileStore            *filestore.Store
+	screeningZoomBridge  *screeningzoombridge.Controller
+	screeningZoomService *screeningzoom.Service
+	runner               *runner.Runner
+	screeningService     *screening.Service
+	aiSettingsStore      *settingspkg.AIStore
+	subscriptionService  *subscription.Service
+	updateService        *updater.Service
+	workspaceManager     *workspaces.Manager
 }
 
 func NewApp() *App {
@@ -45,18 +49,21 @@ func NewApp() *App {
 	workspaceManager := workspaces.NewManager()
 	fileStore := filestore.NewStore(workspaceManager)
 	designCardStore := designcards.NewStore(fileStore)
+	screeningZoomService := screeningzoom.NewService()
 	app := &App{
-		aiService:           ai.NewService(subscriptionService),
-		codeVersionStore:    codeversions.NewStore(fileStore),
-		designCardService:   designcards.NewService(designCardStore, designai.NewService(subscriptionService)),
-		deviceService:       deviceService,
-		envManager:          env.NewManager(workspaceManager),
-		fileStore:           fileStore,
-		runner:              runner.New(workspaceManager),
-		aiSettingsStore:     settingspkg.NewAIStore(),
-		subscriptionService: subscriptionService,
-		updateService:       updater.NewService(),
-		workspaceManager:    workspaceManager,
+		aiService:            ai.NewService(subscriptionService),
+		codeVersionStore:     codeversions.NewStore(fileStore),
+		designCardService:    designcards.NewService(designCardStore, designai.NewService(subscriptionService)),
+		deviceService:        deviceService,
+		envManager:           env.NewManager(workspaceManager),
+		fileStore:            fileStore,
+		screeningZoomBridge:  screeningzoombridge.NewController(screeningZoomService),
+		screeningZoomService: screeningZoomService,
+		runner:               runner.New(workspaceManager),
+		aiSettingsStore:      settingspkg.NewAIStore(),
+		subscriptionService:  subscriptionService,
+		updateService:        updater.NewService(),
+		workspaceManager:     workspaceManager,
 	}
 	app.screeningService = screening.NewService(workspaceManager, app.runner, screening.Callbacks{
 		OnError: func(err error) {
@@ -68,7 +75,13 @@ func NewApp() *App {
 			app.emit(EventScreeningState, mapScreeningState(state))
 		},
 		OnStopped: func(state screening.SessionState) {
+			if err := app.screeningZoomBridge.Stop(); err != nil {
+			}
 			app.emit(EventScreeningState, mapScreeningState(state))
+		},
+		OnTargetWindowChanged: func(sceneName string, hwnd uintptr) {
+			if err := app.screeningZoomBridge.UpdateTargetWindow(hwnd); err != nil {
+			}
 		},
 	})
 
@@ -84,6 +97,9 @@ func (a *App) Shutdown(ctx context.Context) {
 	a.runner.Shutdown()
 	if a.screeningService != nil {
 		_, _ = a.screeningService.Stop()
+	}
+	if a.screeningZoomBridge != nil {
+		_ = a.screeningZoomBridge.Stop()
 	}
 }
 

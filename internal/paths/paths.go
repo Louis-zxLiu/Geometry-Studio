@@ -119,6 +119,25 @@ func RuntimeTempDir() (string, error) {
 	return filepath.Join(root, "runtime.tmp"), nil
 }
 
+func ScreeningZoomHelperPath() (string, error) {
+	root, err := AppRoot()
+	if err != nil {
+		return "", err
+	}
+
+	candidates := []string{
+		filepath.Join(root, "resources", "screeningzoom", "screeningzoom-helper.exe"),
+		filepath.Join(root, "thirdparty", "screeningzoom", "bin", "screeningzoom-helper.exe"),
+	}
+	for _, candidate := range candidates {
+		if fileExists(candidate) {
+			return candidate, nil
+		}
+	}
+
+	return "", nil
+}
+
 func isProjectRoot(root string) bool {
 	return fileExists(filepath.Join(root, "go.mod")) &&
 		fileExists(filepath.Join(root, "wails.json"))

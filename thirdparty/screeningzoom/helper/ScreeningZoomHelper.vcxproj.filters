@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{73AFCE48-6609-48FB-86F2-DB7B72A1C1EC}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;rc</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{DB948F16-61F7-47AB-96C8-57914076A38A}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;inl</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{E1FA606F-A2E6-40C8-8779-8CA1813D9F01}</UniqueIdentifier>
+      <Extensions>ico;cur;bmp;rc2;rct;manifest</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\upstream\ZoomIt\pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\upstream\ZoomIt\SelectRectangle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\upstream\ZoomIt\Utility.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\upstream\ZoomIt\VersionHelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\upstream\ZoomIt\Zoomit.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\upstream\ZoomItBreak\BreakTimer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="shims\Eula\eula.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="shims\WindowsVersions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\upstream\ZoomIt\pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\upstream\ZoomIt\Registry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\upstream\ZoomIt\resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\upstream\ZoomIt\SelectRectangle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\upstream\ZoomIt\Utility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\upstream\ZoomIt\VersionHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\upstream\ZoomIt\ZoomIt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\upstream\ZoomIt\ZoomItSettings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\upstream\ZoomItBreak\BreakTimer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shims\branding.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shims\dll.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shims\Eula\eula.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shims\version.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shims\WindowsVersions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shims\common\logger\logger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shims\common\Telemetry\EtwTrace\EtwTrace.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shims\common\utils\logger_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\upstream\ZoomIt\appicon.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\upstream\ZoomIt\icon1.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\upstream\ZoomIt\cursor1.cur">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\upstream\ZoomIt\drawingc.cur">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\upstream\ZoomIt\Zoomit.exe.manifest">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shims\binres.rc">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\upstream\ZoomIt\ZoomIt.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>
