@@ -93,6 +93,7 @@ runtime 打包入口：
 
 - [Matplotlib](https://matplotlib.org/): 本项目核心渲染引擎。
 - [ManimCat](https://github.com/Wing900/ManimCat): 提供了开发的基础和灵感。
+- [ZoomIt (PowerToys)](https://github.com/microsoft/PowerToys/tree/main/src/modules/ZoomIt): 放映模式辅助功能的实现基础。
 ## 愿景
 
 推动更多的可视化资源开源开放，让数学教学更清晰、更公平。
