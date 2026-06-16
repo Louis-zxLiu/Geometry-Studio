@@ -1,15 +1,11 @@
 # PlotKityCat Development
 
-这份文档负责回答三件事：
-
-- 如何启动本地开发
-- 如何准备 runtime 与构建发布包
-- 仓库里哪些东西应该进 Git，哪些不应该
+本地开发启动、runtime 与构建发布、Git 仓库约定。
 
 ## 环境
 
 - Windows
-- Go 1.21+
+- Go 1.22+
 - Node.js 18+
 - Wails v2
 
@@ -29,7 +25,7 @@ wails dev
 
 ## 版本
 
-应用版本唯一来源是 `version.json` 的 `appVersion`。构建与发布脚本默认都读取这里的值。
+应用版本唯一来源为 `version.json` 中的 `appVersion`。构建与发布脚本默认都读取这里的值。
 
 ## Runtime
 
@@ -40,8 +36,7 @@ wails dev
 - 本地展开目录：`runtime/`
 - 临时展开目录：`runtime.tmp/`
 - 元数据文件：`runtime.version.json`
-- `resources/runtime/runtime.7z` 默认不提交到 Git
-- runtime 应通过 GitHub Release asset 或其他制品存储分发
+- runtime 通过 GitHub Release asset 分发
 - 仓库仅跟踪 runtime 脚本和元数据
 
 准备 runtime 压缩包：
@@ -58,7 +53,7 @@ wails dev
 - scipy
 - PyQt5
 
-`runtime.version.json` 必须填写真实版本，不要长期保留 `pending`。
+`runtime.version.json` 必须填写真实版本，`pending` 仅为占位值。
 
 从零重建 runtime 的完整说明见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)。
 

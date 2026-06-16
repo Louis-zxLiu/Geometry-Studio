@@ -2,12 +2,10 @@
 
 ## 目标
 
-这份文档只描述两件事：
+Python runtime 的分发方式与从零重建流程。
+开发环境搭建见 [DEVELOPMENT.md](D:/projects/plotkitycat/DEVELOPMENT.md)。
 
-- 如何分发现成的 Python runtime
-- 如何从零重建 `resources/runtime/runtime.7z`
-
-当前项目不再注入任何 Matplotlib C++ fastpath 补丁，runtime 仅使用原生 Python 包内容。
+当前 runtime 仅使用原生 Python 包内容，不再注入 Matplotlib C++ fastpath 补丁。
 
 ## 仓库约定
 
@@ -24,19 +22,11 @@
 - `runtime/`
 - `runtime.tmp/`
 
-## 给别人交付现成 runtime
+## 分发现成 runtime
 
-如果只是继续打包发布，不要求从零重建 runtime，最简单的交付方式是：
-
-1. 把本地现成的 `resources/runtime/runtime.7z` 上传为 GitHub Release asset，或放到稳定下载地址
-2. 让接手者把该文件放回 `resources/runtime/runtime.7z`
-3. 接手者继续执行：
-
-```powershell
-.\tools\build-versioned-app.ps1
-.\tools\package-release.ps1
-.\tools\prepare-update-release.ps1
-```
+1. 将本地 `resources/runtime/runtime.7z` 上传为 GitHub Release asset
+2. 接手者将文件放回 `resources/runtime/runtime.7z`
+3. 接手者参照 [UPDATE_RELEASE.md](D:/projects/plotkitycat/UPDATE_RELEASE.md) 执行构建与打包
 
 ## 从零重建 runtime
 
@@ -58,14 +48,14 @@
 
 ### 2. 获取 WinPython runtime 目录
 
-你需要先拿到一个已经解压好的 WinPython 目录，目录内至少包含：
+准备一个已解压的 WinPython 目录，目录内至少包含：
 
 - `python.exe`
 - `Lib/`
 - `DLLs/`
 - `Lib/site-packages/`
 
-如果你手里只有 WinPython 的 `.exe` 安装包，可用仓库脚本提取其内嵌 7z：
+如果仅有 WinPython 的 `.exe` 安装包，可用仓库脚本提取其内嵌 7z：
 
 ```powershell
 python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <临时输出.7z> --dest <解压目标目录>
@@ -89,7 +79,7 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
 .\tools\prepare-runtime.ps1 -SourceRuntimeDir <你的WinPython目录>
 ```
 
-如果要生成当前推荐的瘦身版 runtime，请显式打开裁剪开关：
+生成当前推荐的瘦身版 runtime，需显式启用以下裁剪开关：
 
 ```powershell
 .\tools\prepare-runtime.ps1 `
@@ -142,9 +132,9 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
 
 ## 发布建议
 
-`runtime.7z` 不要放进普通 Git 提交历史。
+`runtime.7z` 不纳入 Git 提交历史。
 
-建议的分发方式：
+分发方式：
 
 - GitHub Release assets
 - 对象存储
@@ -156,14 +146,8 @@ python .\tools\extract_winpython.py --exe <WinPython安装包.exe> --archive <�
 - 当前使用的资产名是 `runtime.7z`
 - 在 release 说明里注明对应的 `runtime.version.json`
 
-当前下载地址格式：
+下载地址格式（示例 `v0.0.3.1`）：
 
 ```text
 https://github.com/Wing900/PlotKityCat/releases/download/v版本号/runtime.7z
-```
-
-当前示例：
-
-```text
-https://github.com/Wing900/PlotKityCat/releases/download/v0.0.3.1/runtime.7z
 ```

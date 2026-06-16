@@ -56,7 +56,7 @@ https://github.com/user-attachments/assets/df8167a7-d1e9-4f6a-a42d-de15596a4456
 ## 开发入口
 
 - **Windows**
-- **Go**: 1.21+
+- **Go**: 1.22+
 - **Node.js**: 18+
 - **Wails**: v2.x
 
@@ -93,8 +93,6 @@ runtime 打包入口：
 
 - [Matplotlib](https://matplotlib.org/): 本项目核心渲染引擎。
 - [ManimCat](https://github.com/Wing900/ManimCat): 提供了开发的基础和灵感。
-## 期待
+## 愿景
 
-期待更多的可视化资源可以被开发，开源，开放，打破教育资源长期以来的垄断，让我们的教育越来越清晰，越来越公平！
-
-希望有一天，我的用户足够多，我们可以开一个PlotKityCat交流社区！
+推动更多的可视化资源开源开放，让数学教学更清晰、更公平。

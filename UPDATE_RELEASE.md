@@ -1,6 +1,7 @@
 # PlotKityCat 更新发布说明
 
-这份文档只负责发布与在线更新，不解释 runtime 从零重建。runtime 重建流程单独见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)。
+应用发布与在线更新流程。runtime 重建见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)。
+本地开发环境准备见 [DEVELOPMENT.md](D:/projects/plotkitycat/DEVELOPMENT.md)。
 
 当前发布模型：
 
@@ -13,11 +14,9 @@
 
 runtime 约定：
 
-- `resources/runtime/runtime.7z` 默认不提交到 Git
-- 它应作为 release asset 或其他外部分发制品单独保存
+- `resources/runtime/runtime.7z` 作为 release asset 外部分发
 - 当前使用的资产名是 `runtime.7z`
-- 建议把 runtime 上传到与应用版本对应的 GitHub Release 下
-- 从零重建 runtime 的流程见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)
+- 从零重建流程见 [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)
 
 ## 1. 先改版本号
 
@@ -156,12 +155,12 @@ curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.3.1-
 
 ## 7. 最短发布流程
 
-只记最短流程时，按这个顺序执行：
+仅记录最短发布顺序：
 
 1. 改 [version.json](/D:/projects/PlotKityCat/version.json) 的 `appVersion`
-2. 跑 `.\tools\build-versioned-app.ps1`
-3. 跑 `.\tools\prepare-update-release.ps1`
-4. 跑 `.\tools\package-release.ps1`
+2. 执行 `.\tools\build-versioned-app.ps1`
+3. 执行 `.\tools\prepare-update-release.ps1`
+4. 执行 `.\tools\package-release.ps1`
 5. 上传 `build/update/版本号/` 里的 `exe`
 6. 把 `build/update/版本号/manifest.json` 覆盖到服务器 `stable/manifest.json`
 
@@ -180,8 +179,8 @@ curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.3.1-
 只需要：
 
 1. 改 `version.json`
-2. 跑 `.\tools\build-versioned-app.ps1`
-3. 跑 `.\tools\package-release.ps1`
+2. 执行 `.\tools\build-versioned-app.ps1`
+3. 执行 `.\tools\package-release.ps1`
 
 这样会得到完整 zip，但不会更新服务器上的在线更新入口。
 
@@ -201,9 +200,9 @@ curl.exe -I https://update.5051001.xyz/plotkitycat/releases/PlotKityCat-0.0.3.1-
 
 因为 manifest 一更新，旧版本客户端就可能立刻看到新版本；如果这时 exe 还没上传完，下载会失败。
 
-### Q4. 哪些目录不该进 git？
+### Q4. 哪些目录不需纳入 Git？
 
-这些产物目录本来就已经忽略：
+以下产物目录已在 `.gitignore` 中排除：
 
 - `build/bin/`
 - `build/release/`
