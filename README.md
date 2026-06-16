@@ -26,6 +26,18 @@ PlotKityCat 是一个面向数学教学场景的 AI-native 可视化工具。它
 
 https://github.com/user-attachments/assets/df8167a7-d1e9-4f6a-a42d-de15596a4456
 
+## 开发初衷
+
+PlotKityCat 源于对 GGBPuppy 开发过程中 GGB Web API 封闭性的反思。我们转向 Matplotlib，为初高中数学可视化提供 AI-native 方案。
+
+> 那天，我在研究 GGB 的 webapi，AI 总是写下错误的 GGB 代码，让我的另外一个项目 GGBPuppy 很受挫折。我突然发现一个 GGB 的 api 接口不完整，于是以开发者的口吻发了一封信给他们团队，结果收到了他们希望我付钱的要求......好吧，那天晚上关掉它肮脏线条和色彩的窗口，我梦见了 Jobs.....
+
+1. **开源**：好的工具应该像太阳一样，太阳是闭源的吗？
+2. **美**：拒绝 GGB 沉闷的色彩与线条。
+3. **AI 原生**：通过 AI 直接生成可视化代码，无需老师学习编程。
+
+PlotKityCat 支持优盘便携，旨在让老师将其带入教室、讲台及学生手中。
+
 ## 设计原则
 
 1. **开源**：以可审查、可扩展的技术栈承载教学工具。
@@ -96,4 +108,4 @@ runtime 打包入口：
 - [ZoomIt (PowerToys)](https://github.com/microsoft/PowerToys/tree/main/src/modules/ZoomIt): 放映模式辅助功能的实现基础。
 ## 愿景
 
-推动更多的可视化资源开源开放，让数学教学更清晰、更公平。
+期待更多的可视化资源可以被开发、开源、开放，打破教育资源长期以来的垄断，让教育越来越清晰、越来越公平。期待有一天能够建立一个 PlotKityCat 交流社区。
