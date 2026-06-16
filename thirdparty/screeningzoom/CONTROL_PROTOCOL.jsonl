@@ -1,4 +1,0 @@
-{"type":"set-target","targetHwnd":123456}
-{"type":"set-source-rect","rect":{"left":100,"top":100,"right":800,"bottom":600}}
-{"type":"clear-source-rect"}
-{"type":"exit"}

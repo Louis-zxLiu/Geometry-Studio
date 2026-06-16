@@ -1,29 +1,53 @@
-# ScreeningZoom Helper
+# ScreeningZoom
 
-这个目录用于放置从 ZoomIt 引入并做 PlotKityCat 集成改造的独立 helper。
+`ScreeningZoom` 是 PlotKityCat 放映模式使用的独立放大镜 helper。
 
-约束：
+它基于仓库内的 ZoomIt 上游副本做最小集成，目标不是重写 ZoomIt，而是复用它现有的放大和标注能力，并把 PlotKityCat 的接入面控制在很薄的一层。
 
-- 目标是独立 exe，不嵌入 PlotKityCat 主进程
-- 维持上游 ZoomIt 能力，新增 PlotKityCat 放映接入口
-- PlotKityCat 通过一个很薄的 Go 桥接层与之通信
+## 设计边界
 
-当前期望输出位置：
+- helper 是独立 `exe`，不嵌入 PlotKityCat 主进程
+- PlotKityCat 只负责在放映开始时启动 helper，放映结束时停止 helper
+- helper 侧尽量只增加放映模式相关入口，不扩散到主程序业务层
+- 上游能力优先复用，不在 Go 或前端重写放大/画笔逻辑
 
-- 开发态：`thirdparty/screeningzoom/bin/screeningzoom-helper.exe`
-- 打包态：`resources/screeningzoom/screeningzoom-helper.exe`
+## 当前开发态能力
 
-保留能力：
+- 进入放大视角
+- 退出放大视角
+- 进入画笔
+- 退出画笔
+- Live Zoom 细粒度缩放层级
+- 保留上游 DPI manifest 与其余原生能力
 
-- Zoom
-- Live Zoom
-- Draw
-- 区域框选
-- Esc 退出
-- DPI manifest
+## 目录说明
 
-当前额外集成目标：
+- `upstream/`
+  - ZoomIt 上游副本与 helper 实际改动点
+- `helper/`
+  - 独立 Visual Studio 工程与本地 shims
+- `bin/`
+  - 开发态已发布 helper 输出目录
+- `DEVELOPER_GUIDE.md`
+  - 给后续开发者的接手说明
 
-- `targetHwnd` 启动参数与更新命令
-- `sourceRect` 外部传入与清理命令
-- 右键短按菜单、右键拖拽框选放大
+## 运行与发布
+
+- 开发态优先读取：
+  - `thirdparty/screeningzoom/bin/screeningzoom-helper.exe`
+- 打包态优先读取：
+  - `resources/screeningzoom/screeningzoom-helper.exe`
+
+构建并同步两个位置：
+
+```powershell
+.\tools\screeningzoom\build-and-publish-helper.ps1 -Configuration Release
+```
+
+只同步已有构建产物：
+
+```powershell
+.\tools\screeningzoom\publish-helper.ps1 -BuiltHelperPath <path-to-screeningzoom-helper.exe>
+```
+
+详细接手说明见 [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)。
