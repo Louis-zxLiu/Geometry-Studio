@@ -2,14 +2,14 @@
 
 `ScreeningZoom` 是 PlotKityCat 放映模式使用的独立放大镜 helper。
 
-它基于仓库内的 ZoomIt 上游副本做最小集成，目标不是重写 ZoomIt，而是复用它现有的放大和标注能力，并把 PlotKityCat 的接入面控制在很薄的一层。
+它基于仓库内的 ZoomIt 上游副本，复用其现有的放大和标注能力。PlotKityCat 的接入面被控制在很薄的一层。
 
 ## 设计边界
 
-- helper 是独立 `exe`，不嵌入 PlotKityCat 主进程
-- PlotKityCat 只负责在放映开始时启动 helper，放映结束时停止 helper
-- helper 侧尽量只增加放映模式相关入口，不扩散到主程序业务层
-- 上游能力优先复用，不在 Go 或前端重写放大/画笔逻辑
+- helper 是独立 `exe`，独立于 PlotKityCat 主进程
+- PlotKityCat 只负责启动和停止 helper
+- helper 侧的改动应局限于放映模式相关入口
+- 优先复用上游能力
 
 ## 当前开发态能力
 

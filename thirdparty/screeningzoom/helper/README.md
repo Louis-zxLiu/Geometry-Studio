@@ -12,8 +12,8 @@
 
 ## 原则
 
-- 不反向污染上游 `ZoomIt.vcxproj`
-- 不把 PlotKityCat 主程序逻辑塞进工程配置
+- 上游 `ZoomIt.vcxproj` 保持不变
+- 工程配置独立于 PlotKityCat 主程序逻辑
 - helper 新增构建依赖优先收敛在这里
 
 ## 构建

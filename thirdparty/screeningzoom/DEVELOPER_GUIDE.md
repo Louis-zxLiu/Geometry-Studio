@@ -1,6 +1,6 @@
 # ScreeningZoom Developer Guide
 
-这份文档给后续开发者说明：`ScreeningZoom` 在 PlotKityCat 仓库里是什么、应该改哪里、不要改哪里。
+这份文档说明 `ScreeningZoom` 在 PlotKityCat 仓库中的定位、开发方式和边界约束。
 
 ## 1. 它是什么
 
@@ -13,11 +13,6 @@
 - 在 helper 内部复用 ZoomIt 的放大和画笔能力
 - 通过右键菜单暴露放映时需要的几个动作
 
-它不是：
-
-- PlotKityCat 的通用缩放服务
-- 主进程内嵌模块
-- 需要前端状态同步的复杂控制器
 
 ## 2. 运行链路
 
@@ -29,7 +24,6 @@
 4. helper 在内部开启 ScreeningZoom 分支逻辑
 5. 放映结束时 Go 侧直接结束 helper 进程
 
-当前没有保留 stdin/json 控制协议，也没有保留单独 bridge/controller 层。
 
 ## 3. 仓库中的关键位置
 
@@ -116,12 +110,10 @@
 - 改 `internal/screeningzoom/service.go`
 - 必要时改 `internal/paths/paths.go`
 
-一般不要做的事：
+边界约束：
 
-- 不要重新引入 `screeningzoombridge`
-- 不要重新引入 stdin/json 控制协议
-- 不要把 helper 状态透传到前端
-- 不要为了一点功能把改动分散到很多层
+- 不把 helper 状态透传到前端
+- 改动收敛在少数必要层，不分散到多处
 
 ## 8. 调试建议
 
