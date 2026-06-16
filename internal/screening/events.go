@@ -24,12 +24,5 @@ func (s *Service) emitError(err error) {
 	s.callbacks.OnError(err)
 }
 
-func (s *Service) emitTargetWindowChanged(sceneName string, hwnd uintptr) {
-	if hwnd == 0 || s.callbacks.OnTargetWindowChanged == nil {
-		return
-	}
-	s.callbacks.OnTargetWindowChanged(sceneName, hwnd)
-}
-
 func (s *Service) debugf(format string, args ...any) {
 }

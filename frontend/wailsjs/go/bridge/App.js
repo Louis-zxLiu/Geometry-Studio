@@ -14,10 +14,6 @@ export function CheckForUpdates(arg1) {
   return window['go']['bridge']['App']['CheckForUpdates'](arg1);
 }
 
-export function ClearScreeningZoomSourceRect() {
-  return window['go']['bridge']['App']['ClearScreeningZoomSourceRect']();
-}
-
 export function CreateCodeAIVersion(arg1) {
   return window['go']['bridge']['App']['CreateCodeAIVersion'](arg1);
 }
@@ -76,10 +72,6 @@ export function GetEnvironmentStatus() {
 
 export function GetScreeningState() {
   return window['go']['bridge']['App']['GetScreeningState']();
-}
-
-export function GetScreeningZoomStatus() {
-  return window['go']['bridge']['App']['GetScreeningZoomStatus']();
 }
 
 export function GetScriptContent(arg1) {
@@ -196,10 +188,6 @@ export function SaveScript(arg1, arg2) {
 
 export function SaveScriptNote(arg1, arg2) {
   return window['go']['bridge']['App']['SaveScriptNote'](arg1, arg2);
-}
-
-export function SetScreeningZoomSourceRect(arg1) {
-  return window['go']['bridge']['App']['SetScreeningZoomSourceRect'](arg1);
 }
 
 export function StartAIWorkflow(arg1) {

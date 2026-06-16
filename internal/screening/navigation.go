@@ -130,7 +130,6 @@ func (s *Service) navigate(delta int) (SessionState, error) {
 		return SessionState{}, err
 	}
 	s.markEntryActivated(toEntry.sceneName)
-	s.emitTargetWindowChanged(toEntry.sceneName, toEntry.hwnd)
 	if fromEntry != nil {
 		s.markEntryStackedBelow(fromEntry.sceneName, entryWindow(toEntry))
 	}
@@ -205,7 +204,6 @@ func (s *Service) syncVisibleWindow() error {
 			return err
 		}
 		s.markEntryActivated(currentEntry.sceneName)
-		s.emitTargetWindowChanged(currentEntry.sceneName, currentEntry.hwnd)
 		s.debugf("activate current scene=%s hwnd=%#x", currentEntry.sceneName, currentEntry.hwnd)
 	}
 

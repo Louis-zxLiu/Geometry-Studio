@@ -741,42 +741,6 @@ export namespace bridge {
 	        this.message = source["message"];
 	    }
 	}
-	export class ScreeningZoomRect {
-	    left: number;
-	    top: number;
-	    right: number;
-	    bottom: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new ScreeningZoomRect(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.left = source["left"];
-	        this.top = source["top"];
-	        this.right = source["right"];
-	        this.bottom = source["bottom"];
-	    }
-	}
-	export class ScreeningZoomStatus {
-	    available: boolean;
-	    running: boolean;
-	    helperPath: string;
-	    targetHwnd: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ScreeningZoomStatus(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.available = source["available"];
-	        this.running = source["running"];
-	        this.helperPath = source["helperPath"];
-	        this.targetHwnd = source["targetHwnd"];
-	    }
-	}
 	
 	export class SubscriptionPurchaseResult {
 	    configured: boolean;

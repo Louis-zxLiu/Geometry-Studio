@@ -15,7 +15,6 @@ import (
 	"plotkitycat/internal/runner"
 	"plotkitycat/internal/screening"
 	"plotkitycat/internal/screeningzoom"
-	"plotkitycat/internal/screeningzoombridge"
 	settingspkg "plotkitycat/internal/settings"
 	"plotkitycat/internal/subscription"
 	"plotkitycat/internal/updater"
@@ -33,7 +32,6 @@ type App struct {
 	deviceService        *device.Service
 	envManager           *env.Manager
 	fileStore            *filestore.Store
-	screeningZoomBridge  *screeningzoombridge.Controller
 	screeningZoomService *screeningzoom.Service
 	runner               *runner.Runner
 	screeningService     *screening.Service
@@ -57,7 +55,6 @@ func NewApp() *App {
 		deviceService:        deviceService,
 		envManager:           env.NewManager(workspaceManager),
 		fileStore:            fileStore,
-		screeningZoomBridge:  screeningzoombridge.NewController(screeningZoomService),
 		screeningZoomService: screeningZoomService,
 		runner:               runner.New(workspaceManager),
 		aiSettingsStore:      settingspkg.NewAIStore(),
@@ -72,16 +69,16 @@ func NewApp() *App {
 			})
 		},
 		OnStateChanged: func(state screening.SessionState) {
+			if state.Active && app.screeningZoomService != nil {
+				_ = app.screeningZoomService.EnsureStarted()
+			}
 			app.emit(EventScreeningState, mapScreeningState(state))
 		},
 		OnStopped: func(state screening.SessionState) {
-			if err := app.screeningZoomBridge.Stop(); err != nil {
+			if app.screeningZoomService != nil {
+				_ = app.screeningZoomService.Stop()
 			}
 			app.emit(EventScreeningState, mapScreeningState(state))
-		},
-		OnTargetWindowChanged: func(sceneName string, hwnd uintptr) {
-			if err := app.screeningZoomBridge.UpdateTargetWindow(hwnd); err != nil {
-			}
 		},
 	})
 
@@ -98,8 +95,8 @@ func (a *App) Shutdown(ctx context.Context) {
 	if a.screeningService != nil {
 		_, _ = a.screeningService.Stop()
 	}
-	if a.screeningZoomBridge != nil {
-		_ = a.screeningZoomBridge.Stop()
+	if a.screeningZoomService != nil {
+		_ = a.screeningZoomService.Stop()
 	}
 }
 

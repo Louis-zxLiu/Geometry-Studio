@@ -117,20 +117,6 @@ type ScreeningStopResult struct {
 	Message string `json:"message"`
 }
 
-type ScreeningZoomRect struct {
-	Left   int32 `json:"left"`
-	Top    int32 `json:"top"`
-	Right  int32 `json:"right"`
-	Bottom int32 `json:"bottom"`
-}
-
-type ScreeningZoomStatus struct {
-	Available  bool   `json:"available"`
-	Running    bool   `json:"running"`
-	HelperPath string `json:"helperPath"`
-	TargetHWND string `json:"targetHwnd"`
-}
-
 type AIProviderSettings struct {
 	Mode  string `json:"mode"`
 	URL   string `json:"url"`

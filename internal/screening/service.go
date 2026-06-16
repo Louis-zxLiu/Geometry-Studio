@@ -13,10 +13,9 @@ type runController interface {
 }
 
 type Callbacks struct {
-	OnError               func(error)
-	OnStateChanged        func(SessionState)
-	OnStopped             func(SessionState)
-	OnTargetWindowChanged func(sceneName string, hwnd uintptr)
+	OnError        func(error)
+	OnStateChanged func(SessionState)
+	OnStopped      func(SessionState)
 }
 
 type poolEntry struct {
