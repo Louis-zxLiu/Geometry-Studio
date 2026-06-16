@@ -1,9 +1,11 @@
 .screening-dialog {
   width: min(52vw, 620px);
   min-height: 420px;
+  max-height: min(82vh, calc(100vh - 48px));
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 22px;
+  overflow: hidden;
 }
 
 .screening-dialog-header {
@@ -23,7 +25,16 @@
   display: grid;
   gap: 10px;
   align-content: start;
-  min-height: 220px;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.screening-scene-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .screening-scene-row {
@@ -86,5 +97,6 @@
   .screening-dialog {
     width: min(90vw, 560px);
     min-height: 380px;
+    max-height: min(88vh, calc(100vh - 32px));
   }
 }

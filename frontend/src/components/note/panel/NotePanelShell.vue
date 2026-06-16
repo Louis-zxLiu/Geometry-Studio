@@ -1,6 +1,8 @@
 <script setup lang="ts">
 defineProps<{
+  currentFile?: string;
   isOpen: boolean;
+  isSceneSwitching?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -12,7 +14,11 @@ const notebookRoot = defineModel<HTMLElement | null>("notebookRoot", { default: 
 </script>
 
 <template>
-  <aside ref="notebookRoot" class="notebook-pane" :class="{ collapsed: !isOpen }">
+  <aside
+    ref="notebookRoot"
+    class="notebook-pane"
+    :class="{ collapsed: !isOpen, switching: isSceneSwitching }"
+  >
     <button
       class="notebook-spine"
       type="button"
@@ -42,27 +48,29 @@ const notebookRoot = defineModel<HTMLElement | null>("notebookRoot", { default: 
       </svg>
     </button>
 
-    <div v-show="isOpen" class="notebook-panel-shell">
-      <button
-        class="notebook-attach-button"
-        type="button"
-        title="添加图片"
-        aria-label="添加图片"
-        @click="emit('attach')"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M8 12.5 13.5 7a3.2 3.2 0 1 1 4.5 4.5l-7.6 7.6a4.4 4.4 0 0 1-6.2-6.2l8-8"
-            fill="none"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.6"
-          />
-        </svg>
-      </button>
-      <slot />
-    </div>
+    <Transition name="notebook-panel-shell-transition">
+      <div v-if="isOpen" class="notebook-panel-shell">
+        <button
+          class="notebook-attach-button"
+          type="button"
+          title="添加图片"
+          aria-label="添加图片"
+          @click="emit('attach')"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M8 12.5 13.5 7a3.2 3.2 0 1 1 4.5 4.5l-7.6 7.6a4.4 4.4 0 0 1-6.2-6.2l8-8"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.6"
+            />
+          </svg>
+        </button>
+        <slot />
+      </div>
+    </Transition>
 
     <slot name="overlays" />
   </aside>

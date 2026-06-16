@@ -29,6 +29,7 @@ const props = defineProps<{
   document: NoteDocument;
   designCards: DesignCard[];
   isOpen: boolean;
+  isSceneSwitching?: boolean;
   renderBlocks: NoteRenderBlock[];
   saveState: "idle" | "saving" | "saved";
   aiBusy?: boolean;
@@ -267,11 +268,12 @@ useNotePanelEffects({
 </script>
 
 <template>
-  <NotePanelShell
-    v-model:notebook-root="notebookRoot"
-    :is-open="isOpen"
-    @attach="openFilePicker"
-    @toggle="emit('toggle')"
+    <NotePanelShell
+      v-model:notebook-root="notebookRoot"
+      :is-open="isOpen"
+      :is-scene-switching="isSceneSwitching"
+      @attach="openFilePicker"
+      @toggle="emit('toggle')"
   >
     <NoteDocumentArea
       v-model:notebook-scroll="notebookScroll"
@@ -282,6 +284,7 @@ useNotePanelEffects({
       :current-file="currentFile"
       :drop-insertion-point="dropInsertionPoint"
       :editable-markdown="editableMarkdown"
+      :is-scene-switching="isSceneSwitching"
       :render-blocks="renderBlocks"
       :selected-image-paths="selectedImagePaths"
       :should-show-markdown-input="shouldShowMarkdownInput"

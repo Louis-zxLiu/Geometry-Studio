@@ -14,6 +14,7 @@ const props = defineProps<{
   designCards?: DesignCard[];
   designCardPlacements?: DesignCardPlacement[];
   disabled?: boolean;
+  isSceneSwitching?: boolean;
   isStreaming?: boolean;
   animatedLineRanges?: Array<{ startLine: number; endLine: number }>;
   animationKey?: number;
@@ -180,7 +181,12 @@ function handlePanelPointerDown(event: PointerEvent) {
 <template>
   <section
     class="editor-panel"
-    :class="{ disabled: disabled, streaming: isStreaming, 'dragging-design-card': isDesignCardDraggingOver }"
+    :class="{
+      disabled: disabled,
+      streaming: isStreaming,
+      switching: isSceneSwitching,
+      'dragging-design-card': isDesignCardDraggingOver,
+    }"
     @pointerdown="handlePanelPointerDown"
   >
     <div v-if="isSearchOpen" ref="searchBar" class="editor-search-bar">
@@ -203,6 +209,10 @@ function handlePanelPointerDown(event: PointerEvent) {
       </div>
       <span class="editor-search-status">{{ searchMatchLabel }}</span>
     </div>
-    <div ref="editorRoot" class="code-editor-surface" />
+    <div
+      ref="editorRoot"
+      class="code-editor-surface"
+      :class="{ switching: isSceneSwitching }"
+    />
   </section>
 </template>

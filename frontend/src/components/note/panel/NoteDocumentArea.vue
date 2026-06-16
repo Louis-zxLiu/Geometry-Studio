@@ -10,6 +10,7 @@ defineProps<{
   currentFile: string;
   dropInsertionPoint: NoteDropInsertionPoint | null;
   editableMarkdown: string;
+  isSceneSwitching?: boolean;
   renderBlocks: NoteRenderBlock[];
   selectedImagePaths: Set<string>;
   shouldShowMarkdownInput: boolean;
@@ -43,6 +44,7 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
   <div
     ref="notebookScroll"
     class="notebook-scroll"
+    :class="{ switching: isSceneSwitching }"
     @pointerdown.capture="emit('pointerdown-capture', $event)"
     @paste="emit('paste', $event)"
     @click="emit('surface-click', $event)"

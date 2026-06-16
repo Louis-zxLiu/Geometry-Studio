@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from "vue";
+import { onBeforeUnmount, reactive, ref, watch } from "vue";
 import CreateScriptDialog from "./components/CreateScriptDialog.vue";
 import AISettingsDialog from "./components/AISettingsDialog.vue";
 import CodeAIOptimizeContextMenu from "./components/codeAIOptimize/CodeAIOptimizeContextMenu.vue";
@@ -23,6 +23,31 @@ import { useTheme } from "./composables/useTheme";
 
 const workspace = reactive(usePlotWorkspace());
 const theme = reactive(useTheme());
+const isSceneSwitching = ref(false);
+
+let sceneSwitchTimer = 0;
+let hasMountedScene = false;
+
+watch(
+  () => workspace.currentFile,
+  () => {
+    if (!hasMountedScene) {
+      hasMountedScene = true;
+      return;
+    }
+
+    window.clearTimeout(sceneSwitchTimer);
+    isSceneSwitching.value = true;
+    sceneSwitchTimer = window.setTimeout(() => {
+      isSceneSwitching.value = false;
+      sceneSwitchTimer = 0;
+    }, 260);
+  },
+);
+
+onBeforeUnmount(() => {
+  window.clearTimeout(sceneSwitchTimer);
+});
 </script>
 
 <template>
@@ -80,11 +105,11 @@ const theme = reactive(useTheme());
           />
 
           <EditorPane
-            :key="workspace.currentFile || '__empty_scene__'"
             :code="workspace.codeContent"
             :design-cards="workspace.designCards"
             :design-card-placements="workspace.designCardPlacements"
             :disabled="workspace.isAIGenerating"
+            :is-scene-switching="isSceneSwitching"
             :is-streaming="workspace.isAIGenerating"
             :animated-line-ranges="workspace.repairAnimatedLineRanges"
             :animation-key="workspace.repairAnimationKey"
@@ -111,11 +136,11 @@ const theme = reactive(useTheme());
         </section>
 
         <NotePanel
-          :key="workspace.currentFile || '__empty_scene__'"
           :current-file="workspace.currentFile"
           :document="workspace.currentNoteDocument"
           :design-cards="workspace.designCards"
           :is-open="workspace.isNotePanelOpen"
+          :is-scene-switching="isSceneSwitching"
           :render-blocks="workspace.noteRenderBlocks"
           :save-state="workspace.noteSaveState"
           :ai-busy="workspace.isAIGenerating"

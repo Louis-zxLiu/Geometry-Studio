@@ -30,7 +30,7 @@ function cancel() {
       <section class="create-dialog screening-dialog" role="dialog" aria-modal="true" aria-labelledby="screening-title">
         <div class="screening-dialog-header">
           <h2 id="screening-title">放映模式</h2>
-          <p>点击场景条目设置放映顺序，双击画面切到下一页，最后一页双击退出，Esc 退出。</p>
+          <p>双击画面切到下一页，Esc 退出；右键菜单进入画笔和放大，滚轮控制视角缩放。</p>
         </div>
 
         <div class="screening-scene-list" role="list">

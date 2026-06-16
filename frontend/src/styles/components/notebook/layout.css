@@ -84,6 +84,7 @@
   transition:
     opacity 260ms ease 150ms,
     transform 520ms cubic-bezier(0.22, 1, 0.36, 1) 80ms;
+  transform-origin: left center;
 }
 
 .notebook-pane.collapsed .notebook-panel-shell {
@@ -93,6 +94,27 @@
     opacity 170ms ease,
     transform 240ms cubic-bezier(0.4, 0, 1, 1);
   pointer-events: none;
+}
+
+.notebook-panel-shell-transition-enter-active {
+  transition:
+    opacity 300ms ease,
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 300ms ease;
+}
+
+.notebook-panel-shell-transition-leave-active {
+  transition:
+    opacity 220ms ease,
+    transform 300ms cubic-bezier(0.4, 0, 1, 1),
+    filter 220ms ease;
+}
+
+.notebook-panel-shell-transition-enter-from,
+.notebook-panel-shell-transition-leave-to {
+  opacity: 0;
+  transform: translateX(18px) scale(0.985);
+  filter: saturate(0.92) blur(1px);
 }
 
 .notebook-attach-button {
@@ -124,9 +146,6 @@
   padding: 70px 42px 34px 44px;
   opacity: 1;
   transform: translateX(0);
-  transition:
-    opacity 260ms ease 170ms,
-    transform 520ms cubic-bezier(0.22, 1, 0.36, 1) 120ms;
 }
 
 .notebook-pane.collapsed .notebook-scroll {
@@ -135,6 +154,21 @@
   transition:
     opacity 140ms ease,
     transform 180ms ease;
+}
+
+.notebook-scroll.switching {
+  animation: notebook-content-rise 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+@keyframes notebook-content-rise {
+  from {
+    opacity: 0.76;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .notebook-document-flow {
