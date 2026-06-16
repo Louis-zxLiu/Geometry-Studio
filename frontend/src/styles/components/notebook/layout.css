@@ -1,6 +1,6 @@
 .workspace-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
+  grid-template-columns: minmax(520px, 1.06fr) minmax(400px, 0.94fr);
   min-height: 0;
   height: 100%;
   transition: grid-template-columns 520ms cubic-bezier(0.22, 1, 0.36, 1);

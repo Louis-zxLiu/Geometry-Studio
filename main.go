@@ -40,14 +40,15 @@ func main() {
 
 	app := bridge.NewApp()
 	initialWindowSize := windowmetrics.InitialWindowSize()
+	minimumWindowSize := windowmetrics.MinimumWindowSize()
 
 	err = wails.Run(&options.App{
 		Title:     "PlotKityCat",
 		Width:     initialWindowSize.Width,
 		Height:    initialWindowSize.Height,
 		Frameless: true,
-		MinWidth:  1180,
-		MinHeight: 760,
+		MinWidth:  minimumWindowSize.Width,
+		MinHeight: minimumWindowSize.Height,
 		Assets:    assets,
 		DragAndDrop: &options.DragAndDrop{
 			EnableFileDrop: true,
