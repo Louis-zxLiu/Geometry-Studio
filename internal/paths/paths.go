@@ -126,8 +126,9 @@ func ScreeningZoomHelperPath() (string, error) {
 	}
 
 	candidates := []string{
-		filepath.Join(root, "resources", "screeningzoom", "screeningzoom-helper.exe"),
-		filepath.Join(root, "thirdparty", "screeningzoom", "bin", "screeningzoom-helper.exe"),
+		filepath.Join(root, "thirdparty", "screeningzoom", "build", "Release", "zoomit.exe"),
+		filepath.Join(root, "thirdparty", "screeningzoom", "build", "zoomit.exe"),
+		filepath.Join(root, "resources", "screeningzoom", "zoomit.exe"),
 	}
 	for _, candidate := range candidates {
 		if fileExists(candidate) {

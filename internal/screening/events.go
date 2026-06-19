@@ -26,3 +26,9 @@ func (s *Service) emitError(err error) {
 
 func (s *Service) debugf(format string, args ...any) {
 }
+
+func (s *Service) emitContextMenu() {
+	if s.callbacks.OnContextMenu != nil {
+		s.callbacks.OnContextMenu()
+	}
+}

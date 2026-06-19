@@ -68,6 +68,9 @@ func NewApp() *App {
 				Error: err.Error(),
 			})
 		},
+		OnContextMenu: func() {
+			app.handleScreeningContextMenu()
+		},
 		OnStateChanged: func(state screening.SessionState) {
 			if state.Active && app.screeningZoomService != nil {
 				_ = app.screeningZoomService.EnsureStarted()
@@ -114,6 +117,33 @@ func (a *App) requireContext() error {
 	}
 
 	return nil
+}
+
+func (a *App) handleScreeningContextMenu() {
+	if a.screeningZoomService == nil {
+		return
+	}
+	action := a.screeningZoomService.ShowContextMenu()
+	switch action {
+	case "livezoom-on", "livezoom-off":
+		_ = a.screeningZoomService.ToggleLiveZoom()
+	case "draw-toggle":
+		_ = a.screeningZoomService.ToggleDraw()
+	}
+}
+
+func (a *App) ToggleScreeningLiveZoom() error {
+	if a.screeningZoomService == nil {
+		return errors.New("缩放服务未初始化")
+	}
+	return a.screeningZoomService.ToggleLiveZoom()
+}
+
+func (a *App) ToggleScreeningDraw() error {
+	if a.screeningZoomService == nil {
+		return errors.New("缩放服务未初始化")
+	}
+	return a.screeningZoomService.ToggleDraw()
 }
 
 func (a *App) GetEnvironmentStatus() (EnvironmentStatus, error) {

@@ -108,4 +108,8 @@ export function StopScreening():Promise<bridge.ScreeningStopResult>;
 
 export function SwitchWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;
 
+export function ToggleScreeningDraw():Promise<void>;
+
+export function ToggleScreeningLiveZoom():Promise<void>;
+
 export function UpdateDesignCardPlan(arg1:string,arg2:string,arg3:string):Promise<bridge.DesignCard>;

@@ -16,6 +16,7 @@ type Callbacks struct {
 	OnError        func(error)
 	OnStateChanged func(SessionState)
 	OnStopped      func(SessionState)
+	OnContextMenu  func()
 }
 
 type poolEntry struct {

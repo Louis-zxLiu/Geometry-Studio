@@ -1,19 +1,26 @@
 package screeningzoom
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
+	"syscall"
+	"unsafe"
 
 	"plotkitycat/internal/paths"
 	"plotkitycat/internal/processutil"
 )
 
 type Service struct {
-	mu            sync.Mutex
-	helperPath    string
-	helperMissing bool
-	cmd           *exec.Cmd
+	mu             sync.Mutex
+	helperPath     string
+	helperMissing  bool
+	cmd            *exec.Cmd
+	liveZoomActive bool
+	drawActive     bool
 }
 
 func NewService() *Service {
@@ -38,6 +45,85 @@ func (s *Service) Stop() error {
 	}
 
 	s.cmd = nil
+	s.liveZoomActive = false
+	s.drawActive = false
+	return nil
+}
+
+func (s *Service) LiveZoomActive() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.liveZoomActive
+}
+
+func (s *Service) DrawActive() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.drawActive
+}
+
+func (s *Service) ToggleLiveZoom() error {
+	if err := s.sendZoomitHotkey(zoomitHotkeyLiveZoom); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.liveZoomActive = !s.liveZoomActive
+	s.drawActive = false
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *Service) ToggleDraw() error {
+	if err := s.sendZoomitHotkey(zoomitHotkeyDraw); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.drawActive = !s.drawActive
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *Service) ShowContextMenu() string {
+	s.mu.Lock()
+	liveActive := s.liveZoomActive
+	drawActive := s.drawActive
+	s.mu.Unlock()
+	return showZoomitContextMenu(liveActive, drawActive)
+}
+
+// ---- internal --------------------------------------------------------------
+
+const (
+	zoomitHotkeyBase     = 0x5A00
+	zoomitHotkeyLiveZoom = zoomitHotkeyBase + 1 // 0x5A01
+	zoomitHotkeyDraw     = zoomitHotkeyBase + 2 // 0x5A02
+)
+
+var (
+	libUser32         = syscall.NewLazyDLL("user32.dll")
+	procFindWindowW   = libUser32.NewProc("FindWindowW")
+	procPostMessageW  = libUser32.NewProc("PostMessageW")
+)
+
+const (
+	WM_HOTKEY = 0x0312
+)
+
+func (s *Service) findZoomitWindow() (uintptr, error) {
+	className, _ := syscall.UTF16PtrFromString("ZoomItOwner")
+	hwnd, _, _ := procFindWindowW.Call(uintptr(unsafe.Pointer(className)), 0)
+	if hwnd == 0 {
+		return 0, fmt.Errorf("zoomit 进程未运行")
+	}
+	return hwnd, nil
+}
+
+func (s *Service) sendZoomitHotkey(id uintptr) error {
+	hwnd, err := s.findZoomitWindow()
+	if err != nil {
+		return err
+	}
+	procPostMessageW.Call(hwnd, WM_HOTKEY, id, 0)
 	return nil
 }
 
@@ -54,19 +140,25 @@ func (s *Service) ensureProcessLocked() error {
 		return nil
 	}
 
-	cmd := exec.Command(helperPath, "--plotkitycat")
+	_ = ensureZoomitSettings()
+
+	cmd := exec.Command(helperPath)
 	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("start screeningzoom helper: %w", err)
+		return fmt.Errorf("start zoomit helper: %w", err)
 	}
 
 	s.cmd = cmd
+	s.liveZoomActive = false
+	s.drawActive = false
 	go func(process *exec.Cmd) {
 		_ = process.Wait()
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.cmd == process {
 			s.cmd = nil
+			s.liveZoomActive = false
+			s.drawActive = false
 		}
 	}(cmd)
 
@@ -89,4 +181,38 @@ func (s *Service) helperPathLocked() (string, error) {
 
 	s.helperPath = helperPath
 	return helperPath, nil
+}
+
+func zoomitSettingsDir() (string, error) {
+	appData := os.Getenv("APPDATA")
+	if appData == "" {
+		return "", fmt.Errorf("APPDATA 环境变量未设置")
+	}
+	dir := filepath.Join(appData, "zoomit")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+func ensureZoomitSettings() error {
+	dir, err := zoomitSettingsDir()
+	if err != nil {
+		return err
+	}
+
+	settings := map[string]interface{}{
+		"autoStart":      false,
+		"penWidth":       5,
+		"zoomHotkey":     map[string]int{"mods": 0, "vk": 0},
+		"liveZoomHotkey": map[string]int{"mods": 0, "vk": 0},
+		"drawHotkey":     map[string]int{"mods": 0, "vk": 0},
+	}
+
+	data, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filepath.Join(dir, "settings.json"), data, 0644)
 }
