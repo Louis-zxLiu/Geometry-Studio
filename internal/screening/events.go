@@ -1,5 +1,10 @@
 package screening
 
+import (
+	"fmt"
+	"os"
+)
+
 func (s *Service) emitStateChange() {
 	if s.callbacks.OnStateChanged == nil {
 		return
@@ -25,6 +30,7 @@ func (s *Service) emitError(err error) {
 }
 
 func (s *Service) debugf(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "[screening] "+format+"\n", args...)
 }
 
 func (s *Service) emitContextMenu() {

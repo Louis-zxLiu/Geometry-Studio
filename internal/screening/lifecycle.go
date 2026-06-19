@@ -25,6 +25,8 @@ func (s *Service) Start(request StartRequest) (SessionState, error) {
 	s.activateSession(sceneNames, startIndex, poolSize, animation)
 	state := s.State()
 
+	s.installContextMenuHook()
+
 	if err := s.createPool(); err != nil {
 		_, _ = s.Stop()
 		return SessionState{}, err
@@ -62,6 +64,7 @@ func (s *Service) Stop() (StopResult, error) {
 	s.mu.Lock()
 	s.stopping = false
 	s.mu.Unlock()
+	s.uninstallContextMenuHook()
 	s.emitStopped(state)
 	s.debugf("stop completed")
 

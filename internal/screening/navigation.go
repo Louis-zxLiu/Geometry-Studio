@@ -67,6 +67,7 @@ func (s *Service) finishSessionAfterFinalPage() error {
 	s.mu.Lock()
 	s.stopping = false
 	s.mu.Unlock()
+	s.uninstallContextMenuHook()
 	s.emitStopped(state)
 	s.debugf("final-page finish completed")
 	return nil

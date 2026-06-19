@@ -27,6 +27,7 @@ func (s *Service) onProcessWindowReady(sceneName string) {
 	}
 
 	s.markEntryWindowReady(sceneName, hwnd)
+	addSceneWindow(hwnd)
 	s.debugf("window prepared scene=%s pid=%d hwnd=%#x", sceneName, entry.process.pid, hwnd)
 	if s.scheduler != nil {
 		s.debugf("window-ready enqueued layout scene=%s", sceneName)

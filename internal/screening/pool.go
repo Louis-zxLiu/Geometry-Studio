@@ -145,6 +145,9 @@ func (s *Service) releaseEntryWithMode(entry *poolEntry, sendToPool bool) {
 	s.mu.Lock()
 	s.retiring[entry.sceneName] = struct{}{}
 	s.mu.Unlock()
+	if entry.hwnd != 0 {
+		removeSceneWindow(entry.hwnd)
+	}
 	if sendToPool && entry.hwnd != 0 {
 		_ = windowctrl.SendWindowToPoolLayer(entry.hwnd)
 	}
