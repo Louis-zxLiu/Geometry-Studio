@@ -62,7 +62,6 @@ def patch_matplotlib():
             def on_click(event, canvas=canvas):
                 button = getattr(event, "button", None)
                 if button == 3:
-                    emit_navigation(STOP)
                     return
                 if button != 1:
                     return

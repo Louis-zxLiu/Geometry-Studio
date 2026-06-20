@@ -214,6 +214,14 @@ export function SwitchWorkspace(arg1) {
   return window['go']['bridge']['App']['SwitchWorkspace'](arg1);
 }
 
+export function ToggleScreeningDraw() {
+  return window['go']['bridge']['App']['ToggleScreeningDraw']();
+}
+
+export function ToggleScreeningLiveZoom() {
+  return window['go']['bridge']['App']['ToggleScreeningLiveZoom']();
+}
+
 export function UpdateDesignCardPlan(arg1, arg2, arg3) {
   return window['go']['bridge']['App']['UpdateDesignCardPlan'](arg1, arg2, arg3);
 }
