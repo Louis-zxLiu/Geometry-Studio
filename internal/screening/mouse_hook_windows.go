@@ -3,17 +3,11 @@
 package screening
 
 import (
-	"fmt"
-	"os"
 	"runtime"
 	"sync/atomic"
 	"syscall"
 	"unsafe"
 )
-
-func hookDebugf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, "[screening-hook] "+format+"\n", args...)
-}
 
 var (
 	userDll                = syscall.NewLazyDLL("user32.dll")
@@ -118,18 +112,14 @@ func mouseHookProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 		// and immediately re-trigger our own context-menu flow the moment draw
 		// mode releases the capture.
 		if svc != nil && svc.callbacks.DrawActive != nil && svc.callbacks.DrawActive() {
-			hookDebugf("rbutton draw-active -> exit draw pt=(%d,%d)", info.Pt.X, info.Pt.Y)
 			if svc.callbacks.ExitDraw != nil {
 				svc.callbacks.ExitDraw()
-				hookDebugf("exit draw sent (click swallowed)")
 			}
 			return 1
 		}
 
-		hookDebugf("rbutton pt=(%d,%d) root=%#x matched=%v pool=%d", info.Pt.X, info.Pt.Y, root, matched, len(cmHook.sceneWindows))
 		if matched && cmHook.menuWnd != 0 {
 			procPostMessageW.Call(cmHook.menuWnd, WM_USER_CONTEXT_MENU, root, 0)
-			hookDebugf("posted to menuWnd=%#x root=%#x", cmHook.menuWnd, root)
 		}
 	}
 	ret, _, _ := procCallNextHookEx.Call(0, uintptr(nCode), wParam, lParam)
@@ -156,21 +146,18 @@ func (s *Service) installContextMenuHook() {
 
 		hook, _, _ := procSetWindowsHookExW.Call(WH_MOUSE_LL, mouseHookFn, 0, 0)
 		if hook == 0 {
-			hookDebugf("SetWindowsHookExW FAILED")
 			close(hookDone)
 			return
 		}
 		cmHook.hook = hook
 		tid, _, _ := procGetCurrentThreadId.Call()
 		cmHook.hookThreadID = uint32(tid)
-		hookDebugf("hook live handle=%#x thread=%d", hook, tid)
 		close(hookReady)
 
 		var msg winMSG
 		for {
 			ret, _, _ := procGetMessageW.Call(uintptr(unsafe.Pointer(&msg)), 0, 0, 0)
 			if ret == 0 || ret == uintptr(^uint32(0)) {
-				hookDebugf("hook loop exit ret=%d", ret)
 				break
 			}
 		}
@@ -184,7 +171,6 @@ func (s *Service) installContextMenuHook() {
 	case <-hookReady:
 	case <-hookDone:
 	}
-	s.debugf("mouse-hook installed")
 }
 
 func (s *Service) uninstallContextMenuHook() {
@@ -201,8 +187,6 @@ func (s *Service) uninstallContextMenuHook() {
 	}
 	cmHook.menuThreadID = 0
 	cmHook.menuWnd = 0
-
-	s.debugf("mouse-hook uninstalled")
 }
 
 // ---- menu window (dedicated GUI thread, owns TrackPopupMenu) ---------------
@@ -210,12 +194,10 @@ func (s *Service) uninstallContextMenuHook() {
 var menuWndClassRegistered bool
 
 func menuWndProc(hwnd uintptr, msg uint32, wParam uintptr, lParam uintptr) uintptr {
-		if msg == WM_USER_CONTEXT_MENU {
-		hookDebugf("menuWnd got WM_USER_CONTEXT_MENU root=%#x owner=%#x", wParam, hwnd)
+	if msg == WM_USER_CONTEXT_MENU {
 		svc := cmHook.svc.Load()
 		if svc != nil {
 			svc.emitContextMenu(wParam, hwnd)
-			hookDebugf("menuWnd emitContextMenu done root=%#x", wParam)
 		}
 		return 0
 	}
@@ -273,14 +255,12 @@ func startMenuWindow() {
 			HWND_MESSAGE, 0, hinst, 0,
 		)
 		if hwnd == 0 {
-			hookDebugf("CreateWindowExW FAILED for menu host")
 			close(ready)
 			return
 		}
 		cmHook.menuWnd = hwnd
 		tid, _, _ := procGetCurrentThreadId.Call()
 		cmHook.menuThreadID = uint32(tid)
-		hookDebugf("menuWnd live hwnd=%#x thread=%d", hwnd, tid)
 		close(ready)
 
 		var msg winMSG
@@ -307,10 +287,8 @@ func startMenuWindow() {
 
 func addSceneWindow(hwnd uintptr) {
 	cmHook.sceneWindows[hwnd] = true
-	hookDebugf("addSceneWindow hwnd=%#x pool=%d", hwnd, len(cmHook.sceneWindows))
 }
 
 func removeSceneWindow(hwnd uintptr) {
 	delete(cmHook.sceneWindows, hwnd)
-	hookDebugf("removeSceneWindow hwnd=%#x pool=%d", hwnd, len(cmHook.sceneWindows))
 }

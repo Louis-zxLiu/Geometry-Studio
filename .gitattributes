@@ -1,0 +1,3 @@
+thirdparty/screeningzoom/**/*.cpp linguist-vendored=false
+thirdparty/screeningzoom/**/*.h   linguist-vendored=false
+thirdparty/screeningzoom/**/*.hpp linguist-vendored=false

@@ -12,7 +12,6 @@ func (s *Service) Start(request StartRequest) (SessionState, error) {
 	if err != nil {
 		return SessionState{}, err
 	}
-	s.debugf("start requested scenes=%v startIndex=%d poolSize=%d animation=%s", sceneNames, startIndex, poolSize, animation)
 
 	if err := s.stopRegularRun(); err != nil {
 		return SessionState{}, err
@@ -35,7 +34,6 @@ func (s *Service) Start(request StartRequest) (SessionState, error) {
 		s.scheduler.requestLayout(120 * time.Millisecond)
 	}
 
-	s.debugf("start completed current=%s poolSize=%d", state.CurrentSceneName, state.PoolSize)
 	s.emitStateChange()
 	return state, nil
 }
@@ -43,14 +41,11 @@ func (s *Service) Start(request StartRequest) (SessionState, error) {
 func (s *Service) Stop() (StopResult, error) {
 	entries, state, shouldStop, alreadyStopping := s.deactivateSession()
 	if alreadyStopping {
-		s.debugf("stop requested while already stopping")
 		return StopResult{Handled: true, Message: "正在停止放映会话"}, nil
 	}
 	if !shouldStop {
-		s.debugf("stop requested without active session")
 		return StopResult{Handled: false, Message: "当前没有放映会话"}, nil
 	}
-	s.debugf("stop session entries=%d current=%s", len(entries), state.CurrentSceneName)
 
 	for _, entry := range entries {
 		if entry.hwnd != 0 {
@@ -66,7 +61,6 @@ func (s *Service) Stop() (StopResult, error) {
 	s.mu.Unlock()
 	s.uninstallContextMenuHook()
 	s.emitStopped(state)
-	s.debugf("stop completed")
 
 	return StopResult{
 		Handled: true,
@@ -78,7 +72,6 @@ func (s *Service) stopRegularRun() error {
 	if s.runner == nil || !s.runner.IsRunning() {
 		return nil
 	}
-	s.debugf("stopping regular run before screening")
 
 	handled, err := s.runner.Stop()
 	if err != nil {
@@ -95,7 +88,6 @@ func (s *Service) stopRegularRun() error {
 	if s.runner.IsRunning() {
 		return errors.New("停止当前运行超时，无法进入放映模式")
 	}
-	s.debugf("regular run stopped")
 	return nil
 }
 

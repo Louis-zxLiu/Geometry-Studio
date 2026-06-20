@@ -12,23 +12,14 @@ import (
 func (s *Service) handleSchedulerCommand(cmd schedulerCommand) {
 	switch cmd.kind {
 	case schedulerCommandLayout:
-		s.debugf("scheduler layout tick")
-		if err := s.syncVisibleWindow(); err != nil {
-			s.debugf("scheduler layout skipped err=%v", err)
-		}
+		_ = s.syncVisibleWindow()
 	case schedulerCommandNext:
-		s.debugf("scheduler next tick")
 		if s.finishOnNextAtEnd() {
 			return
 		}
-		if _, err := s.navigate(1); err != nil {
-			s.debugf("scheduler next failed err=%v", err)
-		}
+		_, _ = s.navigate(1)
 	case schedulerCommandPrev:
-		s.debugf("scheduler prev tick")
-		if _, err := s.navigate(-1); err != nil {
-			s.debugf("scheduler prev failed err=%v", err)
-		}
+		_, _ = s.navigate(-1)
 	}
 }
 
@@ -40,21 +31,17 @@ func (s *Service) finishOnNextAtEnd() bool {
 		return false
 	}
 
-	s.debugf("next-at-end finishing session")
-	if err := s.finishSessionAfterFinalPage(); err != nil {
-		s.debugf("next-at-end finish failed err=%v", err)
-	}
+	_ = s.finishSessionAfterFinalPage()
 	return true
 }
 
 func (s *Service) finishSessionAfterFinalPage() error {
-	sceneName, entry, animation, entries, state, shouldStop, alreadyStopping := s.finalPageFinishContext()
+	_, entry, animation, entries, state, shouldStop, alreadyStopping := s.finalPageFinishContext()
 	if alreadyStopping || !shouldStop {
 		return nil
 	}
 
 	if entry != nil && entry.hwnd != 0 {
-		s.debugf("final-page animate-exit scene=%s hwnd=%#x animation=%s", sceneName, entry.hwnd, animation)
 		if err := windowctrl.AnimateExit(entry.hwnd, windowctrl.Animation(animation)); err != nil {
 			return err
 		}
@@ -69,7 +56,6 @@ func (s *Service) finishSessionAfterFinalPage() error {
 	s.mu.Unlock()
 	s.uninstallContextMenuHook()
 	s.emitStopped(state)
-	s.debugf("final-page finish completed")
 	return nil
 }
 
@@ -110,7 +96,6 @@ func (s *Service) navigate(delta int) (SessionState, error) {
 	if err != nil || !ready {
 		return state, err
 	}
-	s.debugf("navigate begin delta=%d targetIndex=%d", delta, targetIndex)
 
 	defer s.finishNavigation()
 
@@ -125,7 +110,6 @@ func (s *Service) navigate(delta int) (SessionState, error) {
 	if err := s.waitUntilReady(toEntry.sceneName, 8*time.Second); err != nil {
 		return SessionState{}, err
 	}
-	s.debugf("navigate target ready from=%s to=%s fromHwnd=%#x toHwnd=%#x animation=%s", sceneNameOf(fromEntry), toEntry.sceneName, entryWindow(fromEntry), entryWindow(toEntry), animation)
 
 	if err := windowctrl.AnimateTransition(entryWindow(fromEntry), entryWindow(toEntry), windowctrl.Animation(animation)); err != nil {
 		return SessionState{}, err
@@ -144,7 +128,6 @@ func (s *Service) navigate(delta int) (SessionState, error) {
 		return state, err
 	}
 
-	s.debugf("navigate committed current=%s index=%d", state.CurrentSceneName, state.CurrentIndex)
 	s.emitStateChange()
 	return state, nil
 }
@@ -157,13 +140,11 @@ func (s *Service) beginNavigation(delta int) (targetIndex int, state SessionStat
 		return 0, SessionState{}, false, errors.New("当前没有放映会话")
 	}
 	if s.navInProgress {
-		s.debugf("navigate skipped reason=in-progress")
 		return 0, s.stateLocked(), false, nil
 	}
 
 	targetIndex = s.currentIndex + delta
 	if targetIndex < 0 || targetIndex >= len(s.sceneNames) {
-		s.debugf("navigate skipped reason=out-of-range targetIndex=%d", targetIndex)
 		return 0, s.stateLocked(), false, nil
 	}
 
@@ -195,7 +176,6 @@ func (s *Service) syncVisibleWindow() error {
 	if currentEntry == nil {
 		return nil
 	}
-	s.debugf("sync-visible current=%s entries=%d", currentScene, len(entries))
 	if err := s.waitUntilReady(currentScene, 8*time.Second); err != nil {
 		return err
 	}
@@ -205,7 +185,6 @@ func (s *Service) syncVisibleWindow() error {
 			return err
 		}
 		s.markEntryActivated(currentEntry.sceneName)
-		s.debugf("activate current scene=%s hwnd=%#x", currentEntry.sceneName, currentEntry.hwnd)
 	}
 
 	anchor := currentEntry.hwnd
@@ -221,7 +200,6 @@ func (s *Service) syncVisibleWindow() error {
 			return err
 		}
 		s.markEntryStackedBelow(entry.sceneName, anchor)
-		s.debugf("stack below scene=%s hwnd=%#x anchor=%#x", entry.sceneName, entry.hwnd, anchor)
 		anchor = entry.hwnd
 	}
 
@@ -262,7 +240,6 @@ func (s *Service) waitUntilReady(sceneName string, timeout time.Duration) error 
 			time.Since(entry.frameReadyAt) >= 220*time.Millisecond
 		s.mu.Unlock()
 		if ready {
-			s.debugf("wait-ready satisfied scene=%s hwnd=%#x warmFor=%s", sceneName, entry.hwnd, time.Since(entry.frameReadyAt).Round(10*time.Millisecond))
 			return nil
 		}
 		time.Sleep(120 * time.Millisecond)

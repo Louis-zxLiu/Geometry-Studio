@@ -17,7 +17,6 @@ func (s *Service) createPool() error {
 	s.mu.Unlock()
 
 	for _, index := range indices {
-		s.debugf("create-pool ensure index=%d scene=%s", index, s.sceneNameAt(index))
 		if err := s.ensureEntry(index); err != nil {
 			return err
 		}
@@ -34,7 +33,6 @@ func (s *Service) ensureEntry(index int) error {
 
 	sceneName := s.sceneNames[index]
 	if _, exists := s.pool[sceneName]; exists {
-		s.debugf("ensure-entry skip existing scene=%s index=%d", sceneName, index)
 		s.mu.Unlock()
 		return nil
 	}
@@ -64,7 +62,6 @@ func (s *Service) ensureEntry(index int) error {
 	if err != nil {
 		return err
 	}
-	s.debugf("ensure-entry launched scene=%s index=%d", sceneName, index)
 
 	entry := &poolEntry{
 		sceneName: sceneName,
@@ -80,7 +77,6 @@ func (s *Service) ensureEntry(index int) error {
 	}
 	s.pool[sceneName] = entry
 	s.mu.Unlock()
-	s.debugf("ensure-entry registered scene=%s index=%d", sceneName, index)
 	return nil
 }
 
@@ -98,14 +94,12 @@ func (s *Service) reconcilePool() error {
 		sceneName := s.sceneNames[index]
 		if _, keep := desired[sceneName]; !keep {
 			if entry, exists := s.pool[sceneName]; exists {
-				s.debugf("reconcile mark-extra scene=%s index=%d", sceneName, index)
 				releasedEntries = append(releasedEntries, entry)
 				delete(s.pool, sceneName)
 			}
 			continue
 		}
 		if _, exists := s.pool[sceneName]; !exists {
-			s.debugf("reconcile mark-missing scene=%s index=%d", sceneName, index)
 			missingIndices = append(missingIndices, index)
 		}
 	}
@@ -138,7 +132,6 @@ func (s *Service) releaseEntryWithMode(entry *poolEntry, sendToPool bool) {
 	if entry == nil {
 		return
 	}
-	s.debugf("release-entry scene=%s hwnd=%#x pid=%d sendToPool=%t", entry.sceneName, entry.hwnd, entryPID(entry), sendToPool)
 	s.mu.Lock()
 	s.retiring[entry.sceneName] = struct{}{}
 	s.mu.Unlock()
@@ -161,7 +154,6 @@ func (s *Service) releaseEntryWithMode(entry *poolEntry, sendToPool bool) {
 		if entry.process != nil {
 			_ = entry.process.stop()
 		}
-		s.debugf("release-entry completed scene=%s", entry.sceneName)
 	}(entry)
 }
 

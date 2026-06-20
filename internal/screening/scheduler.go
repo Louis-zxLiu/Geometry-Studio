@@ -60,14 +60,12 @@ func (s *scheduler) markPending(kind schedulerCommandKind) bool {
 	switch kind {
 	case schedulerCommandLayout:
 		if s.layoutPending {
-			s.service.debugf("scheduler drop duplicate layout request")
 			return false
 		}
 		s.layoutPending = true
 		return true
 	case schedulerCommandNext, schedulerCommandPrev:
 		if s.navPending || s.navExecuting {
-			s.service.debugf("scheduler drop navigation request kind=%s pending=%t executing=%t", kind, s.navPending, s.navExecuting)
 			return false
 		}
 		s.navPending = true

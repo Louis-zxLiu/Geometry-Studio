@@ -8,10 +8,8 @@ import (
 )
 
 func (s *Service) onProcessWindowReady(sceneName string) {
-	s.debugf("window-ready received scene=%s", sceneName)
 	entry := s.getPoolEntry(sceneName)
 	if entry == nil || entry.process == nil {
-		s.debugf("window-ready ignored scene=%s reason=missing-entry", sceneName)
 		return
 	}
 
@@ -28,19 +26,15 @@ func (s *Service) onProcessWindowReady(sceneName string) {
 
 	s.markEntryWindowReady(sceneName, hwnd)
 	addSceneWindow(hwnd)
-	s.debugf("window prepared scene=%s pid=%d hwnd=%#x", sceneName, entry.process.pid, hwnd)
 	if s.scheduler != nil {
-		s.debugf("window-ready enqueued layout scene=%s", sceneName)
 		s.scheduler.requestLayout(140 * time.Millisecond)
 	}
 	s.emitStateChange()
 }
 
 func (s *Service) onProcessFrameReady(sceneName string) {
-	s.debugf("frame-ready received scene=%s", sceneName)
 	s.markEntryFrameReady(sceneName)
 	if s.scheduler != nil {
-		s.debugf("frame-ready enqueued layout scene=%s", sceneName)
 		s.scheduler.requestLayout(220 * time.Millisecond)
 	}
 	s.emitStateChange()
@@ -59,12 +53,10 @@ func (s *Service) onProcessExited(sceneName string) {
 	s.mu.Unlock()
 
 	if retiring {
-		s.debugf("process exited retired scene=%s", sceneName)
 		return
 	}
 
 	if active {
-		s.debugf("process exited while active scene=%s triggering reconcile", sceneName)
 		_ = s.reconcilePool()
 	}
 }

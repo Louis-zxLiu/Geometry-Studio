@@ -3,8 +3,6 @@ package bridge
 import (
 	"context"
 	"errors"
-	"fmt"
-	"os"
 
 	"plotkitycat/internal/ai"
 	"plotkitycat/internal/aicode/workflow"
@@ -130,12 +128,10 @@ func (a *App) requireContext() error {
 }
 
 func (a *App) handleScreeningContextMenu(sceneHwnd, ownerHwnd uintptr) {
-	fmt.Fprintf(os.Stderr, "[screening-bridge] handle scene=%#x owner=%#x zoomSvcNil=%v\n", sceneHwnd, ownerHwnd, a.screeningZoomService == nil)
 	if a.screeningZoomService == nil {
 		return
 	}
 	action := a.screeningZoomService.ShowContextMenu(ownerHwnd)
-	fmt.Fprintf(os.Stderr, "[screening-bridge] menu action=%q\n", action)
 	switch action {
 	case "livezoom-on", "livezoom-off":
 		_ = a.screeningZoomService.ToggleLiveZoom()

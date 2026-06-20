@@ -1,8 +1,6 @@
 package screeningzoom
 
 import (
-	"fmt"
-	"os"
 	"syscall"
 	"time"
 	"unsafe"
@@ -87,7 +85,6 @@ func showZoomitContextMenu(ownerHwnd uintptr, liveZoomActive, drawActive bool) s
 		procSetForegroundWindow.Call(ownerHwnd)
 	}
 
-	fmt.Fprintf(os.Stderr, "[screening-menu] TrackPopupMenu owner=%#x pt=(%d,%d) live=%v draw=%v\n", ownerHwnd, pt.X, pt.Y, liveZoomActive, drawActive)
 	ret, _, _ := procTrackPopupMenu.Call(
 		menu,
 		TPM_RETURNCMD|TPM_NONOTIFY|TPM_LEFTALIGN|TPM_TOPALIGN,
@@ -95,7 +92,6 @@ func showZoomitContextMenu(ownerHwnd uintptr, liveZoomActive, drawActive bool) s
 		uintptr(pt.Y),
 		0, ownerHwnd, 0,
 	)
-	fmt.Fprintf(os.Stderr, "[screening-menu] TrackPopupMenu returned %d\n", ret)
 
 	// MSDN quirk fix: without this, the menu won't dismiss on the next click.
 	if ownerHwnd != 0 {
