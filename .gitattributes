@@ -1,3 +1,6 @@
 thirdparty/screeningzoom/**/*.cpp linguist-vendored=false
 thirdparty/screeningzoom/**/*.h   linguist-vendored=false
 thirdparty/screeningzoom/**/*.hpp linguist-vendored=false
+
+# Wails auto-generated bindings
+frontend/wailsjs/**/*.js linguist-generated=true
