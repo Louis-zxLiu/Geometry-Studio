@@ -56,12 +56,6 @@ func (s *Service) LiveZoomActive() bool {
 	return s.liveZoomActive
 }
 
-func (s *Service) DrawActive() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.drawActive
-}
-
 func (s *Service) ToggleLiveZoom() error {
 	if err := s.sendZoomitHotkey(zoomitHotkeyLiveZoom); err != nil {
 		return err
@@ -83,12 +77,38 @@ func (s *Service) ToggleDraw() error {
 	return nil
 }
 
-func (s *Service) ShowContextMenu() string {
+// DrawActive reports whether ZoomIt pen/draw mode is currently on. The global
+// mouse hook consults this during screening: a right-click while draw mode is
+// active is consumed by ZoomIt's fullscreen capture window and cannot pop our
+// own menu, so instead of showing a menu (which would never appear) we exit
+// draw mode directly.
+func (s *Service) DrawActive() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.drawActive
+}
+
+// ExitDraw turns draw mode off (if on) by re-sending the draw hotkey. Returns
+// whether it actually toggled.
+func (s *Service) ExitDraw() bool {
+	s.mu.Lock()
+	wasActive := s.drawActive
+	s.mu.Unlock()
+	if !wasActive {
+		return false
+	}
+	if err := s.ToggleDraw(); err != nil {
+		return false
+	}
+	return true
+}
+
+func (s *Service) ShowContextMenu(ownerHwnd uintptr) string {
 	s.mu.Lock()
 	liveActive := s.liveZoomActive
 	drawActive := s.drawActive
 	s.mu.Unlock()
-	return showZoomitContextMenu(liveActive, drawActive)
+	return showZoomitContextMenu(ownerHwnd, liveActive, drawActive)
 }
 
 // ---- internal --------------------------------------------------------------

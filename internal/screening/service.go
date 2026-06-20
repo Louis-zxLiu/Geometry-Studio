@@ -16,7 +16,16 @@ type Callbacks struct {
 	OnError        func(error)
 	OnStateChanged func(SessionState)
 	OnStopped      func(SessionState)
-	OnContextMenu  func()
+	OnContextMenu  func(sceneHwnd, ownerHwnd uintptr)
+
+	// DrawActive reports whether the zoom helper's draw/pen mode is on. The
+	// global mouse hook uses this to decide whether a right-click should pop
+	// the context menu or instead exit draw mode directly (because in draw
+	// mode ZoomIt owns the mouse and our menu could never be shown).
+	DrawActive func() bool
+	// ExitDraw turns draw mode off. Called by the hook on right-click while
+	// DrawActive() is true.
+	ExitDraw func()
 }
 
 type poolEntry struct {

@@ -54,9 +54,6 @@ func (s *Service) ensureEntry(index int) error {
 		onStop: func() {
 			_, _ = s.Stop()
 		},
-		onContextMenu: func() {
-			s.emitContextMenu()
-		},
 		onExited: func() {
 			s.onProcessExited(sceneName)
 		},

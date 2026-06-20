@@ -5,7 +5,6 @@ const (
 	screeningFrameReadySentinel  = "__PLOTKITYCAT_SCREENING_FRAME_READY__"
 	screeningNextSentinel        = "__PLOTKITYCAT_SCREENING_NEXT__"
 	screeningStopSentinel        = "__PLOTKITYCAT_SCREENING_STOP__"
-	screeningContextMenuSentinel = "__PLOTKITYCAT_SCREENING_CONTEXT_MENU__"
 )
 
 const screeningPythonBootstrap = `
@@ -19,7 +18,6 @@ WINDOW_READY = os.environ.get("PLOTKITYCAT_SCREENING_WINDOW_READY_SENTINEL", "__
 FRAME_READY = os.environ.get("PLOTKITYCAT_SCREENING_FRAME_READY_SENTINEL", "__PLOTKITYCAT_SCREENING_FRAME_READY__")
 NEXT = os.environ.get("PLOTKITYCAT_SCREENING_NEXT_SENTINEL", "__PLOTKITYCAT_SCREENING_NEXT__")
 STOP = os.environ.get("PLOTKITYCAT_SCREENING_STOP_SENTINEL", "__PLOTKITYCAT_SCREENING_STOP__")
-CONTEXT_MENU = os.environ.get("PLOTKITYCAT_SCREENING_CONTEXT_MENU_SENTINEL", "__PLOTKITYCAT_SCREENING_CONTEXT_MENU__")
 EMITTED_WINDOW_READY = False
 EMITTED_FRAME_READY = False
 DOUBLE_CLICK_THRESHOLD_SECONDS = 0.35
@@ -64,7 +62,6 @@ def patch_matplotlib():
             def on_click(event, canvas=canvas):
                 button = getattr(event, "button", None)
                 if button == 3:
-                    emit_navigation(CONTEXT_MENU)
                     return
                 if button != 1:
                     return

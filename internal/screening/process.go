@@ -22,7 +22,6 @@ type processCallbacks struct {
 	onNext        func()
 	onPrev        func()
 	onStop        func()
-	onContextMenu func()
 }
 
 type sceneProcess struct {
@@ -59,7 +58,6 @@ func launchSceneProcess(workspaceManager *workspaces.Manager, sceneName string, 
 		"PLOTKITYCAT_SCREENING_FRAME_READY_SENTINEL="+screeningFrameReadySentinel,
 		"PLOTKITYCAT_SCREENING_NEXT_SENTINEL="+screeningNextSentinel,
 		"PLOTKITYCAT_SCREENING_STOP_SENTINEL="+screeningStopSentinel,
-		"PLOTKITYCAT_SCREENING_CONTEXT_MENU_SENTINEL="+screeningContextMenuSentinel,
 	)
 	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
 
@@ -123,10 +121,6 @@ func (p *sceneProcess) watchStdout(stdoutPipe interface {
 			case screeningStopSentinel:
 				if callbacks.onStop != nil {
 					callbacks.onStop()
-				}
-			case screeningContextMenuSentinel:
-				if callbacks.onContextMenu != nil {
-					callbacks.onContextMenu()
 				}
 			}
 		}

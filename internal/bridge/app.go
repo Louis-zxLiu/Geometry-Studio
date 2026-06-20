@@ -3,6 +3,8 @@ package bridge
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 
 	"plotkitycat/internal/ai"
 	"plotkitycat/internal/aicode/workflow"
@@ -68,8 +70,16 @@ func NewApp() *App {
 				Error: err.Error(),
 			})
 		},
-		OnContextMenu: func() {
-			app.handleScreeningContextMenu()
+		OnContextMenu: func(sceneHwnd, ownerHwnd uintptr) {
+			app.handleScreeningContextMenu(sceneHwnd, ownerHwnd)
+		},
+		DrawActive: func() bool {
+			return app.screeningZoomService != nil && app.screeningZoomService.DrawActive()
+		},
+		ExitDraw: func() {
+			if app.screeningZoomService != nil {
+				app.screeningZoomService.ExitDraw()
+			}
 		},
 		OnStateChanged: func(state screening.SessionState) {
 			if state.Active && app.screeningZoomService != nil {
@@ -119,11 +129,13 @@ func (a *App) requireContext() error {
 	return nil
 }
 
-func (a *App) handleScreeningContextMenu() {
+func (a *App) handleScreeningContextMenu(sceneHwnd, ownerHwnd uintptr) {
+	fmt.Fprintf(os.Stderr, "[screening-bridge] handle scene=%#x owner=%#x zoomSvcNil=%v\n", sceneHwnd, ownerHwnd, a.screeningZoomService == nil)
 	if a.screeningZoomService == nil {
 		return
 	}
-	action := a.screeningZoomService.ShowContextMenu()
+	action := a.screeningZoomService.ShowContextMenu(ownerHwnd)
+	fmt.Fprintf(os.Stderr, "[screening-bridge] menu action=%q\n", action)
 	switch action {
 	case "livezoom-on", "livezoom-off":
 		_ = a.screeningZoomService.ToggleLiveZoom()
