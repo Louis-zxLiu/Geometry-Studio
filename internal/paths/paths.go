@@ -119,16 +119,16 @@ func RuntimeTempDir() (string, error) {
 	return filepath.Join(root, "runtime.tmp"), nil
 }
 
-func ScreeningZoomHelperPath() (string, error) {
+func ScreeningZoomExecutablePath() (string, error) {
 	root, err := AppRoot()
 	if err != nil {
 		return "", err
 	}
 
 	candidates := []string{
+		filepath.Join(root, "resources", "screeningzoom", "zoomit.exe"),
 		filepath.Join(root, "thirdparty", "screeningzoom", "build", "Release", "zoomit.exe"),
 		filepath.Join(root, "thirdparty", "screeningzoom", "build", "zoomit.exe"),
-		filepath.Join(root, "resources", "screeningzoom", "zoomit.exe"),
 	}
 	for _, candidate := range candidates {
 		if fileExists(candidate) {

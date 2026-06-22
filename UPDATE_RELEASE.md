@@ -106,8 +106,18 @@ powershell -ExecutionPolicy Bypass -File .\tools\package-release.ps1 -Version 0.
 说明：
 
 - 这个 zip 会包含 `PlotKityCat.exe`、`resources/runtime/runtime.7z`、`resources/runtime/7zip/` 和 `Scripts/`
+- 这个 zip 还会包含 `resources/screeningzoom/zoomit.exe`
 - 因此发布完整包前，必须先在本地准备好 `resources/runtime/runtime.7z`
+- 并且必须准备好 `zoomit.exe`；推荐固定放在 `resources/screeningzoom/zoomit.exe`
 - 当前推荐先按 [RUNTIME_BUILD.md](/D:/projects/plotkitycat/RUNTIME_BUILD.md:1) 用裁剪开关重建 runtime，再执行完整打包
+
+`package-release.ps1` 对 `zoomit.exe` 的查找顺序固定为：
+
+1. `resources/screeningzoom/zoomit.exe`
+2. `thirdparty/screeningzoom/build/Release/zoomit.exe`
+3. `thirdparty/screeningzoom/build/zoomit.exe`
+
+如果三处都没有，脚本会直接失败，不再生成缺失放映工具的发布包。
 
 ## 5. 上传到更新服务器
 

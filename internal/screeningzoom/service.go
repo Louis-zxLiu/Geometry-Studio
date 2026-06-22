@@ -120,9 +120,9 @@ const (
 )
 
 var (
-	libUser32         = syscall.NewLazyDLL("user32.dll")
-	procFindWindowW   = libUser32.NewProc("FindWindowW")
-	procPostMessageW  = libUser32.NewProc("PostMessageW")
+	libUser32        = syscall.NewLazyDLL("user32.dll")
+	procFindWindowW  = libUser32.NewProc("FindWindowW")
+	procPostMessageW = libUser32.NewProc("PostMessageW")
 )
 
 const (
@@ -190,7 +190,7 @@ func (s *Service) helperPathLocked() (string, error) {
 		return s.helperPath, nil
 	}
 
-	helperPath, err := paths.ScreeningZoomHelperPath()
+	helperPath, err := paths.ScreeningZoomExecutablePath()
 	if err != nil {
 		return "", err
 	}

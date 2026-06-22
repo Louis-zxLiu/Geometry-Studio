@@ -89,6 +89,8 @@ wails dev
 
 - 确认 `version.json` 版本正确
 - 确认 `resources/runtime/runtime.7z` 存在
+- 确认 `zoomit.exe` 已经准备好，优先放在 `resources/screeningzoom/zoomit.exe`
+- 如果还没放到 `resources/screeningzoom/zoomit.exe`，至少确认存在开发构建产物 `thirdparty/screeningzoom/build/Release/zoomit.exe`
 - 确认 `runtime.version.json` 已填写真实版本
 - 确认 `Scripts/` 中示例内容就是准备随包分发的内容
 - 确认 `config/` 没有本机账号、缓存、更新状态等脏数据
@@ -103,6 +105,7 @@ wails dev
 - `build/windows/`
 - `resources/` 下需要随项目维护的静态资源与占位文件
 - `resources/runtime/.gitkeep`
+- `resources/screeningzoom/.gitkeep`
 - `README.md`
 - `DEVELOPMENT.md`
 - `UPDATE_RELEASE.md`
