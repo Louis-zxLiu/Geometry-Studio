@@ -3,18 +3,21 @@
   justify-content: space-between;
   align-items: center;
   min-height: 70px;
-  padding: 0;
+  min-width: 0;
+  padding: 0 0 0 6px;
   border-bottom: 0;
   background: var(--workspace-bg);
 }
 
 .topbar-editor-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
   align-items: center;
   gap: 12px;
-  padding: 0 0 0 40px;
+  padding: 10px 0 10px clamp(12px, 2.6vw, 40px);
   flex: 0 0 auto;
+  min-width: 0;
 }
 
 .topbar-drag-region {
@@ -35,6 +38,7 @@
 
 .topbar-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -84,9 +88,9 @@
   align-items: center;
   justify-content: center;
   gap: 0;
-  min-width: 92px;
+  min-width: 84px;
   min-height: 31px;
-  padding: 6px 20px;
+  padding: 6px clamp(10px, 1.8vw, 20px);
   border: 1px solid var(--accent);
   background: transparent;
   color: var(--text);
@@ -175,4 +179,18 @@
 
 .window-control-cross::after {
   transform: rotate(-45deg);
+}
+
+@media (max-width: 1040px) {
+  .topbar {
+    align-items: flex-start;
+  }
+
+  .topbar-drag-region {
+    min-width: 32px;
+  }
+
+  .topbar-window-controls {
+    margin-right: 4px;
+  }
 }

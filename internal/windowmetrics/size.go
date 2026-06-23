@@ -6,12 +6,11 @@ type Size struct {
 }
 
 const (
-	sidebarWidth             = 345
-	minEditorWorkspaceWidth  = 520
-	minNotebookWorkspaceWidth = 400
-	windowHorizontalReserve  = 24
-	minWindowWidth           = sidebarWidth + minEditorWorkspaceWidth + minNotebookWorkspaceWidth + windowHorizontalReserve
-	minWindowHeight          = 760
+	windowFrameReserve       = 32
+	compactMinWindowWidth    = 960
+	compactMinWindowHeight   = 560
+	preferredMinWindowWidth  = 1100
+	preferredMinWindowHeight = 680
 	maxWindowWidth           = 1720
 	maxWindowHeight          = 1180
 )
@@ -22,8 +21,10 @@ func InitialWindowSize() Size {
 		return fallbackSize()
 	}
 
-	width := clamp(maxInt(int(float64(size.Width)*0.86), minWindowWidth), minWindowWidth, maxWindowWidth)
-	height := clamp(int(float64(size.Height)*0.82), minWindowHeight, maxWindowHeight)
+	availableWidth := maxInt(size.Width-windowFrameReserve, 0)
+	availableHeight := maxInt(size.Height-windowFrameReserve, 0)
+	width := fitToAvailable(availableWidth, int(float64(availableWidth)*0.9), compactMinWindowWidth, maxWindowWidth)
+	height := fitToAvailable(availableHeight, int(float64(availableHeight)*0.88), compactMinWindowHeight, maxWindowHeight)
 
 	return Size{
 		Width:  width,
@@ -32,17 +33,40 @@ func InitialWindowSize() Size {
 }
 
 func MinimumWindowSize() Size {
+	size := workAreaSize()
+	if size.Width <= 0 || size.Height <= 0 {
+		return Size{
+			Width:  compactMinWindowWidth,
+			Height: compactMinWindowHeight,
+		}
+	}
+
+	availableWidth := maxInt(size.Width-windowFrameReserve, 0)
+	availableHeight := maxInt(size.Height-windowFrameReserve, 0)
+
 	return Size{
-		Width:  minWindowWidth,
-		Height: minWindowHeight,
+		Width:  fitToAvailable(availableWidth, preferredMinWindowWidth, compactMinWindowWidth, preferredMinWindowWidth),
+		Height: fitToAvailable(availableHeight, preferredMinWindowHeight, compactMinWindowHeight, preferredMinWindowHeight),
 	}
 }
 
 func fallbackSize() Size {
 	return Size{
-		Width:  1440,
-		Height: 900,
+		Width:  1320,
+		Height: 820,
 	}
+}
+
+func fitToAvailable(available, preferred, compactMinimum, maximum int) int {
+	if available <= 0 {
+		return compactMinimum
+	}
+
+	if available <= compactMinimum {
+		return available
+	}
+
+	return clamp(preferred, compactMinimum, minInt(available, maximum))
 }
 
 func clamp(value, minValue, maxValue int) int {
@@ -57,6 +81,13 @@ func clamp(value, minValue, maxValue int) int {
 
 func maxInt(left int, right int) int {
 	if left > right {
+		return left
+	}
+	return right
+}
+
+func minInt(left int, right int) int {
+	if left < right {
 		return left
 	}
 	return right
