@@ -375,18 +375,28 @@
   opacity: 0.62;
 }
 
+.error-summary {
+  margin: 22px 0 0;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.64;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .error-details {
-  margin-top: 22px;
+  margin-top: 16px;
   border-radius: 0;
   background: transparent;
   box-shadow: inset 0 1px 0 var(--dialog-line);
 }
 
 .error-details summary {
-  padding: 16px 18px;
+  padding: 14px 18px;
   cursor: pointer;
-  color: var(--text);
-  font-size: 0.94rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
   user-select: none;
 }
 

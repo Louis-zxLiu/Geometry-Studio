@@ -11,6 +11,7 @@ import (
 	"plotkitycat/internal/paths"
 	"plotkitycat/internal/processutil"
 	"plotkitycat/internal/runner"
+	"plotkitycat/internal/scriptsafety"
 	"plotkitycat/internal/workspaces"
 )
 
@@ -51,6 +52,9 @@ func launchSceneProcess(workspaceManager *workspaces.Manager, sceneName string, 
 
 	sceneDir := filepath.Join(scriptsDir, sceneName)
 	scriptPath := filepath.Join(sceneDir, "main.py")
+	if err := scriptsafety.ValidateFile(scriptPath); err != nil {
+		return nil, err
+	}
 	cmd := exec.Command(python, append(args, "-c", screeningPythonBootstrap, scriptPath)...)
 	cmd.Dir = sceneDir
 	cmd.Env = append(runner.BuildPythonEnv(runtimeDir),

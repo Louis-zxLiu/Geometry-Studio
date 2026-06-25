@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+
 const props = defineProps<{
   open: boolean;
   errorText: string;
@@ -24,6 +26,36 @@ function copy() {
 function repair() {
   emit("repair");
 }
+
+const normalizedErrorText = computed(() => props.errorText.trim());
+
+const errorSummary = computed(() => {
+  const lines = normalizedErrorText.value.split(/\r?\n/).filter(Boolean);
+  if (lines.length === 0) {
+    return "运行失败";
+  }
+
+  const firstLine = lines[0];
+  const lastLine = lines[lines.length - 1];
+  if (firstLine.startsWith("Traceback")) {
+    return lastLine ?? firstLine;
+  }
+
+  return firstLine;
+});
+
+const errorDetails = computed(() => {
+  const lines = normalizedErrorText.value.split(/\r?\n/).filter(Boolean);
+  if (lines.length <= 1) {
+    return "";
+  }
+
+  if (lines[0]?.startsWith("Traceback")) {
+    return lines.join("\n");
+  }
+
+  return lines.slice(1).join("\n");
+});
 </script>
 
 <template>
@@ -37,9 +69,11 @@ function repair() {
           </button>
         </div>
 
-        <details class="error-details" open>
-          <summary>展开错误文本</summary>
-          <pre class="error-traceback">{{ props.errorText }}</pre>
+        <p class="error-summary">{{ errorSummary }}</p>
+
+        <details v-if="errorDetails" class="error-details">
+          <summary>查看详情</summary>
+          <pre class="error-traceback">{{ errorDetails }}</pre>
         </details>
 
         <div class="create-dialog-actions">

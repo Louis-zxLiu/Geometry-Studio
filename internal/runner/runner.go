@@ -14,6 +14,7 @@ import (
 
 	"plotkitycat/internal/paths"
 	"plotkitycat/internal/processutil"
+	"plotkitycat/internal/scriptsafety"
 	"plotkitycat/internal/workspaces"
 )
 
@@ -120,6 +121,10 @@ func (r *Runner) Run(sceneName string, req Request) error {
 	scriptPath := filepath.Join(sceneDir, "main.py")
 	absScriptPath, err := filepath.Abs(scriptPath)
 	if err != nil {
+		r.mu.Unlock()
+		return err
+	}
+	if err := scriptsafety.ValidateFile(absScriptPath); err != nil {
 		r.mu.Unlock()
 		return err
 	}

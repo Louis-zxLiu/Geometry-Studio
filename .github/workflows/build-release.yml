@@ -1,0 +1,102 @@
+name: Build Release
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Wails CLI
+        shell: pwsh
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+          "$(go env GOPATH)\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content version.json -Raw | ConvertFrom-Json).appVersion
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "version.json appVersion is empty"
+          }
+          "app_version=$($version.Trim())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Build versioned app
+        shell: pwsh
+        run: .\tools\build-versioned-app.ps1 -Version "${{ steps.version.outputs.app_version }}"
+
+      - name: Prepare update artifacts
+        shell: pwsh
+        run: .\tools\prepare-update-release.ps1 -Version "${{ steps.version.outputs.app_version }}"
+
+      - name: Package full release when assets exist
+        id: package_release
+        shell: pwsh
+        run: |
+          "full_release=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          $hasRuntime = Test-Path -LiteralPath .\resources\runtime\runtime.7z -PathType Leaf
+          $zoomitCandidates = @(
+            ".\resources\screeningzoom\zoomit.exe",
+            ".\thirdparty\screeningzoom\build\Release\zoomit.exe",
+            ".\thirdparty\screeningzoom\build\zoomit.exe"
+          )
+          $hasZoomit = $false
+          foreach ($candidate in $zoomitCandidates) {
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+              $hasZoomit = $true
+              break
+            }
+          }
+          if ($hasRuntime -and $hasZoomit) {
+            .\tools\package-release.ps1 -Version "${{ steps.version.outputs.app_version }}"
+            "full_release=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            exit 0
+          }
+          Write-Host "Skip full release packaging because runtime.7z or zoomit.exe is missing."
+
+      - name: Upload app binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlotKityCat-build-${{ steps.version.outputs.app_version }}
+          path: build/bin/PlotKityCat.exe
+          if-no-files-found: error
+
+      - name: Upload update artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlotKityCat-update-${{ steps.version.outputs.app_version }}
+          path: build/update/${{ steps.version.outputs.app_version }}
+          if-no-files-found: error
+
+      - name: Upload full release package
+        if: steps.package_release.outputs.full_release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlotKityCat-release-${{ steps.version.outputs.app_version }}
+          path: build/release/PlotKityCat-v${{ steps.version.outputs.app_version }}.zip
+          if-no-files-found: error
