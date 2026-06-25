@@ -59,6 +59,7 @@ jobs:
           $runtimeDir = Join-Path $PWD "resources/runtime"
           $runtimeArchive = Join-Path $runtimeDir "runtime.7z"
           New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
+          $downloaded = $false
 
           $candidates = @(
             "https://github.com/$repo/releases/download/v$appVersion/runtime.7z"
@@ -75,19 +76,37 @@ jobs:
             if ($null -ne $latestRuntime -and -not [string]::IsNullOrWhiteSpace($latestRuntime.browser_download_url)) {
               $candidates += $latestRuntime.browser_download_url
             }
+
+            $latestZip = $latestRelease.assets | Where-Object { $_.name -like "PlotKityCat-v*.zip" } | Select-Object -First 1
+            if ($null -ne $latestZip -and -not [string]::IsNullOrWhiteSpace($latestZip.browser_download_url)) {
+              $zipPath = Join-Path $env:RUNNER_TEMP "latest-release.zip"
+              $extractDir = Join-Path $env:RUNNER_TEMP "latest-release"
+              Write-Host "Downloading fallback release zip from $($latestZip.browser_download_url)"
+              Invoke-WebRequest -Uri $latestZip.browser_download_url -OutFile $zipPath
+              if (Test-Path -LiteralPath $extractDir) {
+                Remove-Item -LiteralPath $extractDir -Recurse -Force
+              }
+              Expand-Archive -LiteralPath $zipPath -DestinationPath $extractDir -Force
+              $embeddedRuntime = Get-ChildItem -Path $extractDir -Recurse -Filter runtime.7z | Select-Object -First 1
+              if ($null -ne $embeddedRuntime) {
+                Copy-Item -LiteralPath $embeddedRuntime.FullName -Destination $runtimeArchive -Force
+                $downloaded = $true
+              }
+            }
           } catch {
             Write-Host "Latest release lookup failed: $($_.Exception.Message)"
           }
 
-          $downloaded = $false
-          foreach ($url in $candidates | Select-Object -Unique) {
-            try {
-              Write-Host "Downloading runtime from $url"
-              Invoke-WebRequest -Uri $url -OutFile $runtimeArchive
-              $downloaded = $true
-              break
-            } catch {
-              Write-Host "Runtime download failed from $url : $($_.Exception.Message)"
+          if (-not $downloaded) {
+            foreach ($url in $candidates | Select-Object -Unique) {
+              try {
+                Write-Host "Downloading runtime from $url"
+                Invoke-WebRequest -Uri $url -OutFile $runtimeArchive
+                $downloaded = $true
+                break
+              } catch {
+                Write-Host "Runtime download failed from $url : $($_.Exception.Message)"
+              }
             }
           }
 
