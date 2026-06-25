@@ -4,6 +4,7 @@
 
 #include <gdiplus.h>
 #include <algorithm>
+#include <cmath>
 
 namespace zoomit {
 
