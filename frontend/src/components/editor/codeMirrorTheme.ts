@@ -9,7 +9,7 @@ export const editorTheme = EditorView.theme({
     width: "100%",
     backgroundColor: "transparent",
     color: "var(--text)",
-    fontFamily: "\"JetBrains Mono\", \"Consolas\", \"Courier New\", monospace",
+    fontFamily: "\"Cascadia Code\", \"JetBrains Mono\", \"Consolas\", \"Courier New\", monospace",
     fontSize: "13px",
     lineHeight: "1.8",
     outline: "0",
