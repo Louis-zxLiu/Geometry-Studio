@@ -5,7 +5,7 @@
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: #fbf5ec;
+  background: var(--app-bg);
 }
 
 .runtime-loading-card {

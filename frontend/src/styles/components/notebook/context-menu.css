@@ -6,45 +6,47 @@
   border: 0;
   background: transparent;
   color: var(--muted);
-  font-family: "SimSun", "Songti SC", "STSong", serif;
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
   letter-spacing: 0.02em;
   cursor: text;
 }
 
 .notebook-continue-writing:hover {
-  color: color-mix(in srgb, var(--text), var(--muted) 34%);
+  color: var(--text-soft);
 }
 
 .notebook-context-menu {
   position: fixed;
   z-index: 1050;
-  min-width: 108px;
-  padding: 6px;
-  border: 1px solid color-mix(in srgb, var(--line-strong), transparent 76%);
-  background: color-mix(in srgb, var(--surface), white 10%);
-  box-shadow: 0 16px 42px rgba(25, 25, 25, 0.08);
+  min-width: 128px;
+  padding: 5px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-raised), var(--surface-soft) 22%);
+  box-shadow: var(--shadow-3);
   transform: translate(10px, 6px);
 }
 
 .notebook-context-action {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   width: 100%;
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: var(--radius-xs);
   color: var(--text);
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  letter-spacing: 0.03em;
   text-align: left;
 }
 
 .notebook-context-action:hover {
-  background: color-mix(in srgb, var(--surface-soft), white 28%);
+  background: var(--hover-fill);
 }
 
 .notebook-context-action.danger:hover {
+  background: color-mix(in srgb, #b74848, transparent 91%);
   color: #b74848;
 }
 
@@ -53,7 +55,7 @@
   height: 14px;
   fill: none;
   stroke: currentColor;
-  stroke-linecap: square;
-  stroke-linejoin: miter;
-  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
 }

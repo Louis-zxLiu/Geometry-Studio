@@ -1,7 +1,7 @@
 .scene-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 3px;
   min-height: 0;
   flex: 1 1 auto;
   padding: 0 0 18px;
@@ -21,18 +21,22 @@
 
 .scene-list::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--muted), transparent 74%);
+  border-radius: 4px;
 }
 
 .scene-list::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--muted), transparent 58%);
 }
 
+/* 分区标题 · 留白即分隔 */
 .scene-list-title {
   flex: 0 0 auto;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
+  padding: 0 14px;
   color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
 }
 
 .scene-item {
@@ -41,8 +45,8 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
-  min-height: 28px;
-  margin-bottom: 24px;
+  min-height: 34px;
+  margin-bottom: 3px;
   padding-right: 58px;
   transition:
     opacity 220ms ease,
@@ -77,37 +81,55 @@
 }
 
 .scene-item.drop-after {
-  margin-bottom: 34px;
+  margin-bottom: 24px;
 }
 
 .scene-item::before {
   content: none;
 }
 
+/* 场景行 · 药丸 */
 .scene-select-button {
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 28px;
-  padding: 4px 10px 4px 8px;
+  min-height: 34px;
+  padding: 6px 14px 6px 18px;
   border: 0;
   background: transparent;
-  color: color-mix(in srgb, var(--text), transparent 14%);
+  color: var(--text-soft);
   text-align: left;
-  font-size: 12px;
-  line-height: 1.35;
-  letter-spacing: 0.08em;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--text), transparent 94%);
-  text-underline-offset: 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-decoration: none;
   cursor: default;
   position: relative;
   z-index: 1;
   transition:
-    background-color 180ms ease,
-    color 180ms ease,
-    opacity 180ms ease,
-    transform 180ms ease;
+    background-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+.scene-select-button::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 999px;
+  background: transparent;
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out);
+  opacity: 0;
+}
+
+.scene-select-button:not(:disabled):active {
+  transform: none;
 }
 
 .scene-item.dragging .scene-select-button {
@@ -121,7 +143,7 @@
   z-index: 999;
   display: flex;
   align-items: center;
-  min-height: 28px;
+  min-height: 34px;
   padding-right: 58px;
   background: transparent;
   filter: drop-shadow(0 8px 14px color-mix(in srgb, black, transparent 88%));
@@ -131,18 +153,22 @@
 }
 
 .scene-drag-ghost .scene-select-button {
-  background: transparent;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-2);
   cursor: grabbing;
   opacity: 1;
   color: var(--text);
-  text-decoration-color: color-mix(in srgb, var(--text), transparent 86%);
 }
 
+/* 选中态 · 左侧墨条 + 纸带 */
 .scene-item.active .scene-select-button {
   color: var(--text);
-  background: transparent;
-  font-weight: 600;
-  text-decoration-color: color-mix(in srgb, var(--text), transparent 90%);
+  font-weight: 500;
+}
+
+.scene-item.active .scene-select-button::before {
+  background: color-mix(in srgb, var(--text), transparent 18%);
+  opacity: 1;
 }
 
 .scene-name {
@@ -167,82 +193,102 @@
   justify-content: center;
   min-width: 26px;
   height: 18px;
-  padding: 0 6px;
-  border: 1px solid color-mix(in srgb, var(--text), transparent 82%);
-  color: color-mix(in srgb, var(--text), transparent 8%);
+  padding: 0 7px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--fill-soft);
+  color: var(--text-soft);
   font-size: 9px;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   line-height: 1;
 }
 
 .scene-actions {
   position: absolute;
   top: 50%;
-  right: 0;
+  right: 8px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   transform: translateY(-50%);
 }
 
 .scene-rename-input {
   background: transparent;
   color: var(--text);
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0.03em;
 }
 
 .scene-action-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: color-mix(in srgb, var(--text), transparent 12%);
+  color: var(--muted);
   cursor: pointer;
 }
 
 .scene-action-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   fill: none;
   stroke: currentColor;
-  stroke-linecap: square;
-  stroke-linejoin: miter;
-  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
 }
 
 .scene-action-icon:hover {
-  opacity: 0.62;
+  background: var(--hover-fill);
+  color: var(--text);
+}
+
+.scene-action-icon:not(:disabled):active {
+  transform: scale(0.9);
 }
 
 .scene-action-icon.danger {
-  color: #d46868;
+  color: #c66;
 }
 
-.scene-rename-input {
-  width: 104px;
-  padding: 2px 0;
-  border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--text), transparent 72%);
-  outline: none;
+.scene-action-icon.danger:hover {
+  background: color-mix(in srgb, #c66, transparent 90%);
+  color: #b74848;
 }
 
 .scene-item:hover::before {
   content: none;
 }
 
-.scene-select-button:hover {
+.scene-item:hover .scene-select-button {
   color: var(--text);
-  opacity: 0.6;
+  transform: translateX(2px);
 }
 
-.create-button:hover {
-  color: var(--text);
-  opacity: 1;
+.scene-item:hover .scene-select-button::before {
+  background: color-mix(in srgb, var(--text), transparent 72%);
+  opacity: 0.8;
+}
+
+.scene-item.active:hover .scene-select-button {
+  transform: none;
+}
+
+.scene-rename-input {
+  width: 104px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--dialog-input-bg);
+  padding-left: 10px;
+  padding-right: 10px;
+  outline: none;
 }
 
 .scene-list-transition-enter-active,
@@ -269,7 +315,7 @@
 }
 
 .scene-list-transition-move {
-  transition: transform 260ms ease;
+  transition: transform 260ms var(--ease-out);
 }
 
 body.scene-list-dragging {

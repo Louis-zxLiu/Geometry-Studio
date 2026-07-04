@@ -15,6 +15,13 @@ body {
   overflow: hidden;
   background: var(--app-bg);
   color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--text), transparent 84%);
 }
 
 button {
@@ -22,9 +29,35 @@ button {
   background: transparent;
   color: inherit;
   font: inherit;
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+/* 柔进脆出 · 按下瞬间快缩，松开缓弹回 */
+button:not(:disabled):active {
+  transform: scale(0.94);
+  transition-duration: 60ms;
 }
 
 button:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }

@@ -1,30 +1,31 @@
 .code-ai-context-menu {
   position: fixed;
   z-index: 1100;
-  min-width: 104px;
-  padding: 6px;
-  border: 1px solid color-mix(in srgb, var(--line-strong), transparent 76%);
-  background: color-mix(in srgb, var(--surface), white 10%);
-  box-shadow: 0 16px 42px rgba(25, 25, 25, 0.08);
+  min-width: 124px;
+  padding: 5px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-raised), var(--surface-soft) 22%);
+  box-shadow: var(--shadow-3);
   transform: translate(10px, 6px);
 }
 
 .code-ai-context-action {
   width: 100%;
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: 32px;
+  padding: 0 11px;
   border: 0;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text);
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  letter-spacing: 0.03em;
   text-align: left;
 }
 
 .code-ai-context-action:hover {
-  background: color-mix(in srgb, var(--surface-soft), white 28%);
+  background: var(--hover-fill);
 }
 
 .code-ai-context-action:disabled {
@@ -40,27 +41,32 @@
 .code-ai-prompt {
   width: 100%;
   min-height: 148px;
-  margin-top: 26px;
-  padding: 14px 18px;
-  border: 1px solid var(--dialog-line);
-  border-radius: 0;
+  margin-top: 24px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: var(--radius-md);
   outline: 0;
   resize: vertical;
   background: var(--dialog-input-bg);
   color: var(--text);
   font: inherit;
-  font-size: clamp(0.98rem, 1.24vw, 1.12rem);
+  font-size: clamp(0.94rem, 1.2vw, 1.06rem);
   font-weight: 400;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   line-height: 1.7;
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    background-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
 }
 
 .code-ai-prompt::placeholder {
-  color: rgba(110, 110, 115, 0.52);
+  color: color-mix(in srgb, var(--muted), transparent 26%);
 }
 
 .code-ai-prompt:focus {
   background: var(--dialog-input-focus);
+  box-shadow: var(--ring-focus);
 }
 
 .code-ai-version-rail {

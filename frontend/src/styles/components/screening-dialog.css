@@ -42,26 +42,28 @@
   grid-template-columns: 56px minmax(0, 1fr);
   align-items: center;
   width: 100%;
-  min-height: 56px;
+  min-height: 54px;
   padding: 0 18px 0 0;
-  border: 1px solid color-mix(in srgb, var(--dialog-line), transparent 24%);
-  background: color-mix(in srgb, var(--dialog-input-bg), transparent 8%);
+  border-radius: var(--radius-md);
+  background: var(--dialog-input-bg);
   cursor: pointer;
   text-align: left;
+  overflow: hidden;
   transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    transform 160ms ease;
+    background-color 160ms var(--ease-out),
+    border-color 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
 }
 
 .screening-scene-row:hover {
-  border-color: color-mix(in srgb, var(--text), transparent 72%);
+  box-shadow: var(--shadow-2);
   transform: translateX(3px);
 }
 
 .screening-scene-row.selected {
-  border-color: color-mix(in srgb, var(--accent), var(--text) 22%);
-  background: color-mix(in srgb, var(--dialog-input-focus), transparent 6%);
+  background: var(--dialog-input-focus);
+  box-shadow: var(--shadow-2);
 }
 
 .screening-scene-order {
@@ -72,7 +74,7 @@
   color: var(--text);
   font-size: 0.9rem;
   letter-spacing: 0.12em;
-  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--dialog-line), transparent 28%);
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--text), transparent 92%);
 }
 
 .screening-scene-order.empty {

@@ -12,63 +12,94 @@ export function getTheme(themeId: ThemeId) {
   return appThemes.find((theme) => theme.id === themeId) ?? appThemes[0];
 }
 
+function mix(base: string, tint: string, amount: number) {
+  return "color-mix(in srgb, " + base + ", " + tint + " " + amount + "%)";
+}
+
+/** 墨色的透明淡化：wash(6) = 6% 浓度的墨 */
+function wash(ink: string, amount: number) {
+  return "color-mix(in srgb, " + ink + ", transparent " + (100 - amount) + "%)";
+}
+
 function createTheme(seed: ThemeSeed): AppTheme {
+  const { ink, smoke, accent, dark } = seed;
+
+  /* 层次手法：无边框 · 深浅填充分区 + 弥散影托层 */
+  const shadowInk = dark ? "rgba(0, 0, 0" : "rgba(52, 44, 30";
+  const shadow1 = "0 1px 2px " + shadowInk + (dark ? ", 0.22)" : ", 0.05)");
+  const shadow2 = "0 3px 12px " + shadowInk + (dark ? ", 0.28)" : ", 0.07)");
+  const shadow3 = "0 8px 28px " + shadowInk + (dark ? ", 0.38)" : ", 0.1)");
+  const shadow4 = "0 24px 64px " + shadowInk + (dark ? ", 0.52)" : ", 0.18)");
+
   const tokens: ThemeTokens = {
     "--app-bg": seed.bg,
     "--sidebar-bg": seed.sidebar,
-    "--notebook-bg": deriveNotebookSurface(seed),
+    "--notebook-bg": seed.main,
     "--workspace-bg": seed.main,
     "--surface": seed.main,
-    "--surface-soft": seed.sidebar,
-    "--surface-raised": seed.accent,
-    "--surface-hover": seed.accent,
+    "--surface-soft": dark ? mix(seed.main, "white", 3) : mix(seed.main, seed.bg, 55),
+    "--surface-raised": dark ? mix(seed.main, "white", 6) : seed.main,
+    "--surface-hover": wash(ink, 6),
     "--toolbar-control": "transparent",
-    "--glass-line": seed.accent,
-    "--text": seed.ink,
-    "--muted": seed.smoke,
-    "--subtle": seed.smoke,
-    "--line": seed.accent,
-    "--line-strong": seed.smoke,
-    "--accent": seed.accent,
-    "--accent-strong": seed.ink,
-    "--run": seed.ink,
-    "--run-hover": seed.ink,
-    "--focus": seed.smoke,
+    "--glass-line": accent,
+
+    "--text": ink,
+    "--text-soft": mix(ink, smoke, 42),
+    "--muted": smoke,
+    "--subtle": mix(smoke, seed.bg, 38),
+
+    "--line": accent,
+    "--line-strong": dark ? mix(accent, ink, 16) : mix(accent, ink, 14),
+
+    "--accent": accent,
+    "--accent-strong": ink,
+
+    /* 主操作 · 浅墨水洗药丸（墨字，hover 加深一档） */
+    "--run": wash(ink, dark ? 12 : 8),
+    "--run-hover": wash(ink, dark ? 18 : 13),
+    "--run-ink": ink,
+
+    "--focus": wash(ink, 30),
     "--body-wash": seed.bg,
-    "--hover-fill": seed.accent,
-    "--active-fill": seed.accent,
+
+    /* 深浅分层 · 无边框时代的骨架 */
+    "--hover-fill": wash(ink, dark ? 9 : 6),
+    "--active-fill": wash(ink, dark ? 13 : 10),
+    "--fill-soft": wash(ink, dark ? 6 : 4.5),
+    "--fill-strong": wash(ink, dark ? 9 : 7),
+
     "--file-icon-bg": "transparent",
-    "--file-icon-text": seed.smoke,
-    "--dialog-bg": seed.main,
-    "--dialog-input-surface": seed.dark
-      ? "color-mix(in srgb, " + seed.sidebar + ", black 18%)"
-      : "color-mix(in srgb, " + seed.main + ", " + seed.bg + " 42%)",
-    "--dialog-input-bg": seed.dark
-      ? "color-mix(in srgb, " + seed.main + ", white 4%)"
-      : "color-mix(in srgb, " + seed.main + ", white 12%)",
-    "--dialog-input-focus": seed.dark
-      ? "color-mix(in srgb, " + seed.main + ", white 8%)"
-      : "color-mix(in srgb, " + seed.bg + ", white 18%)",
-    "--dialog-shadow": seed.dark ? "rgba(0, 0, 0, 0.34)" : "rgba(67, 52, 34, 0.1)",
-    "--dialog-line": seed.accent,
-    "--loading-track": seed.accent,
-    "--loading-accent": seed.smoke,
-    "--loading-glow": seed.accent,
-    "--syntax-keyword": seed.dark ? "#d7b889" : "#7a5630",
-    "--syntax-builtin": seed.dark ? "#a9bd93" : "#516247",
-    "--syntax-string": seed.dark ? "#c2ad75" : "#6f6a45",
-    "--syntax-number": seed.dark ? "#c99b86" : "#80685a",
-    "--syntax-comment": seed.smoke,
-    "--syntax-decorator": seed.dark ? "#9eb5b5" : "#6d7171",
-    "--syntax-operator": seed.smoke,
+    "--file-icon-text": smoke,
+
+    "--dialog-bg": dark ? mix(seed.main, "white", 2) : seed.main,
+    "--dialog-input-surface": dark ? mix(seed.sidebar, "black", 16) : mix(seed.main, seed.bg, 55),
+    "--dialog-input-bg": wash(ink, dark ? 6 : 4.5),
+    "--dialog-input-focus": wash(ink, dark ? 9 : 7),
+    "--dialog-shadow": dark ? "rgba(0, 0, 0, 0.44)" : "rgba(52, 44, 30, 0.16)",
+    "--dialog-line": accent,
+    "--scrim": dark ? "rgba(0, 0, 0, 0.5)" : "rgba(58, 52, 40, 0.28)",
+    "--ring-focus": "0 0 0 3px " + wash(ink, dark ? 18 : 10),
+
+    "--shadow-1": shadow1,
+    "--shadow-2": shadow2,
+    "--shadow-3": shadow3,
+    "--shadow-4": shadow4,
+
+    "--loading-track": accent,
+    "--loading-accent": smoke,
+    "--loading-glow": accent,
+
+    "--syntax-keyword": dark ? "#cfa06b" : "#8a5c30",
+    "--syntax-builtin": dark ? "#a3ba8b" : "#52684a",
+    "--syntax-string": dark ? "#c2b475" : "#6f6a42",
+    "--syntax-number": dark ? "#c79c85" : "#8a6a56",
+    "--syntax-comment": mix(smoke, seed.bg, 16),
+    "--syntax-decorator": dark ? "#9db5b5" : "#647171",
+    "--syntax-operator": mix(smoke, ink, 22),
   };
 
   return {
     ...seed,
     tokens,
   };
-}
-
-function deriveNotebookSurface(seed: ThemeSeed) {
-  return seed.main;
 }

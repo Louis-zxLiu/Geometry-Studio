@@ -1,6 +1,6 @@
 .app-shell {
   display: grid;
-  grid-template-columns: clamp(216px, 24vw, 345px) minmax(0, 1fr);
+  grid-template-columns: clamp(272px, 24vw, 338px) minmax(0, 1fr);
   width: 100%;
   height: 100vh;
   min-width: 0;
@@ -9,7 +9,10 @@
   overflow: hidden;
 }
 
-.sidebar,
+.sidebar {
+  background: var(--sidebar-bg);
+}
+
 .workspace {
   background: var(--surface);
 }
@@ -21,10 +24,11 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  transition: background-color var(--dur-base) var(--ease-out);
 }
 
 @media (max-width: 1180px) {
   .app-shell {
-    grid-template-columns: clamp(188px, 22vw, 260px) minmax(0, 1fr);
+    grid-template-columns: clamp(236px, 22vw, 292px) minmax(0, 1fr);
   }
 }

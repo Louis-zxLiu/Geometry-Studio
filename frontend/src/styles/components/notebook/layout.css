@@ -26,11 +26,11 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-left: 1px solid color-mix(in srgb, var(--line-strong), transparent 74%);
   background: var(--notebook-bg);
   transition:
-    background-color 360ms ease,
-    border-color 360ms ease;
+    background-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+  box-shadow: inset 12px 0 18px -20px color-mix(in srgb, var(--text), transparent 80%);
 }
 
 .notebook-pane.collapsed {
@@ -52,7 +52,7 @@
   color: var(--muted);
   cursor: pointer;
   transition:
-    color 220ms ease,
+    color var(--dur-base) var(--ease-out),
     transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -204,6 +204,7 @@
   right: 0;
   z-index: 3;
   height: 2px;
+  border-radius: 1px;
   background: var(--text);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--notebook-bg), transparent 18%);
   pointer-events: none;
@@ -229,10 +230,10 @@
   background: transparent;
   color: var(--text);
   field-sizing: content;
-  font-family: "SimSun", "Songti SC", "STSong", serif;
-  font-size: 16px;
-  line-height: 1.95;
-  letter-spacing: 0;
+  font-family: var(--font-sans);
+  font-size: 15.5px;
+  line-height: 1.9;
+  letter-spacing: 0.01em;
 }
 
 .notebook-file-input {

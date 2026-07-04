@@ -4,29 +4,29 @@
   gap: 0;
   min-width: 0;
   min-height: 0;
-  padding: clamp(28px, 4.2vh, 45px) clamp(16px, 2.2vw, 30px) clamp(18px, 2.8vh, 30px);
-  border-right: 0;
+  padding: clamp(26px, 4vh, 40px) clamp(14px, 1.8vw, 20px) clamp(16px, 2.4vh, 26px);
   background: var(--sidebar-bg);
   overflow: hidden;
+  transition: background-color var(--dur-base) var(--ease-out);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-height: 0;
-  padding: 0;
-  margin-bottom: clamp(24px, 5vh, 50px);
+  padding: 0 10px;
+  margin-bottom: clamp(22px, 4.6vh, 44px);
   border-bottom: 0;
 }
 
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: transparent;
   border: 0;
@@ -43,10 +43,12 @@
   margin: 0;
 }
 
+/* 品牌字 · Fredoka */
 .brand h1 {
-  font-size: 14px;
-  font-weight: 400;
-  letter-spacing: 0.2em;
+  font-family: var(--font-brand);
+  font-size: 17px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
   color: var(--text);
 }
 
@@ -55,46 +57,55 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
   border: 0;
-  border-radius: 0;
   cursor: pointer;
 }
 
+/* 新建场景 · 紧凑药丸 */
 .create-button {
   justify-content: flex-start;
-  gap: 10px;
+  gap: 7px;
   width: 100%;
-  min-height: 28px;
-  margin: 12px 0 clamp(16px, 2.8vh, 24px);
-  padding: 0;
+  min-height: 32px;
+  margin: 10px 0 clamp(16px, 2.6vh, 22px);
+  padding: 7px 12px 7px 14px;
+  border-radius: 0;
   background: transparent;
   color: var(--muted);
   text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-decoration: none;
+  transition:
+    color var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+.create-button:hover {
+  color: var(--text);
+  transform: translateX(2px);
 }
 
 .create-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex: 0 0 auto;
   color: currentColor;
+  opacity: 1;
 }
 
 .create-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   fill: none;
   stroke: currentColor;
-  stroke-linecap: square;
-  stroke-linejoin: miter;
-  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
 }
 
 .sidebar-body {

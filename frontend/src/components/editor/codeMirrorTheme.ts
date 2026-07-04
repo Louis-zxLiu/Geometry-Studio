@@ -57,31 +57,31 @@ export const editorTheme = EditorView.theme({
     minHeight: "1.8em",
   },
   ".cm-python-keyword": {
-    color: "#8b4a24",
-    fontWeight: "700",
-  },
-  ".cm-python-builtin": {
-    color: "#2e7c6b",
-    fontWeight: "650",
-  },
-  ".cm-python-string": {
-    color: "#69791f",
-  },
-  ".cm-python-number": {
-    color: "#986236",
+    color: "var(--syntax-keyword)",
     fontWeight: "600",
   },
+  ".cm-python-builtin": {
+    color: "var(--syntax-builtin)",
+    fontWeight: "500",
+  },
+  ".cm-python-string": {
+    color: "var(--syntax-string)",
+  },
+  ".cm-python-number": {
+    color: "var(--syntax-number)",
+    fontWeight: "500",
+  },
   ".cm-python-comment": {
-    color: "#9a9a9a",
+    color: "var(--syntax-comment)",
     fontStyle: "italic",
   },
   ".cm-python-decorator": {
-    color: "#7651a6",
-    fontWeight: "650",
+    color: "var(--syntax-decorator)",
+    fontWeight: "500",
   },
   ".cm-python-operator": {
-    color: "#7a5a82",
-    fontWeight: "600",
+    color: "var(--syntax-operator)",
+    fontWeight: "500",
   },
   ".cm-gutters": {
     border: "0",
@@ -111,18 +111,18 @@ export const editorTheme = EditorView.theme({
     backgroundColor: "transparent",
   },
   ".cm-activeLine": {
-    backgroundColor: "color-mix(in srgb, var(--surface-soft), transparent 72%)",
+    backgroundColor: "var(--hover-fill)",
   },
   ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-    backgroundColor: "color-mix(in srgb, var(--muted), transparent 78%)",
+    backgroundColor: "color-mix(in srgb, var(--muted), transparent 76%)",
   },
   ".cm-search-match": {
     backgroundColor: "color-mix(in srgb, #ffd76a, transparent 42%)",
-    borderRadius: "3px",
+    borderRadius: "4px",
   },
   ".cm-search-match-active": {
     backgroundColor: "color-mix(in srgb, #ffb347, transparent 22%)",
-    borderRadius: "3px",
+    borderRadius: "4px",
     boxShadow: "inset 0 0 0 1px color-mix(in srgb, #c46a18, transparent 28%)",
   },
   ".cm-cursor": {

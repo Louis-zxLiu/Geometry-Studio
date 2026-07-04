@@ -289,13 +289,6 @@ function handleExport() {
                 </template>
                 <template v-else>
                   <span class="workspace-item-main">
-                    <span
-                      class="workspace-check"
-                      :class="{ boxed: isExportMode, checked: isExportMode && isWorkspaceSelected(workspace.name) }"
-                      aria-hidden="true"
-                    >
-                      {{ isExportMode ? (isWorkspaceSelected(workspace.name) ? "✓" : "") : (workspace.name === currentWorkspace ? "✓" : "") }}
-                    </span>
                     <span class="workspace-name">{{ workspace.name }}</span>
                   </span>
                   <span class="workspace-count">{{ workspace.sceneCount ?? 0 }} 个场景</span>

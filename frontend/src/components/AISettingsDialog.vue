@@ -58,8 +58,8 @@ function updateField(field: "url" | "key" | "model", value: string) {
             </span>
           </button>
 
-          <div class="ai-provider-card" :class="{ muted: settings.mode !== 'custom' }">
-            <label class="ai-provider-field">
+          <div class="ai-provider-stack" :class="{ muted: settings.mode !== 'custom' }">
+            <label class="ai-provider-field ai-provider-field-float">
               <span>URL</span>
               <input
                 class="ai-provider-input"
@@ -70,7 +70,7 @@ function updateField(field: "url" | "key" | "model", value: string) {
               />
             </label>
 
-            <label class="ai-provider-field">
+            <label class="ai-provider-field ai-provider-field-float">
               <span>KEY</span>
               <input
                 class="ai-provider-input"
@@ -81,7 +81,7 @@ function updateField(field: "url" | "key" | "model", value: string) {
               />
             </label>
 
-            <label class="ai-provider-field">
+            <label class="ai-provider-field ai-provider-field-float">
               <span>MODEL</span>
               <input
                 class="ai-provider-input"
