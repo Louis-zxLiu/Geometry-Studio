@@ -1,13 +1,18 @@
 <script setup lang="ts">
+import type { WorkspaceLayoutMode } from "../../../features/plot/services/workspaceLayoutStorage";
+import NotebookDividerHandle from "./NotebookDividerHandle.vue";
+
 defineProps<{
   currentFile?: string;
   isOpen: boolean;
   isSceneSwitching?: boolean;
+  layoutMode: WorkspaceLayoutMode;
 }>();
 
 const emit = defineEmits<{
-  attach: [];
-  toggle: [];
+  "show-code": [];
+  "show-split": [];
+  "show-note": [];
 }>();
 
 const notebookRoot = defineModel<HTMLElement | null>("notebookRoot", { default: null });
@@ -17,57 +22,22 @@ const notebookRoot = defineModel<HTMLElement | null>("notebookRoot", { default: 
   <aside
     ref="notebookRoot"
     class="notebook-pane"
-    :class="{ collapsed: !isOpen, switching: isSceneSwitching }"
+    :class="[
+      `layout-${layoutMode}`,
+      { collapsed: !isOpen, switching: isSceneSwitching },
+    ]"
   >
-    <button
-      class="notebook-spine"
-      type="button"
-      :title="isOpen ? '收起笔记区' : '展开笔记区'"
-      :aria-label="isOpen ? '收起笔记区' : '展开笔记区'"
-      @click="emit('toggle')"
-    >
-      <svg class="notebook-spine-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          v-if="isOpen"
-          d="m14 7-5 5 5 5"
-          fill="none"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.7"
-        />
-        <path
-          v-else
-          d="m10 7 5 5-5 5"
-          fill="none"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.7"
-        />
-      </svg>
-    </button>
+    <div class="notebook-spine">
+      <NotebookDividerHandle
+        :layout-mode="layoutMode"
+        @show-code="emit('show-code')"
+        @show-split="emit('show-split')"
+        @show-note="emit('show-note')"
+      />
+    </div>
 
     <Transition name="notebook-panel-shell-transition">
       <div v-if="isOpen" class="notebook-panel-shell">
-        <button
-          class="notebook-attach-button"
-          type="button"
-          title="添加图片"
-          aria-label="添加图片"
-          @click="emit('attach')"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M8 12.5 13.5 7a3.2 3.2 0 1 1 4.5 4.5l-7.6 7.6a4.4 4.4 0 0 1-6.2-6.2l8-8"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.6"
-            />
-          </svg>
-        </button>
         <slot />
       </div>
     </Transition>

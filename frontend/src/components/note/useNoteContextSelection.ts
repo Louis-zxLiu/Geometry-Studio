@@ -8,6 +8,7 @@ import type { DesignCard } from "../../features/designCard/services/designCardTy
 import type { NoteDocument } from "../../features/notebook/services/notebookStorage";
 
 type NoteContextSelectionOptions = {
+  canOpenEmptyMenu: () => boolean;
   designCards: () => DesignCard[];
   document: () => NoteDocument;
   selectedImageOrder: Ref<Record<string, number>>;
@@ -28,11 +29,17 @@ export function useNoteContextSelection(options: NoteContextSelectionOptions) {
       options.selectedImageOrder.value,
     ),
   );
+  const contextMenuHasSelection = computed(() => hasSelection());
+  const contextMenuSupportsInsert = computed(
+    () => options.canOpenEmptyMenu() && !contextMenuHasSelection.value,
+  );
 
   function handleContextMenu(event: MouseEvent) {
     const relativePath = options.resolveImagePathFromEventTarget(event.target);
+    const isNotebookTarget =
+      event.target instanceof Node && !!options.notebookRoot.value?.contains(event.target);
     const hasContextSelection = relativePath !== "" || isTextSelectionContextTarget(event.target);
-    if (!hasContextSelection) {
+    if (!hasContextSelection && !isNotebookTarget) {
       closeContextMenu();
       return;
     }
@@ -42,7 +49,7 @@ export function useNoteContextSelection(options: NoteContextSelectionOptions) {
       options.ensureImageSelection(relativePath);
     }
     syncTextSelection();
-    if (!hasSelection()) {
+    if (!hasSelection() && !options.canOpenEmptyMenu()) {
       closeContextMenu();
       return;
     }
@@ -150,7 +157,9 @@ export function useNoteContextSelection(options: NoteContextSelectionOptions) {
     buildSelectionPayload,
     closeContextMenu,
     contextMenu,
+    contextMenuHasSelection,
     contextMenuImages,
+    contextMenuSupportsInsert,
     handleContextMenu,
     handleTextSelectionChange,
   };

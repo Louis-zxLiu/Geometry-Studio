@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { DesignCard } from "../../features/designCard/services/designCardTypes";
+import type { WorkspaceLayoutMode } from "../../features/plot/services/workspaceLayoutStorage";
 import { useDropTargetController } from "../../features/designCard/services/useDropTargetController";
 import type { AINoteSceneActionRequest } from "../../features/ai/services/aiTypes";
 import type { NoteRenderBlock } from "../../features/notebook/rendering/noteForwarder";
@@ -29,6 +30,7 @@ const props = defineProps<{
   document: NoteDocument;
   designCards: DesignCard[];
   isOpen: boolean;
+  layoutMode: WorkspaceLayoutMode;
   isSceneSwitching?: boolean;
   renderBlocks: NoteRenderBlock[];
   saveState: "idle" | "saving" | "saved";
@@ -52,7 +54,9 @@ const emit = defineEmits<{
   }];
   "open-design-card": [cardId: string];
   "remove-image": [relativePath: string];
-  toggle: [];
+  "show-code": [];
+  "show-split": [];
+  "show-note": [];
   "update:markdown": [markdown: string];
 }>();
 
@@ -75,6 +79,7 @@ const {
 } = imageSelection;
 
 const contextSelection = useNoteContextSelection({
+  canOpenEmptyMenu: () => props.currentFile !== "",
   designCards: () => props.designCards,
   document: () => props.document,
   selectedImageOrder,
@@ -89,7 +94,9 @@ const {
   buildSelectionPayload,
   closeContextMenu,
   contextMenu,
+  contextMenuHasSelection,
   contextMenuImages,
+  contextMenuSupportsInsert,
   handleContextMenu,
   handleTextSelectionChange,
 } = contextSelection;
@@ -209,6 +216,11 @@ function openFilePicker() {
   fileInput.value?.click();
 }
 
+function openContextImagePicker() {
+  closeContextMenu();
+  openFilePicker();
+}
+
 function getDropInsertionPoint(event: DragEvent): NoteDropInsertionPoint {
   const block = resolveDropBlock(event);
   if (!block) {
@@ -271,9 +283,11 @@ useNotePanelEffects({
     <NotePanelShell
       v-model:notebook-root="notebookRoot"
       :is-open="isOpen"
+      :layout-mode="layoutMode"
       :is-scene-switching="isSceneSwitching"
-      @attach="openFilePicker"
-      @toggle="emit('toggle')"
+      @show-code="emit('show-code')"
+      @show-split="emit('show-split')"
+      @show-note="emit('show-note')"
   >
     <NoteDocumentArea
       v-model:notebook-scroll="notebookScroll"
@@ -309,12 +323,15 @@ useNotePanelEffects({
       <NoteFloatingOverlays
         :ai-busy="aiBusy"
         :context-menu="contextMenu"
+        :context-menu-has-selection="contextMenuHasSelection"
+        :context-menu-supports-insert="contextMenuSupportsInsert"
         :context-menu-images="contextMenuImages"
         :preview-image="previewImage"
         :preview-scale="previewScale"
         @close-preview="closePreview"
         @design="runAIDesign"
         @generate="runAIGeneration"
+        @insert-image="openContextImagePicker"
         @preview-context-image="previewContextImage"
         @remove-context-images="removeContextImages"
         @reset-preview="resetPreviewZoom"

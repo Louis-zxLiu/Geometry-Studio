@@ -1,36 +1,69 @@
 .workspace-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr);
+  grid-template-columns: minmax(0, 1.18fr) 0 minmax(280px, 0.82fr);
   min-height: 0;
   height: 100%;
   min-width: 0;
   transition: grid-template-columns 520ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.editor-workspace-column {
   position: relative;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  min-width: 0;
-  min-height: 0;
-  background: var(--workspace-bg);
 }
 
-.workspace-body.notebook-collapsed {
-  grid-template-columns: minmax(0, 1fr) 34px;
+.workspace-body.layout-code {
+  grid-template-columns: minmax(0, 1fr) 0 36px;
   transition-delay: 120ms;
 }
 
+.workspace-body.layout-note {
+  grid-template-columns: 0 0 minmax(0, 1fr);
+}
+
+.editor-workspace-column {
+  grid-column: 1;
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  background: var(--workspace-bg);
+  overflow: hidden;
+}
+
+.workspace-body.layout-note .editor-workspace-column {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.workspace-divider-hotzone {
+  grid-column: 2;
+  position: relative;
+  z-index: 3;
+  width: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.workspace-divider-hotzone::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -26px;
+  width: 44px;
+  height: 100%;
+  background: transparent;
+}
+
 .notebook-pane {
+  grid-column: 3;
   position: relative;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--notebook-bg);
+  background: color-mix(in srgb, var(--notebook-bg), var(--surface-soft) 22%);
   transition:
     background-color var(--dur-base) var(--ease-out),
     box-shadow var(--dur-base) var(--ease-out);
-  box-shadow: inset 12px 0 18px -20px color-mix(in srgb, var(--text), transparent 80%);
+  box-shadow: none;
 }
 
 .notebook-pane.collapsed {
@@ -42,44 +75,34 @@
   top: 0;
   left: 0;
   z-index: 2;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  width: 34px;
+  display: grid;
+  place-items: center;
+  width: 36px;
   height: 100%;
-  padding-top: 26px;
   background: transparent;
-  color: var(--muted);
-  cursor: pointer;
   transition:
-    color var(--dur-base) var(--ease-out),
-    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color var(--dur-base) var(--ease-out);
 }
 
-.notebook-spine:hover {
-  color: var(--text);
-}
-
-.notebook-spine-icon {
-  width: 18px;
-  height: 18px;
-  transition:
-    opacity 220ms ease,
-    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.notebook-pane.collapsed .notebook-spine-icon {
-  opacity: 0.78;
-  transform: translateX(1px);
+.notebook-spine::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: color-mix(in srgb, var(--text), transparent 95%);
+  pointer-events: none;
 }
 
 .notebook-panel-shell {
   position: absolute;
-  inset: 0;
+  inset: 0 0 0 36px;
   display: block;
   min-width: 0;
   min-height: 0;
-  background: var(--notebook-bg);
+  background: transparent;
   opacity: 1;
   transform: translateX(0);
   transition:
@@ -118,37 +141,95 @@
   filter: saturate(0.92) blur(1px);
 }
 
-.notebook-attach-button {
-  position: absolute;
-  top: 24px;
-  right: 28px;
-  z-index: 1;
+.notebook-divider-handle {
   display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  color: color-mix(in srgb, var(--muted), transparent 8%);
-  cursor: pointer;
+  justify-items: center;
+  gap: 6px;
+  padding: 10px 0;
+  color: color-mix(in srgb, var(--muted), transparent 10%);
+  opacity: 0;
+  transform: translateX(2px) scale(0.96);
+  transition:
+    color var(--dur-base) var(--ease-out),
+    opacity 160ms ease,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
 }
 
-.notebook-attach-button:hover {
+.notebook-spine:hover,
+.workspace-divider-hotzone:hover + .notebook-pane .notebook-spine {
+  background: color-mix(in srgb, var(--surface-soft), transparent 82%);
+}
+
+.notebook-spine:hover .notebook-divider-handle,
+.workspace-divider-hotzone:hover + .notebook-pane .notebook-divider-handle,
+.notebook-divider-handle:focus-within {
+  color: var(--muted);
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+}
+
+.notebook-divider-button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.66;
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    background-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.notebook-divider-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.notebook-divider-button-split svg {
+  width: 12px;
+  height: 12px;
+}
+
+.notebook-divider-button:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--hover-fill), transparent 6%);
   color: var(--text);
 }
 
-.notebook-attach-button svg {
-  width: 16px;
-  height: 16px;
+.notebook-divider-button.active {
+  opacity: 0.92;
+  background: color-mix(in srgb, var(--fill-soft), transparent 32%);
+  color: var(--text-soft);
+}
+
+.notebook-divider-button:active {
+  transform: scale(0.92);
 }
 
 .notebook-scroll {
   height: 100%;
   min-height: 0;
   overflow: auto;
-  padding: 70px 42px 34px 44px;
+  padding: 8px 22px 14px 0;
   opacity: 1;
   transform: translateX(0);
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--muted), transparent 84%) transparent;
+}
+
+.workspace-body.layout-split .notebook-scroll {
+  padding-top: 6px;
+  padding-right: 24px;
+  padding-bottom: 14px;
+  padding-left: 1px;
 }
 
 .notebook-scroll::-webkit-scrollbar {

@@ -4,11 +4,14 @@ import type { NoteDocument } from "../../features/notebook/services/notebookStor
 defineProps<{
   position: { x: number; y: number };
   images: NoteDocument["images"];
+  hasSelection: boolean;
+  allowInsertImage: boolean;
 }>();
 
 const emit = defineEmits<{
   design: [];
   generate: [];
+  insertImage: [];
   preview: [];
   remove: [];
 }>();
@@ -32,7 +35,12 @@ const emit = defineEmits<{
       </svg>
       <span>预览</span>
     </button>
-    <button class="notebook-context-action" type="button" @click="emit('design')">
+    <button
+      v-if="hasSelection"
+      class="notebook-context-action"
+      type="button"
+      @click="emit('design')"
+    >
       <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 6.5h16" />
         <path d="M4 12h10" />
@@ -42,7 +50,12 @@ const emit = defineEmits<{
       </svg>
       <span>生成设计方案</span>
     </button>
-    <button class="notebook-context-action" type="button" @click="emit('generate')">
+    <button
+      v-if="hasSelection"
+      class="notebook-context-action"
+      type="button"
+      @click="emit('generate')"
+    >
       <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
         <rect x="4.5" y="4.5" width="15" height="15" />
         <path d="M9 15.4 12 8.6l3 6.8" />
@@ -53,6 +66,18 @@ const emit = defineEmits<{
         <path d="M16 21.2v-1.7" />
       </svg>
       <span>可视化</span>
+    </button>
+    <button
+      v-if="allowInsertImage"
+      class="notebook-context-action"
+      type="button"
+      @click="emit('insertImage')"
+    >
+      <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 5v14" />
+        <path d="M5 12h14" />
+      </svg>
+      <span>插入图片</span>
     </button>
     <button
       v-if="images.length > 0"

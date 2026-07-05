@@ -90,20 +90,20 @@ onBeforeUnmount(() => {
     />
 
     <main class="workspace">
+      <TopBar
+        :is-running="workspace.isRunning"
+        :is-screening-active="workspace.isScreeningActive"
+        @packages="workspace.openPackageTransferDialog"
+        @screening="workspace.triggerScreeningAction"
+        @stop="workspace.stopCurrentRun"
+        @run="workspace.runCurrentScript"
+      />
+
       <div
         class="workspace-body"
-        :class="{ 'notebook-collapsed': !workspace.isNotePanelOpen }"
+        :class="`layout-${workspace.workspaceLayoutMode}`"
       >
         <section class="editor-workspace-column">
-          <TopBar
-            :is-running="workspace.isRunning"
-            :is-screening-active="workspace.isScreeningActive"
-            @packages="workspace.openPackageTransferDialog"
-            @screening="workspace.triggerScreeningAction"
-            @stop="workspace.stopCurrentRun"
-            @run="workspace.runCurrentScript"
-          />
-
           <EditorPane
             :code="workspace.codeContent"
             :design-cards="workspace.designCards"
@@ -135,16 +135,24 @@ onBeforeUnmount(() => {
           />
         </section>
 
+        <div
+          class="workspace-divider-hotzone"
+          aria-hidden="true"
+        ></div>
+
         <NotePanel
           :current-file="workspace.currentFile"
           :document="workspace.currentNoteDocument"
           :design-cards="workspace.designCards"
           :is-open="workspace.isNotePanelOpen"
+          :layout-mode="workspace.workspaceLayoutMode"
           :is-scene-switching="isSceneSwitching"
           :render-blocks="workspace.noteRenderBlocks"
           :save-state="workspace.noteSaveState"
           :ai-busy="workspace.isAIGenerating"
-          @toggle="workspace.toggleNotePanel"
+          @show-code="workspace.toggleCodePane"
+          @show-split="workspace.showSplitPane"
+          @show-note="workspace.toggleNotePane"
           @update:markdown="workspace.updateNoteMarkdown"
           @add-images="workspace.addNoteImages"
           @move-image="workspace.moveNoteImage"
