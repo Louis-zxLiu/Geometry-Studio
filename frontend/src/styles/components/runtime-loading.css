@@ -58,7 +58,6 @@
   text-transform: uppercase;
 }
 
-.runtime-loading-shell-enter-active,
 .runtime-loading-shell-leave-active {
   transition:
     opacity 360ms ease,
@@ -66,14 +65,12 @@
     filter 360ms ease;
 }
 
-.runtime-loading-shell-enter-from,
 .runtime-loading-shell-leave-to {
   opacity: 0;
   transform: scale(0.988);
   filter: blur(10px);
 }
 
-.runtime-loading-shell-enter-to,
 .runtime-loading-shell-leave-from {
   opacity: 1;
   transform: scale(1);

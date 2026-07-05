@@ -69,7 +69,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="app-shell">
-    <Transition name="runtime-loading-shell" appear>
+    <Transition name="runtime-loading-shell">
       <RuntimeLoadingScreen
         v-if="isLoadingScreenVisible"
         :active="workspace.isInitializing"
