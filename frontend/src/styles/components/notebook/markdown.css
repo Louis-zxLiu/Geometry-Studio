@@ -223,9 +223,10 @@
 }
 
 .notebook-markdown-rendered blockquote {
-  padding: 6px 0 6px 16px;
+  padding: 12px 14px;
   border-radius: var(--radius-sm);
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--text), transparent 82%);
+  background: color-mix(in srgb, var(--surface-soft), transparent 18%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text), transparent 97%);
   color: var(--text-soft);
 }
 
