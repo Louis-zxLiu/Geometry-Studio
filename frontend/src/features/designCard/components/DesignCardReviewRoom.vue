@@ -70,6 +70,7 @@ function updatePlan(event: Event) {
                 ref="textareaRef"
                 class="design-card-plan-input"
                 spellcheck="false"
+                wrap="off"
                 :value="card.plan"
                 :disabled="pending"
                 @input="updatePlan"
