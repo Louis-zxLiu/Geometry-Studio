@@ -116,6 +116,13 @@
   min-height: 220px;
 }
 
+.settings-current-version {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  letter-spacing: 0.04em;
+}
+
 .ai-settings-dialog {
   width: min(48vw, 560px);
   min-height: 0;
@@ -322,13 +329,12 @@
 }
 
 .settings-runtime {
-  margin-top: 24px;
+  margin-top: 20px;
 }
 
 .settings-runtime-header {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: 16px;
 }
 
@@ -340,21 +346,8 @@
   letter-spacing: 0.04em;
 }
 
-.settings-runtime-version {
-  color: var(--muted);
-  font-size: 0.82rem;
-  letter-spacing: 0.03em;
-}
-
-.settings-runtime-summary {
-  margin: 12px 0 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
 .settings-runtime-list {
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   padding: 0;
   list-style: none;
   display: grid;

@@ -37,16 +37,12 @@ const emit = defineEmits<{
     <div v-if="open" class="dialog-backdrop" @click.self="emit('close')">
       <section class="create-dialog settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <h2 id="settings-title">设置</h2>
+        <p class="settings-current-version">当前版本 {{ update.currentVersion || "-" }}</p>
 
         <div class="settings-runtime">
           <div class="settings-runtime-header">
             <strong class="settings-runtime-title">WinPython 环境</strong>
-            <span class="settings-runtime-version">当前版本 {{ update.currentVersion || "-" }}</span>
           </div>
-          <p class="settings-runtime-summary">{{ status.summary }}</p>
-          <p v-if="status.recommendedAction" class="settings-runtime-summary">
-            {{ status.recommendedAction }}
-          </p>
           <ul class="settings-runtime-list">
             <li v-for="item in status.items" :key="item.key ?? item.label" class="settings-runtime-item">
               <span>{{ item.label }}</span>

@@ -12,6 +12,7 @@
     );
   backdrop-filter: blur(10px);
   pointer-events: none;
+  transition: background var(--dur-base) var(--ease-out);
 }
 
 .sidebar-footer {
@@ -24,6 +25,7 @@
 /* 工具钮 · 还原 6 月版小图标间距 */
 .sidebar-tool-button {
   --wails-draggable: no-drag;
+  position: relative;
   display: grid;
   place-items: center;
   width: 32px;
@@ -34,9 +36,20 @@
   color: var(--muted);
   cursor: pointer;
   transition:
-    background-color var(--dur-base) var(--ease-out),
     color var(--dur-base) var(--ease-out),
     transform var(--dur-fast) var(--ease-out);
+}
+
+.sidebar-tool-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--hover-fill);
+  opacity: 0;
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    background-color var(--dur-base) var(--ease-out);
 }
 
 .sidebar-tool-button-help .sidebar-tool-icon {
@@ -45,8 +58,11 @@
 }
 
 .sidebar-tool-button:hover {
-  background: var(--hover-fill);
   color: var(--text);
+}
+
+.sidebar-tool-button:hover::before {
+  opacity: 1;
 }
 
 .sidebar-tool-button:not(:disabled):active {
@@ -54,6 +70,8 @@
 }
 
 .sidebar-tool-icon {
+  position: relative;
+  z-index: 1;
   width: 19px;
   height: 19px;
   fill: none;
@@ -64,6 +82,8 @@
 }
 
 .sidebar-tool-glyph {
+  position: relative;
+  z-index: 1;
   font-size: 18px;
   line-height: 1;
 }
