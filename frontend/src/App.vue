@@ -69,14 +69,16 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="app-shell">
-    <RuntimeLoadingScreen
-      v-if="isLoadingScreenVisible"
-      :active="workspace.isInitializing"
-      :progress="workspace.initProgressPercent"
-      :message="workspace.initProgressMessage"
-      :theme-id="theme.currentThemeId"
-      @settled="handleLoadingScreenSettled"
-    />
+    <Transition name="runtime-loading-shell" appear>
+      <RuntimeLoadingScreen
+        v-if="isLoadingScreenVisible"
+        :active="workspace.isInitializing"
+        :progress="workspace.initProgressPercent"
+        :message="workspace.initProgressMessage"
+        :theme-id="theme.currentThemeId"
+        @settled="handleLoadingScreenSettled"
+      />
+    </Transition>
 
     <SidebarPanel
       :scripts="workspace.scripts"

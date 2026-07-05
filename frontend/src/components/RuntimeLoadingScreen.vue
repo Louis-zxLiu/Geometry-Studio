@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import type { ThemeId } from "../theme/palettes";
 import moonLogoUrl from "../assets/loading/logo-loading-moon.svg";
 import warmLogoUrl from "../assets/loading/logo-loading-warm.svg";
@@ -18,11 +18,24 @@ const emit = defineEmits<{
   settled: [];
 }>();
 
-const targetProgress = computed(() => (props.active ? props.progress : 100));
+const stylizedTarget = ref(initialDisplayTarget(props.progress, props.active));
+const targetProgress = computed(() => stylizedTarget.value);
 const { displayed: safeProgress, isSettled } = useSmoothedProgress(
   () => targetProgress.value,
 );
 const progressLabel = computed(() => Math.round(safeProgress.value));
+
+watch(
+  [() => props.progress, () => props.active],
+  ([nextProgress, active]) => {
+    stylizedTarget.value = pickDisplayTarget(
+      nextProgress,
+      active,
+      stylizedTarget.value,
+    );
+  },
+  { immediate: true },
+);
 
 watch(
   [() => props.active, isSettled, safeProgress],
@@ -63,6 +76,57 @@ const coreStyle = computed(() => {
 const ringStyle = computed(() => ({
   background: `conic-gradient(var(--loading-accent) 0deg, var(--loading-accent) ${safeProgress.value * 3.6}deg, var(--loading-track) ${safeProgress.value * 3.6}deg, var(--loading-track) 360deg)`,
 }));
+
+function initialDisplayTarget(progress: number, active: boolean) {
+  return pickDisplayTarget(progress, active, 0);
+}
+
+function pickDisplayTarget(progress: number, active: boolean, previous: number) {
+  const normalized = clampProgress(progress);
+  if (!active || normalized >= 100) {
+    return 100;
+  }
+
+  if (normalized <= 18) {
+    return Math.max(previous, normalized);
+  }
+
+  const window = getProgressWindow(normalized);
+  const sampled = randomInteger(window.min, window.max);
+  const lowerBound = Math.min(window.max, Math.max(previous + 1, window.min));
+  const next = clamp(sampled, lowerBound, window.max);
+  return Math.max(previous, next);
+}
+
+function getProgressWindow(progress: number) {
+  const decade = Math.floor(progress / 10) * 10;
+  if (progress < 50) {
+    return {
+      min: decade,
+      max: Math.min(98, decade + 20),
+    };
+  }
+
+  return {
+    min: Math.max(0, decade - 10),
+    max: Math.min(98, decade + 10),
+  };
+}
+
+function randomInteger(min: number, max: number) {
+  if (max <= min) {
+    return min;
+  }
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function clampProgress(value: number) {
+  return Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 </script>
 
 <template>
