@@ -24,6 +24,7 @@ import { useTheme } from "./composables/useTheme";
 const workspace = reactive(usePlotWorkspace());
 const theme = reactive(useTheme());
 const isSceneSwitching = ref(false);
+const isLoadingScreenVisible = ref(true);
 
 let sceneSwitchTimer = 0;
 let hasMountedScene = false;
@@ -45,6 +46,22 @@ watch(
   },
 );
 
+watch(
+  () => workspace.isInitializing,
+  (isInitializing) => {
+    if (isInitializing) {
+      isLoadingScreenVisible.value = true;
+    }
+  },
+  { immediate: true },
+);
+
+function handleLoadingScreenSettled() {
+  if (!workspace.isInitializing) {
+    isLoadingScreenVisible.value = false;
+  }
+}
+
 onBeforeUnmount(() => {
   window.clearTimeout(sceneSwitchTimer);
 });
@@ -53,9 +70,12 @@ onBeforeUnmount(() => {
 <template>
   <div class="app-shell">
     <RuntimeLoadingScreen
-      v-if="workspace.isInitializing"
+      v-if="isLoadingScreenVisible"
+      :active="workspace.isInitializing"
       :progress="workspace.initProgressPercent"
       :message="workspace.initProgressMessage"
+      :theme-id="theme.currentThemeId"
+      @settled="handleLoadingScreenSettled"
     />
 
     <SidebarPanel
