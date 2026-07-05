@@ -83,7 +83,11 @@ export function useNoteWorkspace(
   }
 
   function togglePanel() {
-    isPanelOpen.value = !isPanelOpen.value;
+    setPanelOpen(!isPanelOpen.value);
+  }
+
+  function setPanelOpen(isOpen: boolean) {
+    isPanelOpen.value = isOpen;
     panelStorage.savePanelState(isPanelOpen.value);
   }
 
@@ -172,6 +176,7 @@ export function useNoteWorkspace(
     removeImage,
     renderBlocks,
     saveState,
+    setPanelOpen,
     togglePanel,
     updateMarkdown,
   };

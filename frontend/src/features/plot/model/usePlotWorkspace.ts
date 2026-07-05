@@ -34,6 +34,10 @@ import { usePackageTransfer } from "./usePackageTransfer";
 import { usePkcDropImport } from "./usePkcDropImport";
 import { useWorkspaceLifecycle } from "./useWorkspaceLifecycle";
 import {
+  createWorkspaceLayoutStorage,
+  type WorkspaceLayoutMode,
+} from "../services/workspaceLayoutStorage";
+import {
   checkForUpdates,
   downloadUpdate,
   getUpdateStatus,
@@ -42,6 +46,7 @@ import {
 } from "../../updates/services/updateBridgeCompat";
 
 export function usePlotWorkspace() {
+  const layoutStorage = createWorkspaceLayoutStorage();
   const isRunning = ref(false);
   const repairAnimatedLineRanges = ref<ChangedLineRange[]>([]);
   const repairAnimationKey = ref(0);
@@ -93,6 +98,9 @@ export function usePlotWorkspace() {
     scriptWorkspace.currentFile,
     runErrorDialog.openRunErrorDialog,
     designCardsForNote,
+  );
+  const workspaceLayoutMode = ref<WorkspaceLayoutMode>(
+    layoutStorage.loadLayoutMode(noteWorkspace.isPanelOpen.value ? "split" : "code"),
   );
   const plotAIWorkflow = usePlotAIWorkflow({
     aiActivity,
@@ -201,8 +209,26 @@ export function usePlotWorkspace() {
     scriptWorkspace,
   });
 
+  function setWorkspaceLayoutMode(mode: WorkspaceLayoutMode) {
+    workspaceLayoutMode.value = mode;
+    layoutStorage.saveLayoutMode(mode);
+    noteWorkspace.setPanelOpen(mode !== "code");
+  }
+
+  function toggleCodePane() {
+    setWorkspaceLayoutMode(workspaceLayoutMode.value === "code" ? "split" : "code");
+  }
+
+  function toggleNotePane() {
+    setWorkspaceLayoutMode(workspaceLayoutMode.value === "note" ? "split" : "note");
+  }
+
+  function showSplitPane() {
+    setWorkspaceLayoutMode("split");
+  }
+
   function toggleNotePanel() {
-    noteWorkspace.togglePanel();
+    setWorkspaceLayoutMode(workspaceLayoutMode.value === "code" ? "split" : "code");
   }
 
   function openSettings() {
@@ -409,6 +435,14 @@ export function usePlotWorkspace() {
     { immediate: true },
   );
 
+  watch(
+    workspaceLayoutMode,
+    (mode) => {
+      noteWorkspace.setPanelOpen(mode !== "code");
+    },
+    { immediate: true },
+  );
+
   return {
     aiSettings,
     aiStatusLabel: aiActivity.aiStatusLabel,
@@ -489,7 +523,7 @@ export function usePlotWorkspace() {
     isUpdateInstallDialogOpen,
     isInstallingUpdate,
     isUpdatePending,
-    isNotePanelOpen: noteWorkspace.isPanelOpen,
+    isNotePanelOpen: computed(() => workspaceLayoutMode.value !== "code"),
     handleUpdateAction,
     openCreateDialog: scriptWorkspace.openCreateDialog,
     openAISettings,
@@ -528,6 +562,10 @@ export function usePlotWorkspace() {
     stopCurrentRun: lifecycle.stopCurrentRun,
     stopScreening: screeningWorkspace.stopScreening,
     subscriptionStatus,
+    showSplitPane,
+    workspaceLayoutMode,
+    toggleCodePane,
+    toggleNotePane,
     toggleScreeningScene: screeningWorkspace.toggleScreeningScene,
     toggleWorkspaceExportSelection: workspacePackageTransfer.toggleWorkspaceSelection,
     updateStatus,
