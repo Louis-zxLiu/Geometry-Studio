@@ -355,10 +355,12 @@
 }
 
 .settings-update-button {
-  padding: 0;
+  min-width: fit-content;
+  padding: 0 18px;
   margin-left: 8px;
+  flex: 0 0 auto;
   color: inherit;
-  text-align: left;
+  text-align: center;
 }
 
 .settings-actions-spacer {

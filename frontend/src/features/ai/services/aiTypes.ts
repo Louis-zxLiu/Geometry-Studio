@@ -136,5 +136,6 @@ export type AppUpdateStatus = {
   updateAvailable: boolean;
   downloaded: boolean;
   readyToInstall: boolean;
+  actionKind: "check" | "latest" | "download" | "install";
   actionLabel: string;
 };

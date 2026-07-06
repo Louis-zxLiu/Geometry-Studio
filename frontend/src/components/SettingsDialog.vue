@@ -5,6 +5,7 @@ defineProps<{
   running: boolean;
   update: {
     currentVersion: string;
+    actionKind: "check" | "latest" | "download" | "install";
     actionLabel: string;
   };
   updatePending: boolean;

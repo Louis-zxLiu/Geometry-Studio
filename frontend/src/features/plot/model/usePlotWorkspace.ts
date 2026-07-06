@@ -68,6 +68,7 @@ export function usePlotWorkspace() {
   const isDownloadingUpdate = ref(false);
   const isInstallingUpdate = ref(false);
   const isUpdateInstallDialogOpen = ref(false);
+  const hasCheckedUpdatesThisSession = ref(false);
   const isUpdatePending = computed(
     () => isCheckingUpdates.value || isDownloadingUpdate.value || isInstallingUpdate.value,
   );
@@ -232,6 +233,7 @@ export function usePlotWorkspace() {
   }
 
   function openSettings() {
+    resetUpdateButtonState();
     isSettingsDialogOpen.value = true;
   }
 
@@ -265,6 +267,7 @@ export function usePlotWorkspace() {
   }
 
   function closeSettings() {
+    resetUpdateButtonState();
     isSettingsDialogOpen.value = false;
   }
 
@@ -328,7 +331,10 @@ export function usePlotWorkspace() {
 
   async function refreshUpdateStatus() {
     try {
-      updateStatus.value = normalizeUpdateStatus(await getUpdateStatus());
+      const nextStatus = await getUpdateStatus();
+      updateStatus.value = normalizeUpdateStatus(nextStatus, {
+        hasCheckedThisSession: hasCheckedUpdatesThisSession.value,
+      });
     } catch (error) {
       updateStatus.value = {
         ...updateStatus.value,
@@ -344,8 +350,12 @@ export function usePlotWorkspace() {
 
     isCheckingUpdates.value = true;
     try {
-      updateStatus.value = normalizeUpdateStatus(await checkForUpdates(force));
+      hasCheckedUpdatesThisSession.value = true;
+      updateStatus.value = normalizeUpdateStatus(await checkForUpdates(force), {
+        hasCheckedThisSession: hasCheckedUpdatesThisSession.value,
+      });
     } catch (error) {
+      hasCheckedUpdatesThisSession.value = false;
       if (!quiet) {
         runErrorDialog.openRunErrorDialog(getErrorMessage(error));
       }
@@ -355,12 +365,15 @@ export function usePlotWorkspace() {
   }
 
   async function handleUpdateAction() {
-    if (updateStatus.value.readyToInstall) {
+    if (updateStatus.value.actionKind === "install") {
       isUpdateInstallDialogOpen.value = true;
       return;
     }
 
-    if (updateStatus.value.actionLabel === "检查更新") {
+    if (
+      updateStatus.value.actionKind === "check" ||
+      updateStatus.value.actionKind === "latest"
+    ) {
       await checkUpdates(true);
       return;
     }
@@ -405,6 +418,13 @@ export function usePlotWorkspace() {
     }
   }
 
+  function resetUpdateButtonState() {
+    hasCheckedUpdatesThisSession.value = false;
+    updateStatus.value = normalizeUpdateStatus({
+      currentVersion: updateStatus.value.currentVersion,
+    });
+  }
+
   function animateRepairRanges(ranges: ChangedLineRange[]) {
     repairAnimatedLineRanges.value = ranges;
     repairAnimationKey.value += 1;
@@ -416,7 +436,6 @@ export function usePlotWorkspace() {
   onMounted(() => {
     void refreshAISettings();
     void refreshUpdateStatus();
-    void checkUpdates(false, true);
     lifecycle.mount();
   });
 
@@ -628,13 +647,25 @@ function normalizeSubscriptionStatusCode(status?: string): AISubscriptionStatus[
   return "error";
 }
 
-function normalizeUpdateStatus(status: UpdateStatusLike): AppUpdateStatus {
+function normalizeUpdateStatus(
+  status: UpdateStatusLike,
+  options?: { hasCheckedThisSession?: boolean },
+): AppUpdateStatus {
   const readyToInstall = !!status.readyToInstall;
   const updateAvailable = !!status.updateAvailable;
+  const hasChecked = !!options?.hasCheckedThisSession;
+  const latestVersion = typeof status.latestVersion === "string" ? status.latestVersion : "";
+  const actionKind = readyToInstall
+    ? "install"
+    : updateAvailable
+      ? "download"
+      : hasChecked
+        ? "latest"
+        : "check";
 
   return {
     currentVersion: typeof status.currentVersion === "string" ? status.currentVersion : "0.0.3.1",
-    latestVersion: typeof status.latestVersion === "string" ? status.latestVersion : "",
+    latestVersion,
     notes: typeof status.notes === "string" ? status.notes : "",
     publishedAt: typeof status.publishedAt === "string" ? status.publishedAt : "",
     lastCheckedAt: typeof status.lastCheckedAt === "string" ? status.lastCheckedAt : "",
@@ -642,6 +673,24 @@ function normalizeUpdateStatus(status: UpdateStatusLike): AppUpdateStatus {
     updateAvailable,
     downloaded: !!status.downloaded,
     readyToInstall,
-    actionLabel: readyToInstall ? "立即更新" : updateAvailable ? "下载新版本" : "检查更新",
+    actionKind,
+    actionLabel: getUpdateActionLabel(actionKind, latestVersion),
   };
+}
+
+function getUpdateActionLabel(
+  actionKind: AppUpdateStatus["actionKind"],
+  latestVersion: string,
+): string {
+  switch (actionKind) {
+    case "install":
+      return "立即安装";
+    case "download":
+      return latestVersion ? `下载 v${latestVersion}` : "下载更新";
+    case "latest":
+      return "已是最新版";
+    case "check":
+    default:
+      return "检查更新";
+  }
 }
