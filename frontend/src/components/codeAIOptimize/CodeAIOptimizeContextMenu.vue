@@ -74,20 +74,22 @@ function describeEventTarget(target: EventTarget | null) {
 </script>
 
 <template>
-  <div
-    ref="menuRoot"
-    class="code-ai-context-menu"
-    :style="{ left: `${position.x}px`, top: `${position.y}px` }"
-    @pointerdown.stop
-    @mousedown.stop
-  >
-    <button
-      class="code-ai-context-action"
-      type="button"
-      :disabled="disabled"
-      @click="optimize"
+  <Transition name="tool-menu" appear>
+    <div
+      ref="menuRoot"
+      class="code-ai-context-menu"
+      :style="{ left: `${position.x}px`, top: `${position.y}px` }"
+      @pointerdown.stop
+      @mousedown.stop
     >
-      AI优化
-    </button>
-  </div>
+      <button
+        class="code-ai-context-action"
+        type="button"
+        :disabled="disabled"
+        @click="optimize"
+      >
+        AI优化
+      </button>
+    </div>
+  </Transition>
 </template>

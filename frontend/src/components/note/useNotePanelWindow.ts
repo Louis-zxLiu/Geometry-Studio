@@ -46,10 +46,7 @@ export function useNotePanelWindow(options: NotePanelWindowOptions) {
     }
 
     options.maybeStopEditingFromPointerDown(target);
-
-    if (!options.notebookRoot.value?.contains(target)) {
-      options.closeContextMenu();
-    }
+    options.closeContextMenu();
   }
 
   return {
