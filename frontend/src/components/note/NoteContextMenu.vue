@@ -42,11 +42,9 @@ const emit = defineEmits<{
       @click="emit('design')"
     >
       <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 6.5h16" />
-        <path d="M4 12h10" />
-        <path d="M4 17.5h7" />
-        <path d="m16 15 4-4" />
-        <path d="m20 15-4-4" />
+        <path d="M7 4.5h6.2l3.8 3.8v11.2a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2z" />
+        <path d="M13.2 4.5v3.8h3.8" />
+        <path d="M17.5 3.7 Q18.24 5.76 20.3 6.5 Q18.24 7.24 17.5 9.3 Q16.76 7.24 14.7 6.5 Q16.76 5.76 17.5 3.7 Z" />
       </svg>
       <span>生成设计方案</span>
     </button>
@@ -57,13 +55,8 @@ const emit = defineEmits<{
       @click="emit('generate')"
     >
       <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="4.5" y="4.5" width="15" height="15" />
-        <path d="M9 15.4 12 8.6l3 6.8" />
-        <path d="M10 13.2h4" />
-        <path d="M8 4.5V2.8" />
-        <path d="M16 4.5V2.8" />
-        <path d="M8 21.2v-1.7" />
-        <path d="M16 21.2v-1.7" />
+        <path d="M5 19V5h14" />
+        <path d="M6 12 Q 9 6 12 12 T 18 12" />
       </svg>
       <span>可视化</span>
     </button>
@@ -74,8 +67,9 @@ const emit = defineEmits<{
       @click="emit('insertImage')"
     >
       <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 5v14" />
-        <path d="M5 12h14" />
+        <rect x="4" y="5.5" width="16" height="13" rx="2.5" />
+        <path d="M5 16l3-3 2.5 2.5L14 12l5 4" />
+        <circle cx="8.5" cy="10" r="1.5" />
       </svg>
       <span>插入图片</span>
     </button>

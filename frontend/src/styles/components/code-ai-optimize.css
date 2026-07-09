@@ -18,6 +18,9 @@
 }
 
 .code-ai-context-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   width: 100%;
   min-height: 32px;
   padding: 0 11px;
@@ -30,6 +33,17 @@
   font-size: 12px;
   letter-spacing: 0.03em;
   text-align: left;
+}
+
+.code-ai-context-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
 }
 
 .code-ai-context-action:hover {
