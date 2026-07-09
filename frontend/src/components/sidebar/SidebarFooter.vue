@@ -18,7 +18,10 @@ const emit = defineEmits<{
         aria-label="设置"
         @click="emit('settings')"
       >
-        <span class="sidebar-tool-glyph" aria-hidden="true">⚙</span>
+        <svg class="sidebar-tool-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.2" />
+          <path d="M19.4 13.5a7.8 7.8 0 0 0 0-3l1.6-1.2-1.8-3.1-1.9.8a7.6 7.6 0 0 0-2.6-1.5L14.2 3h-4.4l-.5 2.5a7.6 7.6 0 0 0-2.6 1.5l-1.9-.8L3 9.3 4.6 10.5a7.8 7.8 0 0 0 0 3L3 14.7l1.8 3.1 1.9-.8a7.6 7.6 0 0 0 2.6 1.5l.5 2.5h4.4l.5-2.5a7.6 7.6 0 0 0 2.6-1.5l1.9.8 1.8-3.1z" />
+        </svg>
       </button>
       <button
         class="sidebar-tool-button sidebar-tool-button-help"
@@ -28,10 +31,9 @@ const emit = defineEmits<{
         @click="openHelpCenter"
       >
         <svg class="sidebar-tool-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 6.5h6a2.9 2.9 0 0 1 2 0v10.5a2.9 2.9 0 0 0-2-.8H5z" />
-          <path d="M19 6.5h-6a2.9 2.9 0 0 0-2 0v10.5a2.9 2.9 0 0 1 2-.8H19z" />
-          <path d="M11.3 7.2v9" />
-          <path d="M12.7 7.2v9" />
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M9.6 9.8a2.4 2.4 0 1 1 3.2 2.2c-.7.4-1.1.9-1.1 1.7v.6" />
+          <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none" />
         </svg>
       </button>
       <button
@@ -42,13 +44,13 @@ const emit = defineEmits<{
         @click="emit('ai-settings')"
       >
         <svg class="sidebar-tool-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="4.5" y="4.5" width="15" height="15" />
-          <path d="M9 15.4 12 8.6l3 6.8" />
-          <path d="M10 13.2h4" />
-          <path d="M8 4.5V2.8" />
-          <path d="M16 4.5V2.8" />
-          <path d="M8 21.2v-1.7" />
-          <path d="M16 21.2v-1.7" />
+          <rect x="5" y="5" width="14" height="14" rx="2.5" />
+          <path d="M9.2 15.4 12 8.8l2.8 6.6" />
+          <path d="M10.1 13.2h3.8" />
+          <path d="M8 5V3.2" />
+          <path d="M16 5V3.2" />
+          <path d="M8 21v-1.8" />
+          <path d="M16 21v-1.8" />
         </svg>
       </button>
       <button
@@ -58,7 +60,10 @@ const emit = defineEmits<{
         aria-label="切换主题"
         @click="emit('appearance')"
       >
-        <span class="sidebar-tool-glyph" aria-hidden="true">✦</span>
+        <svg class="sidebar-tool-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M12 3.5a8.5 8.5 0 0 0 0 17z" fill="currentColor" stroke="none" />
+        </svg>
       </button>
     </div>
   </div>

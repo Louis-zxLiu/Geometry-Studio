@@ -33,7 +33,7 @@
   border: 0;
   border-radius: 11px;
   background: transparent;
-  color: var(--muted);
+  color: color-mix(in srgb, var(--text-soft), var(--muted) 75%);
   cursor: pointer;
   transition:
     color var(--dur-base) var(--ease-out),
@@ -50,11 +50,6 @@
   transition:
     opacity var(--dur-base) var(--ease-out),
     background-color var(--dur-base) var(--ease-out);
-}
-
-.sidebar-tool-button-help .sidebar-tool-icon {
-  width: 20px;
-  height: 20px;
 }
 
 .sidebar-tool-button:hover {
@@ -78,7 +73,7 @@
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 1.35;
+  stroke-width: 1.45;
 }
 
 .sidebar-tool-glyph {
