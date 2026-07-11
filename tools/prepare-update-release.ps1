@@ -64,7 +64,8 @@ $manifest = [ordered]@{
     }
 }
 
-$manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
+$manifestJson = $manifest | ConvertTo-Json -Depth 4
+[System.IO.File]::WriteAllText($manifestPath, $manifestJson, [System.Text.UTF8Encoding]::new($false))
 
 Write-Host "Prepared update artifacts:"
 Write-Host "  EXE:      $targetExe"

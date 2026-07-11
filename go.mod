@@ -6,7 +6,6 @@ toolchain go1.26.3
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf
 	github.com/wailsapp/wails/v2 v2.10.2
 	golang.org/x/sys v0.30.0
 )

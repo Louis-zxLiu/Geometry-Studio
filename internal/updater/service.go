@@ -5,18 +5,16 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
-
-	update "github.com/inconshreveable/go-update"
 
 	"plotkitycat/internal/paths"
 	"plotkitycat/internal/processutil"
@@ -73,11 +71,7 @@ func (s *Service) Check(ctx context.Context, force bool) (Status, error) {
 
 	manifest, err := s.fetchManifest(ctx)
 	if err != nil {
-		status := s.statusFromState(state)
-		if status.Message == "" {
-			status.Message = err.Error()
-		}
-		return status, nil
+		return Status{}, err
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -207,25 +201,17 @@ func (s *Service) InstallAndRestart() error {
 	if strings.TrimSpace(state.DownloadedVersion) == "" || strings.TrimSpace(state.DownloadedPath) == "" {
 		return fmt.Errorf("没有可安装的更新包")
 	}
-
-	file, err := os.Open(state.DownloadedPath)
-	if err != nil {
-		return err
+	if !fileExists(state.DownloadedPath) {
+		return fmt.Errorf("下载的更新包不存在: %s", state.DownloadedPath)
 	}
-	defer file.Close()
 
 	exePath, err := os.Executable()
 	if err != nil {
 		return err
 	}
-	opts := update.Options{
-		TargetPath:  exePath,
-		OldSavePath: exePath + ".old",
-	}
-	if err := update.Apply(file, opts); err != nil {
-		if rollbackErr := update.RollbackError(err); rollbackErr != nil {
-			return fmt.Errorf("%w; 回滚失败: %v", err, rollbackErr)
-		}
+
+	scriptPath, err := writeUpdateScript(exePath, state.DownloadedPath, os.Getpid())
+	if err != nil {
 		return err
 	}
 
@@ -238,7 +224,9 @@ func (s *Service) InstallAndRestart() error {
 	nextState.DownloadedSHA256 = ""
 	_ = s.store.Save(nextState)
 
-	if err := relaunchProcess(exePath); err != nil {
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
+	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
+	if err := cmd.Start(); err != nil {
 		return err
 	}
 
@@ -246,11 +234,48 @@ func (s *Service) InstallAndRestart() error {
 	return nil
 }
 
+func writeUpdateScript(targetExe, newExe string, mainPid int) (string, error) {
+	script := fmt.Sprintf(`$target = %s
+$new = %s
+$mainPid = %d
+$logFile = Join-Path $env:TEMP 'plotkitycat-update.log'
+function Log($msg) { Add-Content -LiteralPath $logFile -Value ("[" + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + "] " + $msg) }
+Log "update started target=$target new=$new mainPid=$mainPid"
+for ($i=0; $i -lt 150; $i++) {
+  $p = Get-Process -Id $mainPid -ErrorAction SilentlyContinue
+  if (-not $p) { Log "main exe exited"; break }
+  Start-Sleep -Milliseconds 200
+}
+Remove-Item ($target + ".old") -Force -ErrorAction SilentlyContinue
+$ok = $false
+for ($i=0; $i -lt 10; $i++) {
+  try { Copy-Item -LiteralPath $new -Destination $target -Force; $ok = $true; Log "copy ok"; break }
+  catch { Log ("copy fail " + $i + ": " + $_.Exception.Message); Start-Sleep -Milliseconds 500 }
+}
+if (-not $ok) { Log "copy permanent fail"; exit 1 }
+try { Start-Process -FilePath $target; Log "relaunched" }
+catch { Log ("relaunch fail: " + $_.Exception.Message) }
+Remove-Item $PSCommandPath -Force -ErrorAction SilentlyContinue
+`, psQuote(targetExe), psQuote(newExe), mainPid)
+
+	tmpDir := os.TempDir()
+	scriptPath := filepath.Join(tmpDir, fmt.Sprintf("plotkitycat-update-%d.ps1", mainPid))
+	if err := os.WriteFile(scriptPath, []byte(script), 0o644); err != nil {
+		return "", err
+	}
+	return scriptPath, nil
+}
+
+func psQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
 func (s *Service) fetchManifest(ctx context.Context) (Manifest, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.manifestURL, nil)
 	if err != nil {
 		return Manifest{}, err
 	}
+	req.Header.Set("User-Agent", "PlotKityCat-Updater/"+version.Current())
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -261,8 +286,14 @@ func (s *Service) fetchManifest(ctx context.Context) (Manifest, error) {
 		return Manifest{}, fmt.Errorf("检查更新失败: %s", resp.Status)
 	}
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Manifest{}, err
+	}
+	body = bytes.TrimPrefix(body, []byte("\xef\xbb\xbf"))
+
 	var manifest Manifest
-	if err := json.NewDecoder(resp.Body).Decode(&manifest); err != nil {
+	if err := json.Unmarshal(body, &manifest); err != nil {
 		return Manifest{}, err
 	}
 	if strings.TrimSpace(manifest.Version) == "" {
@@ -413,29 +444,4 @@ func parseVersion(value string) []int {
 	}
 
 	return parsed
-}
-
-func relaunchProcess(exePath string) error {
-	if runtime.GOOS == "windows" {
-		return relaunchOnWindows(exePath)
-	}
-
-	cmd := exec.Command(exePath)
-	return cmd.Start()
-}
-
-func relaunchOnWindows(exePath string) error {
-	script := fmt.Sprintf(
-		"$target=%q; "+
-			"for($i=0;$i -lt 150;$i++){ "+
-			"try{$client=[System.Net.Sockets.TcpClient]::new(); $client.Connect('127.0.0.1',49152); $client.Close(); Start-Sleep -Milliseconds 200} "+
-			"catch{break} "+
-			"}; "+
-			"Start-Process -FilePath $target -WindowStyle Hidden",
-		exePath,
-	)
-
-	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script)
-	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
-	return cmd.Start()
 }
