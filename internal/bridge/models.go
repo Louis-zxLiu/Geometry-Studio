@@ -172,6 +172,184 @@ type AIWorkflowFailedEvent struct {
 	Attempt    int                  `json:"attempt"`
 }
 
+type GeometryWorkflowRequest struct {
+	SceneName    string             `json:"sceneName"`
+	ImageDataURL string             `json:"imageDataUrl"`
+	ProblemText  string             `json:"problemText"`
+	CurrentCode  string             `json:"currentCode"`
+	Settings     AIProviderSettings `json:"settings"`
+	MaxAttempts  int                `json:"maxAttempts"`
+}
+
+type GeometryWorkflowSession struct {
+	SessionID string `json:"sessionId"`
+	State     string `json:"state"`
+}
+
+type GeometryEntity struct {
+	ID         string            `json:"id"`
+	Type       string            `json:"type"`
+	Label      string            `json:"label"`
+	Attributes map[string]string `json:"attributes"`
+}
+
+type GeometryConstraint struct {
+	Type       string   `json:"type"`
+	Args       []string `json:"args"`
+	Text       string   `json:"text"`
+	Confidence float64  `json:"confidence"`
+}
+
+type GeometrySpec struct {
+	ProblemText       string               `json:"problemText"`
+	GoalText          string               `json:"goalText"`
+	Entities          []GeometryEntity     `json:"entities"`
+	Constraints       []GeometryConstraint `json:"constraints"`
+	ConstructionHints []string             `json:"constructionHints"`
+	Confidence        float64              `json:"confidence"`
+}
+
+type GeometryPoint struct {
+	ID    string  `json:"id"`
+	Label string  `json:"label"`
+	X     float64 `json:"x"`
+	Y     float64 `json:"y"`
+	Fixed bool    `json:"fixed"`
+}
+
+type GeometrySegment struct {
+	ID    string `json:"id"`
+	From  string `json:"from"`
+	To    string `json:"to"`
+	Label string `json:"label"`
+	Style string `json:"style"`
+}
+
+type GeometryCircle struct {
+	ID      string  `json:"id"`
+	Center  string  `json:"center"`
+	Radius  float64 `json:"radius"`
+	Through string  `json:"through"`
+	Label   string  `json:"label"`
+	Style   string  `json:"style"`
+}
+
+type GeometryPolygon struct {
+	ID     string   `json:"id"`
+	Points []string `json:"points"`
+	Label  string   `json:"label"`
+	Fill   string   `json:"fill"`
+}
+
+type GeometryControl struct {
+	ID      string  `json:"id"`
+	Label   string  `json:"label"`
+	Kind    string  `json:"kind"`
+	Min     float64 `json:"min"`
+	Max     float64 `json:"max"`
+	Value   float64 `json:"value"`
+	Step    float64 `json:"step"`
+	Target  string  `json:"target"`
+	Binding string  `json:"binding"`
+}
+
+type GeometryMeasurement struct {
+	ID    string   `json:"id"`
+	Label string   `json:"label"`
+	Kind  string   `json:"kind"`
+	Args  []string `json:"args"`
+	Value string   `json:"value"`
+}
+
+type GeometryAnnotation struct {
+	ID   string  `json:"id"`
+	Text string  `json:"text"`
+	X    float64 `json:"x"`
+	Y    float64 `json:"y"`
+}
+
+type GeometryProofStep struct {
+	ID      string   `json:"id"`
+	Claim   string   `json:"claim"`
+	Reason  string   `json:"reason"`
+	Depends []string `json:"depends"`
+}
+
+type GeometryScene struct {
+	Version      int                   `json:"version"`
+	Title        string                `json:"title"`
+	SourceImage  string                `json:"sourceImage"`
+	Points       []GeometryPoint       `json:"points"`
+	Segments     []GeometrySegment     `json:"segments"`
+	Circles      []GeometryCircle      `json:"circles"`
+	Polygons     []GeometryPolygon     `json:"polygons"`
+	Controls     []GeometryControl     `json:"controls"`
+	Measurements []GeometryMeasurement `json:"measurements"`
+	Constraints  []GeometryConstraint  `json:"constraints"`
+	Annotations  []GeometryAnnotation  `json:"annotations"`
+	ProofSteps   []GeometryProofStep   `json:"proofSteps"`
+}
+
+type GeometrySceneDocument struct {
+	Scene              GeometryScene `json:"scene"`
+	SourceImageDataURL string        `json:"sourceImageDataUrl"`
+}
+
+type GeometryWorkflowResult struct {
+	Code          string        `json:"code"`
+	NoteMarkdown  string        `json:"noteMarkdown"`
+	ProofMarkdown string        `json:"proofMarkdown"`
+	Spec          GeometrySpec  `json:"spec"`
+	Scene         GeometryScene `json:"scene"`
+	Diagnostics   []string      `json:"diagnostics"`
+}
+
+type GeometryWorkflowProgressEvent struct {
+	SessionID string `json:"sessionId"`
+	SceneName string `json:"sceneName"`
+	Stage     string `json:"stage"`
+	Message   string `json:"message"`
+	Attempt   int    `json:"attempt"`
+}
+
+type GeometryWorkflowReviewRequiredEvent struct {
+	SessionID string       `json:"sessionId"`
+	SceneName string       `json:"sceneName"`
+	Spec      GeometrySpec `json:"spec"`
+}
+
+type GeometryWorkflowPreviewUpdatedEvent struct {
+	SessionID string        `json:"sessionId"`
+	SceneName string        `json:"sceneName"`
+	Scene     GeometryScene `json:"scene"`
+}
+
+type GeometryWorkflowCodeAppliedEvent struct {
+	SessionID string                 `json:"sessionId"`
+	SceneName string                 `json:"sceneName"`
+	Code      string                 `json:"code"`
+	Result    GeometryWorkflowResult `json:"result"`
+}
+
+type GeometryWorkflowSucceededEvent struct {
+	SessionID string                 `json:"sessionId"`
+	SceneName string                 `json:"sceneName"`
+	Result    GeometryWorkflowResult `json:"result"`
+}
+
+type GeometryWorkflowFailedEvent struct {
+	SessionID   string   `json:"sessionId"`
+	SceneName   string   `json:"sceneName"`
+	ErrorText   string   `json:"errorText"`
+	Diagnostics []string `json:"diagnostics"`
+}
+
+type GeometryWorkflowInterruptedEvent struct {
+	SessionID string `json:"sessionId"`
+	SceneName string `json:"sceneName"`
+	Message   string `json:"message"`
+}
+
 type AIDesignCardGenerationRequest struct {
 	SceneName string             `json:"sceneName"`
 	Settings  AIProviderSettings `json:"settings"`

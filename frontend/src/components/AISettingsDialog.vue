@@ -42,7 +42,7 @@ function updateField(field: "url" | "key" | "model", value: string) {
         aria-modal="true"
         aria-labelledby="ai-settings-title"
       >
-        <h2 id="ai-settings-title">AI模型服务商</h2>
+        <h2 id="ai-settings-title">AI 模型服务商</h2>
 
         <div class="ai-settings-body">
           <button
@@ -53,8 +53,8 @@ function updateField(field: "url" | "key" | "model", value: string) {
           >
             <span class="ai-mode-check" aria-hidden="true"></span>
             <span class="ai-mode-copy">
-              <strong>自定义</strong>
-              <small>好的工具就像太阳一样开放免费</small>
+              <strong>自定义 OpenAI 兼容 API</strong>
+              <small>在这里填写 LLM API，代码 AI、设计卡和拍题建模会共用这份配置。</small>
             </span>
           </button>
 
@@ -76,7 +76,7 @@ function updateField(field: "url" | "key" | "model", value: string) {
                 class="ai-provider-input"
                 type="password"
                 :value="settings.key"
-                placeholder="sk-xxxxx"
+                placeholder="sk-..."
                 @input="updateField('key', ($event.target as HTMLInputElement).value)"
               />
             </label>
@@ -87,11 +87,15 @@ function updateField(field: "url" | "key" | "model", value: string) {
                 class="ai-provider-input"
                 type="text"
                 :value="settings.model"
-                placeholder="gpt-5.5"
+                placeholder="gpt-4o / gpt-5 / your-multimodal-model"
                 @input="updateField('model', ($event.target as HTMLInputElement).value)"
               />
             </label>
           </div>
+
+          <p class="ai-settings-hint">
+            保存位置：<code>config/ai-settings.json</code>。现场演示请使用支持图片输入的多模态模型。
+          </p>
 
           <button
             class="ai-mode-card subscription"
@@ -102,7 +106,7 @@ function updateField(field: "url" | "key" | "model", value: string) {
             <span class="ai-mode-check" aria-hidden="true"></span>
             <span class="ai-mode-copy">
               <strong>
-                使用订阅AI 20元/月
+                使用订阅 AI
                 <span class="ai-inline-divider" aria-hidden="true">|</span>
                 <button
                   class="ai-inline-action"
@@ -122,7 +126,7 @@ function updateField(field: "url" | "key" | "model", value: string) {
                 </button>
                 <span v-else class="ai-inline-status">已订阅</span>
               </strong>
-              <small>订阅提供 AI 额度，适合不愿折腾 API、想开箱即用的老师</small>
+              <small>订阅模式会自动使用账号里的模型服务，适合不想手动维护 API 的演示环境。</small>
             </span>
           </button>
         </div>

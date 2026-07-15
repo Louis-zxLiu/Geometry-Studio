@@ -5,11 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"plotkitycat/internal/paths"
 	"plotkitycat/internal/processutil"
+	"plotkitycat/internal/pythonruntime"
 )
 
 type CheckItem struct {
@@ -51,37 +53,32 @@ func EvaluateStatus(requirements []Requirement) (Status, error) {
 	_, archiveStatErr := os.Stat(archivePath)
 	archiveExists := archiveStatErr == nil
 
-	items := make([]CheckItem, 0, len(requirements))
+	runtimeInfo, runtimeErr := pythonruntime.Resolve(runtimeDir)
+	pythonExists := runtimeErr == nil
+	if !pythonExists {
+		runtimeInfo = pythonruntime.Describe(runtimeDir)
+	}
+
+	items := make([]CheckItem, 0, len(requirements)*2)
 	missing := make([]string, 0)
-	pythonPath := filepath.Join(runtimeDir, "python.exe")
-	pythonExists := false
-
 	for _, requirement := range requirements {
-		targetPath := filepath.Join(runtimeDir, filepath.FromSlash(requirement.RelativePath))
-		_, statErr := os.Stat(targetPath)
-		exists := statErr == nil
-
+		relativePath, exists := evaluateFilesystemRequirement(runtimeInfo, requirement, pythonExists)
 		items = append(items, CheckItem{
 			Key:          requirement.Key,
 			Label:        requirement.Label,
-			RelativePath: requirement.RelativePath,
+			RelativePath: relativePath,
 			Category:     "filesystem",
 			Status:       mapCheckStatus(exists),
 			Message:      mapFileMessage(exists),
 			Exists:       exists,
 		})
 
-		if !exists {
-			missing = append(missing, requirement.Label)
-		}
-
-		if requirement.Key == "python" {
-			pythonExists = exists
+		if !exists && requirement.ImportName == "" {
+			missing = appendUnique(missing, requirement.Label)
 		}
 	}
 
 	status := Status{
-		Ready:                len(missing) == 0,
 		RuntimeDir:           runtimeDir,
 		CheckedAt:            time.Now().Format(time.RFC3339),
 		Items:                items,
@@ -91,52 +88,91 @@ func EvaluateStatus(requirements []Requirement) (Status, error) {
 		RuntimeArchiveExists: archiveExists,
 	}
 
-	switch {
-	case !archiveExists && len(missing) > 0:
-		status.Code = "runtime_archive_missing"
+	if !pythonExists {
+		status.Ready = false
 		status.Severity = "error"
-		status.Summary = "缺少 resources/runtime/runtime.7z，无法自动修复内置 WinPython"
-		status.RecommendedAction = "请补齐 resources/runtime/runtime.7z 后再重建 Runtime"
-	case !pythonExists:
-		status.Code = "python_executable_missing"
-		status.Severity = "error"
-		status.Summary = "WinPython 主程序缺失"
-		status.RecommendedAction = "可以执行重建 Runtime 修复"
-	case len(missing) > 0:
-		status.Code = "runtime_incomplete"
-		status.Severity = "error"
-		status.Summary = "WinPython 环境不完整"
-		status.RecommendedAction = "建议重建 Runtime 以补齐缺失组件"
-	default:
-		importItems, importMissing, importErr := evaluatePythonImports(pythonPath, requirements)
-		status.Items = append(status.Items, importItems...)
-		status.Missing = append(status.Missing, importMissing...)
-
-		switch {
-		case importErr != nil:
-			status.Ready = false
-			status.Code = "python_runtime_broken"
-			status.Severity = "error"
-			status.Summary = "WinPython 可执行但导入自检失败"
-			status.RecommendedAction = "建议重建 Runtime；若仍失败，再检查打包内容"
-		case len(importMissing) > 0:
-			status.Ready = false
-			status.Code = "python_package_unhealthy"
-			status.Severity = "error"
-			status.Summary = "WinPython 已启动，但核心包导入失败"
-			status.RecommendedAction = "建议重建 Runtime 以修复包依赖"
-		default:
-			status.Code = "ready"
-			status.Severity = "info"
-			status.Summary = "WinPython runtime ready"
-			status.RecommendedAction = "无需处理"
+		if !archiveExists {
+			status.Code = "runtime_archive_missing"
+			status.Summary = "Missing resources/runtime/runtime.7z; Python runtime cannot be rebuilt automatically."
+			status.RecommendedAction = "Create runtime/ with tools/prepare-geometry-runtime.ps1 or provide resources/runtime/runtime.7z."
+		} else {
+			status.Code = "python_executable_missing"
+			status.Summary = "Python runtime interpreter was not found."
+			status.RecommendedAction = "Rebuild runtime or create a venv under runtime/."
 		}
+		if runtimeErr != nil && status.Summary != "" {
+			status.Summary += " " + runtimeErr.Error()
+		}
+		return status, nil
+	}
+
+	importItems, importMissing, importErr := evaluatePythonImports(runtimeInfo, requirements)
+	status.Items = append(status.Items, importItems...)
+	status.Missing = appendUnique(status.Missing, importMissing...)
+
+	switch {
+	case importErr != nil:
+		status.Ready = false
+		status.Code = "python_runtime_broken"
+		status.Severity = "error"
+		status.Summary = "Python runtime starts, but the import health check failed."
+		status.RecommendedAction = "Run tools/prepare-geometry-runtime.ps1 to repair runtime packages."
+	case len(importMissing) > 0:
+		status.Ready = false
+		status.Code = "python_package_unhealthy"
+		status.Severity = "error"
+		status.Summary = "Python runtime starts, but required packages are missing."
+		status.RecommendedAction = "Install the Geometry Studio runtime packages with tools/prepare-geometry-runtime.ps1."
+	default:
+		status.Ready = true
+		status.Code = "ready"
+		status.Severity = "info"
+		status.Summary = "Python runtime ready: " + runtimeInfo.String()
+		status.RecommendedAction = "No action needed."
 	}
 
 	return status, nil
 }
 
-func evaluatePythonImports(pythonPath string, requirements []Requirement) ([]CheckItem, []string, error) {
+func evaluateFilesystemRequirement(info pythonruntime.Runtime, requirement Requirement, pythonExists bool) (string, bool) {
+	if requirement.Key == "python" {
+		if pythonExists {
+			relativePath := pythonruntime.PythonRelativePath(info)
+			if relativePath != "" {
+				return relativePath, true
+			}
+			return requirement.RelativePath, true
+		}
+		return requirement.RelativePath, false
+	}
+
+	relativePaths := append([]string{requirement.RelativePath}, requirement.AlternativeRelativePaths...)
+	if relativePath, exists := pythonruntime.RequirementExists(info, relativePaths...); exists {
+		return relativePath, true
+	}
+
+	modulePath := modulePathFromRequirement(requirement)
+	if relativePath, exists := pythonruntime.ModulePathExists(info, modulePath); exists {
+		return relativePath, true
+	}
+
+	return requirement.RelativePath, false
+}
+
+func modulePathFromRequirement(requirement Requirement) string {
+	relativePath := filepath.ToSlash(requirement.RelativePath)
+	for _, prefix := range []string{"Lib/site-packages/", "lib/site-packages/"} {
+		if strings.HasPrefix(relativePath, prefix) {
+			return strings.TrimPrefix(relativePath, prefix)
+		}
+	}
+	if requirement.ImportName == "" {
+		return ""
+	}
+	return strings.Split(requirement.ImportName, ".")[0]
+}
+
+func evaluatePythonImports(info pythonruntime.Runtime, requirements []Requirement) ([]CheckItem, []string, error) {
 	modules := make([]Requirement, 0, len(requirements))
 	for _, requirement := range requirements {
 		if requirement.ImportName != "" {
@@ -148,7 +184,8 @@ func evaluatePythonImports(pythonPath string, requirements []Requirement) ([]Che
 	}
 
 	script := buildImportCheckScript(modules)
-	cmd := exec.Command(pythonPath, "-c", script)
+	cmd := exec.Command(info.Python, "-c", script)
+	cmd.Env = pythonruntime.BuildEnv(info)
 	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -166,7 +203,7 @@ func evaluatePythonImports(pythonPath string, requirements []Requirement) ([]Che
 		return []CheckItem{
 			{
 				Key:      "python_import_probe",
-				Label:    "Python 导入自检",
+				Label:    "Python import health check",
 				Category: "runtime",
 				Status:   "failed",
 				Message:  message,
@@ -191,12 +228,12 @@ func evaluatePythonImports(pythonPath string, requirements []Requirement) ([]Che
 		result := statusByKey[requirement.Key]
 		exists := result == "ok"
 		if !exists {
-			missing = append(missing, requirement.Label)
+			missing = appendUnique(missing, requirement.Label)
 		}
 
 		items = append(items, CheckItem{
 			Key:          requirement.Key + "_import",
-			Label:        requirement.Label + " 导入检查",
+			Label:        requirement.Label + " import check",
 			RelativePath: requirement.RelativePath,
 			Category:     "import",
 			Status:       mapCheckStatus(exists),
@@ -215,10 +252,10 @@ func buildImportCheckScript(requirements []Requirement) string {
 	for _, requirement := range requirements {
 		lines = append(lines,
 			"try:",
-			"    importlib.import_module('"+requirement.ImportName+"')",
-			"    print('"+requirement.Key+"|ok')",
+			"    importlib.import_module("+strconv.Quote(requirement.ImportName)+")",
+			"    print("+strconv.Quote(requirement.Key+"|ok")+")",
 			"except Exception:",
-			"    print('"+requirement.Key+"|missing')",
+			"    print("+strconv.Quote(requirement.Key+"|missing")+")",
 		)
 	}
 
@@ -235,16 +272,36 @@ func mapCheckStatus(exists bool) string {
 
 func mapFileMessage(exists bool) string {
 	if exists {
-		return "已找到"
+		return "Found"
 	}
 
-	return "缺失"
+	return "Missing"
 }
 
 func mapImportMessage(exists bool) string {
 	if exists {
-		return "导入成功"
+		return "Import succeeded"
 	}
 
-	return "导入失败"
+	return "Import failed"
+}
+
+func appendUnique(values []string, additions ...string) []string {
+	for _, addition := range additions {
+		addition = strings.TrimSpace(addition)
+		if addition == "" {
+			continue
+		}
+		found := false
+		for _, value := range values {
+			if value == addition {
+				found = true
+				break
+			}
+		}
+		if !found {
+			values = append(values, addition)
+		}
+	}
+	return values
 }

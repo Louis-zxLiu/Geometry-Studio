@@ -1,0 +1,318 @@
+.workspace {
+  position: relative;
+}
+
+.geometry-button {
+  background: color-mix(in srgb, var(--run), transparent 82%);
+  color: var(--text);
+}
+
+.geometry-button:hover {
+  background: color-mix(in srgb, var(--run), transparent 72%);
+}
+
+.geometry-problem-dialog {
+  width: min(52vw, 620px);
+  padding-bottom: 28px;
+}
+
+.geometry-image-picker {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 190px;
+  margin-top: 22px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--dialog-input-bg), var(--surface-soft) 20%);
+  color: var(--muted);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text), transparent 92%);
+}
+
+.geometry-image-picker:hover {
+  background: var(--dialog-input-focus);
+}
+
+.geometry-image-picker img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+}
+
+.geometry-dialog-textarea {
+  width: 100%;
+  min-height: 120px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: var(--radius-md);
+  resize: vertical;
+  background: var(--dialog-input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.geometry-dialog-textarea:focus {
+  background: var(--dialog-input-focus);
+  box-shadow: var(--ring-focus);
+}
+
+.geometry-hidden-file {
+  display: none;
+}
+
+.geometry-review-dialog {
+  width: min(78vw, 920px);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+}
+
+.geometry-review-grid,
+.geometry-review-section {
+  margin-top: 20px;
+}
+
+.geometry-review-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.geometry-review-field {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+}
+
+.geometry-review-field textarea,
+.geometry-review-row input {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--dialog-input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  letter-spacing: 0.02em;
+}
+
+.geometry-review-field textarea {
+  min-height: 74px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.geometry-review-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.geometry-review-heading button,
+.geometry-review-row button {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--fill-soft);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.geometry-review-heading button:hover,
+.geometry-review-row button:hover {
+  background: var(--fill-strong);
+  color: var(--text);
+}
+
+.geometry-review-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.geometry-review-row {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+}
+
+.geometry-review-row.entity-row {
+  grid-template-columns: minmax(64px, 0.6fr) minmax(90px, 0.8fr) minmax(120px, 1fr) auto;
+}
+
+.geometry-review-row.constraint-row {
+  grid-template-columns: minmax(100px, 0.8fr) minmax(120px, 0.8fr) minmax(160px, 1.4fr) 74px auto;
+}
+
+.geometry-review-row input {
+  height: 34px;
+  padding: 0 10px;
+}
+
+.geometry-preview-pane {
+  position: absolute;
+  right: clamp(14px, 2vw, 24px);
+  bottom: clamp(14px, 2vw, 24px);
+  z-index: 8;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(420px, calc(100% - 32px));
+  max-height: min(76vh, 720px);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dialog-bg), var(--surface-soft) 12%);
+  box-shadow: var(--shadow-4);
+  overflow: hidden;
+}
+
+.geometry-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px 12px;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--text), transparent 92%);
+}
+
+.geometry-preview-header div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.geometry-preview-header strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geometry-preview-header span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.geometry-preview-header button {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  background: var(--fill-soft);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.geometry-preview-body {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px 16px 16px;
+  overflow: auto;
+}
+
+.geometry-source-thumb {
+  width: 100%;
+  max-height: 150px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: color-mix(in srgb, var(--text), transparent 96%);
+}
+
+.geometry-scene-svg {
+  width: 100%;
+  aspect-ratio: 16 / 10.5;
+  border-radius: 6px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--text), transparent 96%) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--text), transparent 96%) 1px, transparent 1px),
+    color-mix(in srgb, var(--surface), var(--dialog-bg) 24%);
+  background-size: 28px 28px;
+}
+
+.geometry-svg-polygon {
+  fill: color-mix(in srgb, #8ab17d, transparent 78%);
+  stroke: #6b8f71;
+  stroke-width: 1.8;
+}
+
+.geometry-svg-circle {
+  fill: none;
+  stroke: #4f7cac;
+  stroke-width: 2;
+}
+
+.geometry-svg-segment {
+  stroke: #2f3a4a;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.geometry-svg-point circle {
+  fill: #d5654d;
+  stroke: #fff;
+  stroke-width: 1.8;
+}
+
+.geometry-svg-point text,
+.geometry-svg-annotation {
+  fill: var(--text);
+  font-size: 16px;
+  font-weight: 650;
+  paint-order: stroke;
+  stroke: color-mix(in srgb, var(--surface), transparent 5%);
+  stroke-width: 4px;
+}
+
+.geometry-svg-annotation {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.geometry-preview-list {
+  display: grid;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.geometry-preview-list strong {
+  color: var(--text);
+  font-size: 0.84rem;
+}
+
+.geometry-preview-list p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.geometry-preview-list.proof p {
+  padding-left: 10px;
+  border-left: 2px solid color-mix(in srgb, var(--text), transparent 86%);
+}
+
+@media (max-width: 960px) {
+  .geometry-problem-dialog,
+  .geometry-review-dialog {
+    width: min(92vw, 640px);
+  }
+
+  .geometry-review-row.entity-row,
+  .geometry-review-row.constraint-row {
+    grid-template-columns: 1fr;
+  }
+
+  .geometry-preview-pane {
+    right: 10px;
+    bottom: 10px;
+    max-height: 62vh;
+  }
+}

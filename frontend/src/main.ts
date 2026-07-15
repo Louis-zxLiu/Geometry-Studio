@@ -12,6 +12,7 @@ import "./styles/components/environment.css";
 import "./styles/components/dialog.css";
 import "./styles/components/code-ai-optimize.css";
 import "./styles/components/design-card.css";
+import "./styles/components/geometry.css";
 import "./styles/components/dialog-enter.css";
 import "./styles/components/dialog-exit.css";
 import "./styles/components/notebook/index.css";

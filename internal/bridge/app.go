@@ -32,6 +32,7 @@ type App struct {
 	deviceService        *device.Service
 	envManager           *env.Manager
 	fileStore            *filestore.Store
+	geometryWorkflow     *geometryWorkflowService
 	screeningZoomService *screeningzoom.Service
 	runner               *runner.Runner
 	screeningService     *screening.Service
@@ -94,6 +95,7 @@ func NewApp() *App {
 	})
 
 	app.aiWorkflow = newAIWorkflowService(app)
+	app.geometryWorkflow = newGeometryWorkflowService(app)
 	return app
 }
 
@@ -108,6 +110,9 @@ func (a *App) Shutdown(ctx context.Context) {
 	}
 	if a.screeningZoomService != nil {
 		_ = a.screeningZoomService.Stop()
+	}
+	if a.geometryWorkflow != nil {
+		_ = a.geometryWorkflow.Stop("")
 	}
 }
 

@@ -264,6 +264,23 @@
   box-shadow: var(--ring-focus);
 }
 
+.ai-settings-hint {
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.65;
+  letter-spacing: 0.02em;
+}
+
+.ai-settings-hint code {
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--text), transparent 92%);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.76rem;
+}
+
 .ai-inline-divider,
 .ai-inline-status,
 .ai-inline-action {

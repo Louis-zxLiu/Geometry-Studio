@@ -22,7 +22,7 @@ func main() {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err := fmt.Errorf("%v", recovered)
-			startupdiag.ShowStartupError("PlotKityCat Startup Error", startupdiag.StartupErrorMessage(err))
+			startupdiag.ShowStartupError("Geometry Studio Startup Error", startupdiag.StartupErrorMessage(err))
 			os.Exit(1)
 		}
 	}()
@@ -30,7 +30,7 @@ func main() {
 	lock, err := instancelock.Acquire()
 	if err != nil {
 		startErr := fmt.Errorf("failed to acquire single-instance lock on 127.0.0.1:49152: %w", err)
-		startupdiag.ShowStartupError("PlotKityCat Startup Error", startupdiag.StartupErrorMessage(startErr))
+		startupdiag.ShowStartupError("Geometry Studio Startup Error", startupdiag.StartupErrorMessage(startErr))
 		panic(startErr)
 	}
 	defer lock.Release()
@@ -40,7 +40,7 @@ func main() {
 	minimumWindowSize := windowmetrics.MinimumWindowSize()
 
 	err = wails.Run(&options.App{
-		Title:     "PlotKityCat",
+		Title:     "Geometry Studio",
 		Width:     initialWindowSize.Width,
 		Height:    initialWindowSize.Height,
 		Frameless: true,
@@ -62,7 +62,7 @@ func main() {
 		OnShutdown: app.Shutdown,
 	})
 	if err != nil {
-		startupdiag.ShowStartupError("PlotKityCat Startup Error", startupdiag.StartupErrorMessage(err))
+		startupdiag.ShowStartupError("Geometry Studio Startup Error", startupdiag.StartupErrorMessage(err))
 		os.Exit(1)
 	}
 }

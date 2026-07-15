@@ -4,9 +4,11 @@ import { Quit, WindowMinimise, WindowToggleMaximise } from "../../wailsjs/runtim
 defineProps<{
   isRunning: boolean;
   isScreeningActive?: boolean;
+  geometryDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
+  geometry: [];
   packages: [];
   run: [];
   screening: [];
@@ -47,6 +49,15 @@ function closeWindow() {
           </svg>
         </button>
       </div>
+
+      <button
+        class="run-button"
+        type="button"
+        :disabled="geometryDisabled"
+        @click="emit('geometry')"
+      >
+        <span>拍题建模</span>
+      </button>
 
       <button
         class="run-button"

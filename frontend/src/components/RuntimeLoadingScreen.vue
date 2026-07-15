@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import type { ThemeId } from "../theme/palettes";
-import moonLogoUrl from "../assets/loading/logo-loading-moon.svg";
-import warmLogoUrl from "../assets/loading/logo-loading-warm.svg";
-import cyanLogoUrl from "../assets/loading/logo-loading-cyan.svg";
-import blackLogoUrl from "../assets/loading/logo-loading-black.svg";
+import geometryStudioLogoUrl from "../assets/geometry-studio-logo.svg";
 import { useSmoothedProgress } from "../composables/useSmoothedProgress";
 
 const props = defineProps<{
@@ -48,17 +45,7 @@ watch(
 );
 
 const logoUrl = computed(() => {
-  switch (props.themeId) {
-    case "warm":
-      return warmLogoUrl;
-    case "cyan":
-      return cyanLogoUrl;
-    case "black":
-      return blackLogoUrl;
-    case "moon":
-    default:
-      return moonLogoUrl;
-  }
+  return geometryStudioLogoUrl;
 });
 const coreStyle = computed(() => {
   switch (props.themeId) {
@@ -134,7 +121,7 @@ function clamp(value: number, min: number, max: number) {
     <div class="runtime-loading-card">
       <div class="runtime-loading-ring" :style="ringStyle">
         <div class="runtime-loading-core" :style="coreStyle">
-          <img class="runtime-loading-logo" :src="logoUrl" alt="PlotKityCat runtime loading" />
+          <img class="runtime-loading-logo" :src="logoUrl" alt="Geometry Studio runtime loading" />
           <span class="runtime-loading-percent">{{ progressLabel }}%</span>
         </div>
       </div>

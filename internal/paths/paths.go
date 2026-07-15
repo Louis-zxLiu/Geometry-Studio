@@ -12,13 +12,15 @@ func AppRoot() (string, error) {
 	}
 
 	exeDir := filepath.Dir(exePath)
-	if isProjectRoot(exeDir) || isRuntimeRoot(exeDir) {
-		return exeDir, nil
+	if root := findAppRoot(exeDir); root != "" {
+		return root, nil
 	}
 
 	cwd, err := os.Getwd()
-	if err == nil && (isProjectRoot(cwd) || isRuntimeRoot(cwd)) {
-		return cwd, nil
+	if err == nil {
+		if root := findAppRoot(cwd); root != "" {
+			return root, nil
+		}
 	}
 
 	return exeDir, nil
@@ -145,8 +147,31 @@ func isProjectRoot(root string) bool {
 }
 
 func isRuntimeRoot(root string) bool {
-	return fileExists(filepath.Join(root, "resources", "runtime")) ||
+	return fileExists(filepath.Join(root, "runtime", "python.exe")) ||
+		fileExists(filepath.Join(root, "runtime", "pythonw.exe")) ||
+		fileExists(filepath.Join(root, "runtime", "Scripts", "python.exe")) ||
+		fileExists(filepath.Join(root, "runtime", "Scripts", "pythonw.exe")) ||
+		fileExists(filepath.Join(root, "resources", "runtime", "runtime.7z")) ||
 		fileExists(filepath.Join(root, "runtime.version.json"))
+}
+
+func findAppRoot(start string) string {
+	current, err := filepath.Abs(start)
+	if err != nil {
+		current = start
+	}
+
+	for {
+		if isProjectRoot(current) || isRuntimeRoot(current) {
+			return current
+		}
+
+		parent := filepath.Dir(current)
+		if parent == current {
+			return ""
+		}
+		current = parent
+	}
 }
 
 func fileExists(path string) bool {

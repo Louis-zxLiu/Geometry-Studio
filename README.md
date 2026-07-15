@@ -1,10 +1,10 @@
 <p align="center">
   <a href="https://github.com/Wingflow/PlotKityCat">
-    <img src="logoandapp.svg" alt="PlotKityCat Logo" width="180">
+    <img src="geometry-studio-logo.svg" alt="Geometry Studio Logo" width="180">
   </a>
 </p>
 
-<h1 align="center">PlotKityCat</h1>
+<h1 align="center">Geometry Studio</h1>
 
 <p align="center">
   一款专为数学老师打造的 AI-native 可视化教学工具。

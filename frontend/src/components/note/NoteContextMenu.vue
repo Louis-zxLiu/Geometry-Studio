@@ -11,6 +11,7 @@ defineProps<{
 const emit = defineEmits<{
   design: [];
   generate: [];
+  geometry: [];
   insertImage: [];
   preview: [];
   remove: [];
@@ -59,6 +60,20 @@ const emit = defineEmits<{
         <path d="M6 12 Q 9 6 12 12 T 18 12" />
       </svg>
       <span>可视化</span>
+    </button>
+    <button
+      v-if="hasSelection"
+      class="notebook-context-action"
+      type="button"
+      @click="emit('geometry')"
+    >
+      <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="7" cy="16" r="1.7" />
+        <circle cx="17" cy="16" r="1.7" />
+        <circle cx="12" cy="7" r="1.7" />
+        <path d="M7 16 12 7 17 16 7 16Z" />
+      </svg>
+      <span>生成几何模型</span>
     </button>
     <button
       v-if="allowInsertImage"

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Geometry Studio</title>
+  <desc id="desc">A geometric monogram made from a compass circle, triangle, and construction points.</desc>
+  <rect width="256" height="256" rx="56" fill="#F8F7F6"/>
+  <circle cx="128" cy="128" r="82" fill="none" stroke="#93A27D" stroke-width="13"/>
+  <path d="M128 54 196 174H60Z" fill="#F3E5C3" stroke="#2C2C2C" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M78 174 128 86 178 174" fill="none" stroke="#93A27D" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="128" cy="86" r="13" fill="#2C2C2C"/>
+  <circle cx="78" cy="174" r="13" fill="#2C2C2C"/>
+  <circle cx="178" cy="174" r="13" fill="#2C2C2C"/>
+  <path d="M84 128h88" stroke="#2C2C2C" stroke-width="10" stroke-linecap="round"/>
+</svg>

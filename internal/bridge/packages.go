@@ -30,11 +30,11 @@ func (a *App) ExportScenePackage(sceneName string) (PackageTransferResult, error
 	}
 
 	targetPath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           "导出 PlotKityCat 场景包",
+		Title:           "导出 Geometry Studio 场景包",
 		DefaultFilename: sceneName + ".pkc",
 		Filters: []runtime.FileFilter{
 			{
-				DisplayName: "PlotKityCat Package (*.pkc)",
+				DisplayName: "Geometry Studio Package (*.pkc)",
 				Pattern:     "*.pkc",
 			},
 		},
@@ -68,10 +68,10 @@ func (a *App) ImportScenePackage() (ImportSceneResult, error) {
 	}
 
 	archivePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "导入 PlotKityCat 场景包",
+		Title: "导入 Geometry Studio 场景包",
 		Filters: []runtime.FileFilter{
 			{
-				DisplayName: "PlotKityCat Package (*.pkc)",
+				DisplayName: "Geometry Studio Package (*.pkc)",
 				Pattern:     "*.pkc",
 			},
 		},
@@ -131,17 +131,17 @@ func (a *App) ExportWorkspacePackage(workspaceNames []string) (WorkspacePackageT
 		return WorkspacePackageTransferResult{}, errors.New("请选择至少一个工作区")
 	}
 
-	defaultFilename := "plotkitycat-workspaces.pkcw"
+	defaultFilename := "geometry-studio-workspaces.pkcw"
 	if len(workspaceNames) == 1 && strings.TrimSpace(workspaceNames[0]) != "" {
 		defaultFilename = workspaceNames[0] + ".pkcw"
 	}
 
 	targetPath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           "导出 PlotKityCat 工作区包",
+		Title:           "导出 Geometry Studio 工作区包",
 		DefaultFilename: defaultFilename,
 		Filters: []runtime.FileFilter{
 			{
-				DisplayName: "PlotKityCat Workspace Package (*.pkcw)",
+				DisplayName: "Geometry Studio Workspace Package (*.pkcw)",
 				Pattern:     "*.pkcw",
 			},
 		},
@@ -175,10 +175,10 @@ func (a *App) ImportWorkspacePackage() (ImportWorkspaceResult, error) {
 	}
 
 	archivePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "导入 PlotKityCat 工作区包",
+		Title: "导入 Geometry Studio 工作区包",
 		Filters: []runtime.FileFilter{
 			{
-				DisplayName: "PlotKityCat Workspace Package (*.pkcw)",
+				DisplayName: "Geometry Studio Workspace Package (*.pkcw)",
 				Pattern:     "*.pkcw",
 			},
 		},

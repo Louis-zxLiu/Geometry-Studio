@@ -18,6 +18,13 @@ const (
 	EventAIWorkflowSucceeded = "ai:workflow_succeeded"
 	EventAIWorkflowFailed    = "ai:workflow_failed"
 	EventAIWorkflowStopped   = "ai:workflow_interrupted"
+	EventGeometryProgress    = "geometry:progress"
+	EventGeometryReview      = "geometry:review_required"
+	EventGeometryPreview     = "geometry:preview_updated"
+	EventGeometryApplied     = "geometry:code_applied"
+	EventGeometrySucceeded   = "geometry:succeeded"
+	EventGeometryFailed      = "geometry:failed"
+	EventGeometryInterrupted = "geometry:interrupted"
 	EventScreeningState      = "screening:state"
 )
 

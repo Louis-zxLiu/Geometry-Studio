@@ -70,6 +70,10 @@ export function GetEnvironmentStatus() {
   return window['go']['bridge']['App']['GetEnvironmentStatus']();
 }
 
+export function GetGeometryScene(arg1) {
+  return window['go']['bridge']['App']['GetGeometryScene'](arg1);
+}
+
 export function GetScreeningState() {
   return window['go']['bridge']['App']['GetScreeningState']();
 }
@@ -170,6 +174,10 @@ export function ReorderScripts(arg1, arg2) {
   return window['go']['bridge']['App']['ReorderScripts'](arg1, arg2);
 }
 
+export function ResumeGeometryWorkflow(arg1, arg2) {
+  return window['go']['bridge']['App']['ResumeGeometryWorkflow'](arg1, arg2);
+}
+
 export function SaveAISettings(arg1) {
   return window['go']['bridge']['App']['SaveAISettings'](arg1);
 }
@@ -194,6 +202,10 @@ export function StartAIWorkflow(arg1) {
   return window['go']['bridge']['App']['StartAIWorkflow'](arg1);
 }
 
+export function StartGeometryWorkflow(arg1) {
+  return window['go']['bridge']['App']['StartGeometryWorkflow'](arg1);
+}
+
 export function StartScreening(arg1) {
   return window['go']['bridge']['App']['StartScreening'](arg1);
 }
@@ -204,6 +216,10 @@ export function StopAIWorkflow(arg1) {
 
 export function StopCurrentRun() {
   return window['go']['bridge']['App']['StopCurrentRun']();
+}
+
+export function StopGeometryWorkflow(arg1) {
+  return window['go']['bridge']['App']['StopGeometryWorkflow'](arg1);
 }
 
 export function StopScreening() {

@@ -6,6 +6,7 @@ type NoteAIActionsOptions = {
   currentFile: () => string;
   onDesign: (request: AINoteSceneActionRequest) => void;
   onGenerate: (request: AINoteSceneActionRequest) => void;
+  onGeometry: (request: AINoteSceneActionRequest) => void;
 };
 
 export function useNoteAIActions(options: NoteAIActionsOptions) {
@@ -17,7 +18,11 @@ export function useNoteAIActions(options: NoteAIActionsOptions) {
     runAIAction("design");
   }
 
-  function runAIAction(kind: "generate" | "design") {
+  function runAIGeometry() {
+    runAIAction("geometry");
+  }
+
+  function runAIAction(kind: "generate" | "design" | "geometry") {
     const selection = options.buildSelectionPayload();
     const sceneName = options.currentFile().trim();
     if (!selection || !sceneName) {
@@ -29,6 +34,8 @@ export function useNoteAIActions(options: NoteAIActionsOptions) {
 
     if (kind === "design") {
       options.onDesign(request);
+    } else if (kind === "geometry") {
+      options.onGeometry(request);
     } else {
       options.onGenerate(request);
     }
@@ -38,5 +45,6 @@ export function useNoteAIActions(options: NoteAIActionsOptions) {
   return {
     runAIDesign,
     runAIGeneration,
+    runAIGeometry,
   };
 }

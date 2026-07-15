@@ -9,6 +9,9 @@ import DesignCardOptimizeDialog from "./features/designCard/components/DesignCar
 import DesignCardReviewRoom from "./features/designCard/components/DesignCardReviewRoom.vue";
 import EditorPane from "./components/editor/EditorPane.vue";
 import EnvironmentIndicator from "./components/EnvironmentIndicator.vue";
+import GeometryPreviewPane from "./features/geometry/components/GeometryPreviewPane.vue";
+import GeometryProblemDialog from "./features/geometry/components/GeometryProblemDialog.vue";
+import GeometryReviewDialog from "./features/geometry/components/GeometryReviewDialog.vue";
 import PackageTransferDialog from "./components/PackageTransferDialog.vue";
 import NotePanel from "./components/note/NotePanel.vue";
 import RunErrorDialog from "./components/RunErrorDialog.vue";
@@ -115,7 +118,9 @@ onBeforeUnmount(() => {
       <TopBar
         :is-running="workspace.isRunning"
         :is-screening-active="workspace.isScreeningActive"
+        :geometry-disabled="workspace.isAIGenerating || workspace.isRunning"
         @packages="workspace.openPackageTransferDialog"
+        @geometry="workspace.openGeometryProblemDialog"
         @screening="workspace.triggerScreeningAction"
         @stop="workspace.stopCurrentRun"
         @run="workspace.runCurrentScript"
@@ -184,8 +189,16 @@ onBeforeUnmount(() => {
           @open-design-card="workspace.openDesignCardReviewRoom"
           @ai-generate="workspace.generateCodeFromNoteSelection"
           @ai-design="workspace.generateDesignFromNoteSelection"
+          @ai-geometry="workspace.generateGeometryFromNoteSelection"
         />
       </div>
+
+      <GeometryPreviewPane
+        :document="workspace.geometrySceneDocument"
+        :busy="workspace.isAIGenerating"
+        :progress-label="workspace.geometryProgressLabel"
+        @close="workspace.closeGeometryPreview"
+      />
     </main>
 
     <CreateScriptDialog
@@ -235,6 +248,21 @@ onBeforeUnmount(() => {
       @close="workspace.closeDesignCardReviewRoom"
       @optimize="workspace.openDesignCardOptimizeDialog"
       @update:plan="workspace.updateDesignCardPlan"
+    />
+
+    <GeometryProblemDialog
+      :open="workspace.isGeometryProblemDialogOpen"
+      :pending="workspace.isAIGenerating"
+      @cancel="workspace.closeGeometryProblemDialog"
+      @confirm="workspace.startGeometryFromProblem"
+    />
+
+    <GeometryReviewDialog
+      :open="workspace.isGeometryReviewDialogOpen"
+      :pending="workspace.isAIGenerating"
+      :spec="workspace.geometryReviewSpec"
+      @cancel="workspace.cancelGeometryReview"
+      @confirm="workspace.confirmGeometryReview"
     />
 
     <SettingsDialog

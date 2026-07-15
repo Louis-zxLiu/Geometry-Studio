@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import brandLogoUrl from "../../assets/brand-logo.png";
+import geometryStudioLogoUrl from "../../assets/geometry-studio-logo.svg";
 import SceneList from "./SceneList.vue";
 import SidebarFooter from "./SidebarFooter.vue";
 import WorkspacePicker from "./WorkspacePicker.vue";
@@ -43,10 +43,10 @@ const emit = defineEmits<{
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark">
-        <img class="brand-mark-image" :src="brandLogoUrl" alt="PlotKityCat logo" />
+        <img class="brand-mark-image" :src="geometryStudioLogoUrl" alt="Geometry Studio logo" />
       </div>
       <div>
-        <h1>PlotKityCat</h1>
+        <h1>Geometry Studio</h1>
       </div>
     </div>
 

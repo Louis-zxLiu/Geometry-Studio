@@ -17,6 +17,7 @@ const emit = defineEmits<{
   closePreview: [];
   design: [];
   generate: [];
+  geometry: [];
   insertImage: [];
   previewContextImage: [];
   removeContextImages: [];
@@ -38,6 +39,7 @@ const emit = defineEmits<{
         @preview="emit('previewContextImage')"
         @design="emit('design')"
         @generate="emit('generate')"
+        @geometry="emit('geometry')"
         @insert-image="emit('insertImage')"
         @remove="emit('removeContextImages')"
       />

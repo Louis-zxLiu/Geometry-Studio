@@ -39,6 +39,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "add-images": [payload: { files: File[]; insertAt: number }];
+  "ai-geometry": [request: AINoteSceneActionRequest];
   "ai-generate": [request: AINoteSceneActionRequest];
   "ai-design": [request: AINoteSceneActionRequest];
   "delete-design-card": [cardId: string];
@@ -180,12 +181,14 @@ const {
 const {
   runAIDesign,
   runAIGeneration,
+  runAIGeometry,
 } = useNoteAIActions({
   buildSelectionPayload,
   closeContextMenu,
   currentFile: () => props.currentFile,
   onDesign: (request) => emit("ai-design", request),
   onGenerate: (request) => emit("ai-generate", request),
+  onGeometry: (request) => emit("ai-geometry", request),
 });
 
 const {
@@ -331,6 +334,7 @@ useNotePanelEffects({
         @close-preview="closePreview"
         @design="runAIDesign"
         @generate="runAIGeneration"
+        @geometry="runAIGeometry"
         @insert-image="openContextImagePicker"
         @preview-context-image="previewContextImage"
         @remove-context-images="removeContextImages"

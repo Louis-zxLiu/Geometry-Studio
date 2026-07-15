@@ -36,6 +36,8 @@ export function GetDesignCard(arg1:string,arg2:string):Promise<bridge.DesignCard
 
 export function GetEnvironmentStatus():Promise<bridge.EnvironmentStatus>;
 
+export function GetGeometryScene(arg1:string):Promise<bridge.GeometrySceneDocument>;
+
 export function GetScreeningState():Promise<bridge.ScreeningSessionState>;
 
 export function GetScriptContent(arg1:string):Promise<bridge.ScriptDocument>;
@@ -86,6 +88,8 @@ export function RenameWorkspace(arg1:string,arg2:string):Promise<bridge.Workspac
 
 export function ReorderScripts(arg1:Array<string>,arg2:string):Promise<bridge.WorkspaceSnapshot>;
 
+export function ResumeGeometryWorkflow(arg1:string,arg2:bridge.GeometrySpec):Promise<void>;
+
 export function SaveAISettings(arg1:bridge.AIProviderSettings):Promise<bridge.AIProviderSettings>;
 
 export function SaveAndRun(arg1:string,arg2:string):Promise<void>;
@@ -98,11 +102,15 @@ export function SaveScriptNote(arg1:string,arg2:string):Promise<void>;
 
 export function StartAIWorkflow(arg1:bridge.AIWorkflowRequest):Promise<bridge.AIWorkflowSession>;
 
+export function StartGeometryWorkflow(arg1:bridge.GeometryWorkflowRequest):Promise<bridge.GeometryWorkflowSession>;
+
 export function StartScreening(arg1:bridge.ScreeningStartRequest):Promise<bridge.ScreeningSessionState>;
 
 export function StopAIWorkflow(arg1:string):Promise<void>;
 
 export function StopCurrentRun():Promise<bridge.RunControlResult>;
+
+export function StopGeometryWorkflow(arg1:string):Promise<void>;
 
 export function StopScreening():Promise<bridge.ScreeningStopResult>;
 

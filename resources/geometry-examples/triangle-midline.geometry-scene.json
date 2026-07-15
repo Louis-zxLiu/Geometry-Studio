@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "title": "三角形中位线",
+  "sourceImage": "",
+  "points": [
+    { "id": "A", "label": "A", "x": 0, "y": 3.2, "fixed": true },
+    { "id": "B", "label": "B", "x": -3.2, "y": -1.2, "fixed": true },
+    { "id": "C", "label": "C", "x": 3.4, "y": -1.2, "fixed": true },
+    { "id": "D", "label": "D", "x": -1.6, "y": 1, "fixed": false },
+    { "id": "E", "label": "E", "x": 1.7, "y": 1, "fixed": false }
+  ],
+  "segments": [
+    { "id": "AB", "from": "A", "to": "B", "label": "AB", "style": "solid" },
+    { "id": "BC", "from": "B", "to": "C", "label": "BC", "style": "solid" },
+    { "id": "CA", "from": "C", "to": "A", "label": "CA", "style": "solid" },
+    { "id": "DE", "from": "D", "to": "E", "label": "DE", "style": "highlight" }
+  ],
+  "circles": [],
+  "polygons": [
+    { "id": "ABC", "points": ["A", "B", "C"], "label": "△ABC", "fill": "soft-green" }
+  ],
+  "controls": [
+    { "id": "height", "label": "顶点高度", "kind": "slider", "min": 2.2, "max": 4.4, "value": 3.2, "step": 0.1, "target": "A", "binding": "y" }
+  ],
+  "measurements": [
+    { "id": "m1", "label": "DE ∥ BC", "kind": "parallel", "args": ["D", "E", "B", "C"], "value": "true" },
+    { "id": "m2", "label": "DE = 1/2 BC", "kind": "ratio", "args": ["D", "E", "B", "C"], "value": "0.5" }
+  ],
+  "constraints": [
+    { "type": "midpoint", "args": ["D", "A", "B"], "text": "D 是 AB 的中点", "confidence": 1 },
+    { "type": "midpoint", "args": ["E", "A", "C"], "text": "E 是 AC 的中点", "confidence": 1 },
+    { "type": "parallel", "args": ["D", "E", "B", "C"], "text": "DE 平行 BC", "confidence": 1 }
+  ],
+  "annotations": [
+    { "id": "hint", "text": "拖动高度观察中位线关系", "x": -3.3, "y": 3.8 }
+  ],
+  "proofSteps": [
+    { "id": "p1", "claim": "D、E 分别是 AB、AC 的中点。", "reason": "题设", "depends": [] },
+    { "id": "p2", "claim": "DE 平行 BC。", "reason": "三角形中位线定理", "depends": ["p1"] },
+    { "id": "p3", "claim": "DE 等于 BC 的一半。", "reason": "三角形中位线定理", "depends": ["p1"] }
+  ]
+}

@@ -11,6 +11,8 @@ import {
 import type {
   AppUpdateStatus,
   AIProviderSettings,
+  AINoteSceneActionRequest,
+  AINoteSelectionPayload,
   AISubscriptionStatus,
   ChangedLineRange,
 } from "../../ai/services/aiTypes";
@@ -19,6 +21,9 @@ import { useDesignCardWorkspace } from "../../designCard/model/useDesignCardWork
 import { extractDesignCardReferenceIDs } from "../../designCard/services/designCardMarkdownCodec";
 import type { DesignCardDragSource } from "../../designCard/services/designCardDragData";
 import type { DesignCard } from "../../designCard/services/designCardTypes";
+import { useGeometryWorkflowSession } from "../../geometry/model/useGeometryWorkflowSession";
+import { getGeometryScene } from "../../geometry/services/geometryBridgeCompat";
+import type { GeometrySceneDocument } from "../../geometry/services/geometryTypes";
 import { useNoteWorkspace } from "../../notebook/model/useNoteWorkspace";
 import { createRuntimeRepository } from "../../runtime/services/runtimeRepository";
 import { useRuntimeState } from "../../runtime/model/useRuntimeState";
@@ -63,6 +68,9 @@ export function usePlotWorkspace() {
     baseUrl: "",
   });
   const isSettingsDialogOpen = ref(false);
+  const isGeometryProblemDialogOpen = ref(false);
+  const geometrySceneDocument = ref<GeometrySceneDocument | null>(null);
+  const geometrySourceImageDataUrl = ref("");
   const updateStatus = ref<AppUpdateStatus>(normalizeUpdateStatus({}));
   const isCheckingUpdates = ref(false);
   const isDownloadingUpdate = ref(false);
@@ -136,6 +144,7 @@ export function usePlotWorkspace() {
   usePkcDropImport({
     onImport: packageTransfer.importScenePackageFromPath,
   });
+  const geometryWorkflowSession = useGeometryWorkflowSession(aiActivity);
 
   function insertDesignCardReferenceIntoNote(payload: {
     cardId: string;
@@ -195,7 +204,10 @@ export function usePlotWorkspace() {
     noteWorkspace,
     onError: runErrorDialog.openRunErrorDialog,
     onRunFailed: (message) => {
-      if (plotAIWorkflow.aiWorkflowSession.isSessionActive.value) {
+      if (
+        plotAIWorkflow.aiWorkflowSession.isSessionActive.value ||
+        geometryWorkflowSession.isSessionActive.value
+      ) {
         return;
       }
 
@@ -252,6 +264,168 @@ export function usePlotWorkspace() {
   function openAISettings() {
     isAISettingsDialogOpen.value = true;
     void refreshSubscriptionStatus(true);
+  }
+
+  function openGeometryProblemDialog() {
+    if (!scriptWorkspace.currentFile.value || isRunning.value || aiActivity.isAIGenerating.value) {
+      return;
+    }
+    isGeometryProblemDialogOpen.value = true;
+  }
+
+  function closeGeometryProblemDialog() {
+    if (aiActivity.isAIGenerating.value) {
+      return;
+    }
+    isGeometryProblemDialogOpen.value = false;
+  }
+
+  async function startGeometryFromProblem(payload: { imageDataUrl: string; problemText: string }) {
+    const sceneName = scriptWorkspace.currentFile.value.trim();
+    if (!sceneName) {
+      return;
+    }
+
+    isGeometryProblemDialogOpen.value = false;
+    await beginGeometryWorkflow({
+      sceneName,
+      imageDataUrl: payload.imageDataUrl,
+      problemText: payload.problemText,
+    });
+  }
+
+  async function generateGeometryFromNoteSelection(request: AINoteSceneActionRequest) {
+    const targetScene = request.sceneName.trim();
+    if (!targetScene || !request.selection.items.length) {
+      return;
+    }
+
+    await beginGeometryWorkflow({
+      sceneName: targetScene,
+      imageDataUrl: firstGeometryImage(request.selection),
+      problemText: collectGeometryText(request.selection),
+    });
+  }
+
+  async function beginGeometryWorkflow(payload: {
+    sceneName: string;
+    imageDataUrl: string;
+    problemText: string;
+  }) {
+    if (isRunning.value || aiActivity.isAIGenerating.value) {
+      return;
+    }
+
+    try {
+      const currentCode = await plotAIWorkflowLoadSceneCode(payload.sceneName);
+      geometrySourceImageDataUrl.value = payload.imageDataUrl;
+      setWorkspaceLayoutMode("split");
+      await geometryWorkflowSession.startWorkflow(
+        {
+          sceneName: payload.sceneName,
+          imageDataUrl: payload.imageDataUrl,
+          problemText: payload.problemText,
+          currentCode,
+          settings: aiSettings.value,
+          maxAttempts: 5,
+        },
+        {
+          onPreviewUpdated: (event) => {
+            geometrySceneDocument.value = {
+              scene: event.scene,
+              sourceImageDataUrl: geometrySourceImageDataUrl.value,
+            };
+          },
+          onCodeApplied: (event) => {
+            if (event.sceneName === scriptWorkspace.currentFile.value) {
+              scriptWorkspace.updateCode(event.code);
+            }
+          },
+          onSucceeded: (event) => {
+            runErrorDialog.clearRunError();
+            void refreshGeometryResult(event.sceneName, event.result.noteMarkdown, event.result.code);
+          },
+          onFailed: (event) => {
+            runErrorDialog.openRunErrorDialog(
+              formatGeometryFailure(event.errorText, event.diagnostics),
+              { repairable: false },
+            );
+          },
+          onInterrupted: (event) => {
+            runErrorDialog.openRunErrorDialog(event.message);
+          },
+        },
+      );
+    } catch (error) {
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    }
+  }
+
+  async function plotAIWorkflowLoadSceneCode(sceneName: string) {
+    if (sceneName === scriptWorkspace.currentFile.value) {
+      return scriptWorkspace.codeContent.value;
+    }
+
+    const document = await scriptRepository.getScriptContent(sceneName);
+    return asString(document.code);
+  }
+
+  async function refreshGeometryResult(sceneName: string, noteMarkdown: string, code: string) {
+    try {
+      if (sceneName === scriptWorkspace.currentFile.value) {
+        if (code) {
+          scriptWorkspace.updateCode(code);
+        }
+        if (noteMarkdown) {
+          noteWorkspace.hydrateFromScriptDocument({ noteMarkdown });
+        }
+        const document = await scriptRepository.getScriptContent(sceneName);
+        noteWorkspace.hydrateFromScriptDocument(document);
+      }
+      geometrySceneDocument.value = await getGeometryScene(sceneName);
+      geometrySourceImageDataUrl.value = geometrySceneDocument.value.sourceImageDataUrl;
+    } catch (error) {
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    }
+  }
+
+  async function refreshCurrentGeometryScene(sceneName: string) {
+    if (!sceneName) {
+      geometrySceneDocument.value = null;
+      geometrySourceImageDataUrl.value = "";
+      return;
+    }
+
+    try {
+      const document = await getGeometryScene(sceneName);
+      geometrySceneDocument.value = document.scene.points.length || document.scene.segments.length || document.scene.title
+        ? document
+        : null;
+      geometrySourceImageDataUrl.value = document.sourceImageDataUrl;
+    } catch {
+      geometrySceneDocument.value = null;
+      geometrySourceImageDataUrl.value = "";
+    }
+  }
+
+  function closeGeometryPreview() {
+    geometrySceneDocument.value = null;
+  }
+
+  async function confirmGeometryReview(spec: Parameters<typeof geometryWorkflowSession.resumeReview>[0]) {
+    try {
+      await geometryWorkflowSession.resumeReview(spec);
+    } catch (error) {
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    }
+  }
+
+  async function cancelGeometryReview() {
+    try {
+      await geometryWorkflowSession.stopActiveWorkflow();
+    } catch (error) {
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    }
   }
 
   function closeAISettings() {
@@ -462,6 +636,14 @@ export function usePlotWorkspace() {
     { immediate: true },
   );
 
+  watch(
+    scriptWorkspace.currentFile,
+    (sceneName) => {
+      void refreshCurrentGeometryScene(sceneName);
+    },
+    { immediate: true },
+  );
+
   return {
     aiSettings,
     aiStatusLabel: aiActivity.aiStatusLabel,
@@ -483,6 +665,8 @@ export function usePlotWorkspace() {
     codeAIOptimizeVersions: plotAIWorkflow.codeAIOptimize.versions,
     closeCodeAIOptimizeContextMenu: plotAIWorkflow.codeAIOptimize.closeContextMenu,
     closeCodeAIOptimizeDialog: plotAIWorkflow.codeAIOptimize.closeDialog,
+    closeGeometryPreview,
+    closeGeometryProblemDialog,
     copyRunError: async () => {
       try {
         await runErrorDialog.copyRunError();
@@ -507,6 +691,10 @@ export function usePlotWorkspace() {
     addNoteImages: noteWorkspace.addImages,
     generateCodeFromNoteSelection: plotAIWorkflow.aiGeneration.generateCodeFromNoteSelection,
     generateDesignFromNoteSelection: designCardWorkspace.generateFromNoteSelection,
+    generateGeometryFromNoteSelection,
+    geometryProgressLabel: geometryWorkflowSession.progressLabel,
+    geometryReviewSpec: geometryWorkflowSession.reviewSpec,
+    geometrySceneDocument,
     goToNextScreeningPage: screeningWorkspace.goToNextScreeningPage,
     hasNoteContent: noteWorkspace.hasContent,
     initProgressMessage: runtime.initProgressMessage,
@@ -516,6 +704,8 @@ export function usePlotWorkspace() {
     isCodeAIOptimizeDialogOpen: plotAIWorkflow.codeAIOptimize.isDialogOpen,
     isDesignCardOptimizeDialogOpen: designCardWorkspace.isOptimizeDialogOpen,
     isDesignCardReviewRoomOpen: designCardWorkspace.isReviewRoomOpen,
+    isGeometryProblemDialogOpen,
+    isGeometryReviewDialogOpen: geometryWorkflowSession.isReviewing,
     isCreateDialogOpen: scriptWorkspace.isCreateDialogOpen,
     isCreatingScript: scriptWorkspace.isCreatingScript,
     isDeletingScript: scriptWorkspace.isDeletingScript,
@@ -537,7 +727,11 @@ export function usePlotWorkspace() {
     isRunErrorDialogOpen: runErrorDialog.isRunErrorDialogOpen,
     isRunErrorRepairable: runErrorDialog.isRunErrorRepairable,
     isRunning,
-    isStoppingAIWorkflow: plotAIWorkflow.aiWorkflowSession.isSessionActive,
+    isStoppingAIWorkflow: computed(
+      () =>
+        plotAIWorkflow.aiWorkflowSession.isSessionActive.value ||
+        geometryWorkflowSession.isSessionActive.value,
+    ),
     isSettingsDialogOpen,
     isUpdateInstallDialogOpen,
     isInstallingUpdate,
@@ -548,6 +742,7 @@ export function usePlotWorkspace() {
     openAISettings,
     openCodeAIOptimizeContextMenu: plotAIWorkflow.codeAIOptimize.openContextMenu,
     openCodeAIOptimizeDialog: plotAIWorkflow.codeAIOptimize.openDialog,
+    openGeometryProblemDialog,
     openDesignCardReviewRoom: designCardWorkspace.openReviewRoom,
     openDesignCardOptimizeDialog: designCardWorkspace.openOptimizeDialog,
     openPackageTransferDialog: packageTransfer.openPackageTransferDialog,
@@ -582,6 +777,9 @@ export function usePlotWorkspace() {
     stopScreening: screeningWorkspace.stopScreening,
     subscriptionStatus,
     showSplitPane,
+    startGeometryFromProblem,
+    confirmGeometryReview,
+    cancelGeometryReview,
     workspaceLayoutMode,
     toggleCodePane,
     toggleNotePane,
@@ -608,8 +806,52 @@ export function usePlotWorkspace() {
     refreshSubscriptionStatusManually,
     closeUpdateInstallDialog,
     installUpdateAndRestart: installPreparedUpdate,
-    stopAIWorkflow: plotAIWorkflow.aiWorkflowSession.stopActiveWorkflow,
+    stopAIWorkflow: async () => {
+      if (geometryWorkflowSession.isSessionActive.value) {
+        await geometryWorkflowSession.stopActiveWorkflow();
+        return;
+      }
+      await plotAIWorkflow.aiWorkflowSession.stopActiveWorkflow();
+    },
   };
+}
+
+function collectGeometryText(selection: AINoteSelectionPayload) {
+  return selection.items
+    .filter((item) => item.kind === "text")
+    .map((item) => item.text.trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function firstGeometryImage(selection: AINoteSelectionPayload) {
+  return selection.items.find((item) => item.kind === "image" && item.dataUrl.trim())?.dataUrl ?? "";
+}
+
+function formatGeometryFailure(errorText: string, diagnostics: string[]) {
+  const readableError = formatLLMServiceError(errorText);
+  const detail = diagnostics.filter(Boolean).join("\n");
+  return detail ? `${readableError}\n\n${detail}` : readableError;
+}
+
+function formatLLMServiceError(errorText: string) {
+  const normalized = errorText.trim();
+  if (!normalized) {
+    return "几何建模失败";
+  }
+  if (
+    normalized.includes("upstream_error") ||
+    normalized.includes("Upstream service temporarily unavailable")
+  ) {
+    return [
+      "LLM 上游服务暂时不可用。",
+      "请求已经发出，但模型服务返回 upstream_error。请在 AI 模型服务商里切换更稳定的 URL / MODEL，或稍后重试。",
+      "",
+      "原始错误：",
+      normalized,
+    ].join("\n");
+  }
+  return normalized;
 }
 
 function normalizeSubscriptionStatus(status: {
