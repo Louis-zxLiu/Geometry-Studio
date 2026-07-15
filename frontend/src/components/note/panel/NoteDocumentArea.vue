@@ -11,6 +11,7 @@ defineProps<{
   dropInsertionPoint: NoteDropInsertionPoint | null;
   editableMarkdown: string;
   isSceneSwitching?: boolean;
+  previewMode?: "rendered" | "source";
   renderBlocks: NoteRenderBlock[];
   selectedImagePaths: Set<string>;
   shouldShowMarkdownInput: boolean;
@@ -31,6 +32,7 @@ const emit = defineEmits<{
   "select-text": [];
   "surface-click": [event: MouseEvent];
   "surface-context": [event: MouseEvent];
+  "toggle-preview-mode": [mode: "rendered" | "source"];
   "write-more": [];
 }>();
 
@@ -53,6 +55,27 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
     @keyup="emit('select-text')"
   >
     <section class="notebook-document-flow">
+      <div v-if="currentFile" class="notebook-document-toolbar">
+        <div class="notebook-preview-mode-toggle" aria-label="笔记预览模式">
+          <button
+            class="notebook-preview-mode-button"
+            :class="{ active: previewMode !== 'source' }"
+            type="button"
+            @click.stop="emit('toggle-preview-mode', 'rendered')"
+          >
+            渲染后
+          </button>
+          <button
+            class="notebook-preview-mode-button"
+            :class="{ active: previewMode === 'source' }"
+            type="button"
+            @click.stop="emit('toggle-preview-mode', 'source')"
+          >
+            源码
+          </button>
+        </div>
+      </div>
+
       <div
         ref="markdownSurface"
         class="notebook-markdown-surface"
@@ -72,7 +95,11 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
           @click.stop
         />
 
-        <template v-if="!shouldShowMarkdownInput">
+        <template v-if="!shouldShowMarkdownInput && previewMode === 'source'">
+          <pre class="notebook-note-source">{{ editableMarkdown }}</pre>
+        </template>
+
+        <template v-else-if="!shouldShowMarkdownInput">
           <template v-for="block in renderBlocks" :key="block.id">
             <div
               class="notebook-render-block"

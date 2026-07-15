@@ -6,13 +6,16 @@ defineProps<{
   images: NoteDocument["images"];
   hasSelection: boolean;
   allowInsertImage: boolean;
+  allowJumpToSource: boolean;
 }>();
 
 const emit = defineEmits<{
+  ask: [];
   design: [];
   generate: [];
   geometry: [];
   insertImage: [];
+  jumpSource: [];
   preview: [];
   remove: [];
 }>();
@@ -60,6 +63,32 @@ const emit = defineEmits<{
         <path d="M6 12 Q 9 6 12 12 T 18 12" />
       </svg>
       <span>可视化</span>
+    </button>
+    <button
+      v-if="hasSelection"
+      class="notebook-context-action"
+      type="button"
+      @click="emit('ask')"
+    >
+      <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 5.5h14v9H9l-4 4v-13Z" />
+        <path d="M9 9h6" />
+        <path d="M9 12h4" />
+      </svg>
+      <span>提问</span>
+    </button>
+    <button
+      v-if="allowJumpToSource"
+      class="notebook-context-action"
+      type="button"
+      @click="emit('jumpSource')"
+    >
+      <svg class="notebook-context-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 6 4 12l4 6" />
+        <path d="M16 6l4 6-4 6" />
+        <path d="M13 4 11 20" />
+      </svg>
+      <span>跳转到源码</span>
     </button>
     <button
       v-if="hasSelection"

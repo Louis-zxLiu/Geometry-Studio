@@ -79,6 +79,20 @@ type OptimizeResult struct {
 	Source string
 }
 
+type AskRequest struct {
+	SceneName   string
+	CurrentCode string
+	ContextKind string
+	Question    string
+	Settings    ProviderSettings
+	Selection   SelectionPayload
+}
+
+type AskResult struct {
+	Answer string
+	Source string
+}
+
 type SubscriptionSession struct {
 	Token    string
 	BaseURL  string

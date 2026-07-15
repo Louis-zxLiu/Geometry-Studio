@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { openHelpCenter } from "../../lib/help";
-
 const emit = defineEmits<{
   "ai-settings": [];
   appearance: [];
@@ -21,19 +19,6 @@ const emit = defineEmits<{
         <svg class="sidebar-tool-icon" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="3.2" />
           <path d="M19.4 13.5a7.8 7.8 0 0 0 0-3l1.6-1.2-1.8-3.1-1.9.8a7.6 7.6 0 0 0-2.6-1.5L14.2 3h-4.4l-.5 2.5a7.6 7.6 0 0 0-2.6 1.5l-1.9-.8L3 9.3 4.6 10.5a7.8 7.8 0 0 0 0 3L3 14.7l1.8 3.1 1.9-.8a7.6 7.6 0 0 0 2.6 1.5l.5 2.5h4.4l.5-2.5a7.6 7.6 0 0 0 2.6-1.5l1.9.8 1.8-3.1z" />
-        </svg>
-      </button>
-      <button
-        class="sidebar-tool-button sidebar-tool-button-help"
-        type="button"
-        title="帮助教程"
-        aria-label="帮助教程"
-        @click="openHelpCenter"
-      >
-        <svg class="sidebar-tool-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="8.5" />
-          <path d="M9.6 9.8a2.4 2.4 0 1 1 3.2 2.2c-.7.4-1.1.9-1.1 1.7v.6" />
-          <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none" />
         </svg>
       </button>
       <button

@@ -89,7 +89,8 @@
 }
 
 .geometry-review-field textarea,
-.geometry-review-row input {
+.geometry-review-row input,
+.geometry-review-row textarea {
   width: 100%;
   border: 0;
   border-radius: var(--radius-md);
@@ -152,9 +153,50 @@
   grid-template-columns: minmax(100px, 0.8fr) minmax(120px, 0.8fr) minmax(160px, 1.4fr) 74px auto;
 }
 
+.geometry-review-row.hint-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .geometry-review-row input {
   height: 34px;
   padding: 0 10px;
+}
+
+.geometry-review-row textarea {
+  min-height: 54px;
+  padding: 9px 10px;
+  resize: vertical;
+}
+
+.geometry-review-constraint-item,
+.geometry-review-hint-item {
+  display: grid;
+  gap: 8px;
+}
+
+.geometry-review-preview {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--dialog-input-bg), var(--surface-soft) 30%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text), transparent 94%);
+  color: var(--text);
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  line-height: 1.65;
+  overflow-x: auto;
+}
+
+.geometry-review-preview.notebook-markdown-rendered {
+  max-width: 100%;
+}
+
+.geometry-review-preview.notebook-markdown-rendered > *:last-child {
+  margin-bottom: 0;
+}
+
+.geometry-review-preview mjx-container[display="true"] {
+  margin: 0.75em 0 0.95em;
+  padding-bottom: 0.35em;
 }
 
 @media (max-width: 960px) {
@@ -164,7 +206,8 @@
   }
 
   .geometry-review-row.entity-row,
-  .geometry-review-row.constraint-row {
+  .geometry-review-row.constraint-row,
+  .geometry-review-row.hint-row {
     grid-template-columns: 1fr;
   }
 }

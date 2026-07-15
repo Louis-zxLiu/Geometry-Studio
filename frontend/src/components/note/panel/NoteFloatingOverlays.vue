@@ -6,6 +6,7 @@ import NoteImagePreview from "../NoteImagePreview.vue";
 defineProps<{
   aiBusy?: boolean;
   contextMenu: { x: number; y: number } | null;
+  contextMenuCanJumpToSource: boolean;
   contextMenuHasSelection: boolean;
   contextMenuSupportsInsert: boolean;
   contextMenuImages: NoteImage[];
@@ -14,11 +15,13 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
+  ask: [];
   closePreview: [];
   design: [];
   generate: [];
   geometry: [];
   insertImage: [];
+  jumpSource: [];
   previewContextImage: [];
   removeContextImages: [];
   resetPreview: [];
@@ -34,9 +37,12 @@ const emit = defineEmits<{
         v-if="contextMenu && !aiBusy"
         :position="contextMenu"
         :has-selection="contextMenuHasSelection"
+        :allow-jump-to-source="contextMenuCanJumpToSource"
         :allow-insert-image="contextMenuSupportsInsert"
         :images="contextMenuImages"
         @preview="emit('previewContextImage')"
+        @ask="emit('ask')"
+        @jump-source="emit('jumpSource')"
         @design="emit('design')"
         @generate="emit('generate')"
         @geometry="emit('geometry')"

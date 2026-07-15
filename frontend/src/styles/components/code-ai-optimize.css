@@ -89,6 +89,146 @@
   min-height: 320px;
 }
 
+.ai-ask-dialog {
+  position: fixed;
+  z-index: 1250;
+  width: min(760px, calc(100vw - 40px));
+  min-height: 0;
+  max-height: calc(100vh - 44px);
+  overflow: hidden;
+  padding-top: 24px;
+  box-shadow: var(--shadow-4);
+}
+
+.ai-ask-window-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  cursor: move;
+  user-select: none;
+}
+
+.ai-ask-context {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.ai-ask-close {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.ai-ask-close:hover {
+  background: var(--hover-fill);
+  color: var(--text);
+}
+
+.ai-ask-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.ai-ask-pin-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1240;
+  pointer-events: none;
+}
+
+.ai-ask-pin {
+  position: fixed;
+  width: 34px;
+  height: 34px;
+  pointer-events: auto;
+  transform: translate(8px, 6px);
+}
+
+.ai-ask-pin-main {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--run);
+  color: var(--run-ink);
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ai-ask-pin-main:hover {
+  background: var(--run-hover);
+}
+
+.ai-ask-pin-remove {
+  position: absolute;
+  top: -7px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--muted);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ai-ask-pin-remove:hover {
+  color: var(--text);
+  background: var(--hover-fill);
+}
+
+.ai-ask-prompt {
+  min-height: 116px;
+  margin-top: 18px;
+  font-size: 0.95rem;
+}
+
+.ai-ask-answer-shell {
+  max-height: min(38vh, 360px);
+  margin-top: 16px;
+  padding: 14px 16px;
+  overflow: auto;
+  border-radius: var(--radius-md);
+  background: var(--dialog-input-bg);
+}
+
+.ai-ask-answer {
+  font-size: 0.94rem;
+  line-height: 1.72;
+}
+
+.ai-ask-pending {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
 .code-ai-prompt {
   width: 100%;
   min-height: 148px;

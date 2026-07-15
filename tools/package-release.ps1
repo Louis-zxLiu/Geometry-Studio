@@ -16,9 +16,7 @@ function Resolve-ScreeningZoomExecutablePath {
     )
 
     $candidates = @(
-        (Join-Path $RepoRoot "resources/screeningzoom/zoomit.exe"),
-        (Join-Path $RepoRoot "thirdparty/screeningzoom/build/Release/zoomit.exe"),
-        (Join-Path $RepoRoot "thirdparty/screeningzoom/build/zoomit.exe")
+        (Join-Path $RepoRoot "resources/screeningzoom/zoomit.exe")
     )
 
     foreach ($candidate in $candidates) {

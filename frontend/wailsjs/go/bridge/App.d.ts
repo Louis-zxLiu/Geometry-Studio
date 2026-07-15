@@ -4,6 +4,8 @@ import {bridge} from '../models';
 
 export function AddScriptNoteImages(arg1:string,arg2:Array<bridge.NoteImageInput>):Promise<bridge.NoteDocument>;
 
+export function AskAI(arg1:bridge.AIAskRequest):Promise<bridge.AIAskResult>;
+
 export function BootstrapWorkspace():Promise<bridge.WorkspaceSnapshot>;
 
 export function CheckForUpdates(arg1:boolean):Promise<bridge.UpdateStatus>;

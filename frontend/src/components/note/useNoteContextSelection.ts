@@ -7,6 +7,18 @@ import {
 import type { DesignCard } from "../../features/designCard/services/designCardTypes";
 import type { NoteDocument } from "../../features/notebook/services/notebookStorage";
 
+type NoteTextSelection = {
+  text: string;
+  selectedAt: number;
+  sourceEnd?: number;
+  sourceStart?: number;
+};
+
+export type NoteSourceRange = {
+  end: number;
+  start: number;
+};
+
 type NoteContextSelectionOptions = {
   canOpenEmptyMenu: () => boolean;
   designCards: () => DesignCard[];
@@ -20,8 +32,9 @@ type NoteContextSelectionOptions = {
 };
 
 export function useNoteContextSelection(options: NoteContextSelectionOptions) {
-  const textSelection = ref<{ text: string; selectedAt: number } | null>(null);
+  const textSelection = ref<NoteTextSelection | null>(null);
   const contextMenu = ref<{ x: number; y: number } | null>(null);
+  const contextMenuSourceRange = ref<NoteSourceRange | null>(null);
   const contextMenuImages = computed(() =>
     collectSelectedImagesForContextMenu(
       options.document(),
@@ -30,6 +43,7 @@ export function useNoteContextSelection(options: NoteContextSelectionOptions) {
     ),
   );
   const contextMenuHasSelection = computed(() => hasSelection());
+  const contextMenuCanJumpToSource = computed(() => contextMenuSourceRange.value !== null);
   const contextMenuSupportsInsert = computed(
     () => options.canOpenEmptyMenu() && !contextMenuHasSelection.value,
   );
@@ -49,6 +63,7 @@ export function useNoteContextSelection(options: NoteContextSelectionOptions) {
       options.ensureImageSelection(relativePath);
     }
     syncTextSelection();
+    contextMenuSourceRange.value = getTextSelectionSourceRange();
     if (!hasSelection() && !options.canOpenEmptyMenu()) {
       closeContextMenu();
       return;
@@ -77,6 +92,11 @@ export function useNoteContextSelection(options: NoteContextSelectionOptions) {
 
   function closeContextMenu() {
     contextMenu.value = null;
+    contextMenuSourceRange.value = null;
+  }
+
+  function getContextMenuSourceRange() {
+    return contextMenuSourceRange.value;
   }
 
   function syncTextSelection() {
@@ -89,6 +109,8 @@ export function useNoteContextSelection(options: NoteContextSelectionOptions) {
         textSelection.value = {
           text: nextText,
           selectedAt: options.nextSelectionOrder(),
+          sourceStart: start,
+          sourceEnd: end,
         };
         return;
       }
@@ -114,7 +136,249 @@ export function useNoteContextSelection(options: NoteContextSelectionOptions) {
     textSelection.value = {
       text: nextText,
       selectedAt: options.nextSelectionOrder(),
+      ...resolveRenderedSelectionSourceRange(selection, nextText),
     };
+  }
+
+  function getTextSelectionSourceRange(): NoteSourceRange | null {
+    const start = textSelection.value?.sourceStart;
+    const end = textSelection.value?.sourceEnd;
+    if (
+      typeof start !== "number" ||
+      typeof end !== "number" ||
+      !Number.isFinite(start) ||
+      !Number.isFinite(end)
+    ) {
+      return null;
+    }
+
+    return {
+      start: Math.max(0, Math.min(start, end)),
+      end: Math.max(0, Math.max(start, end)),
+    };
+  }
+
+  function resolveRenderedSelectionSourceRange(
+    selection: Selection,
+    selectedText: string,
+  ): Pick<NoteTextSelection, "sourceStart" | "sourceEnd"> {
+    if (selection.rangeCount === 0) {
+      return {};
+    }
+
+    const range = selection.getRangeAt(0);
+    const startBlock = resolveSourceBlock(range.startContainer);
+    const endBlock = resolveSourceBlock(range.endContainer);
+    const startRange = readSourceRange(startBlock);
+    const endRange = readSourceRange(endBlock);
+    if (!startRange || !endRange) {
+      return {};
+    }
+
+    const sourceStart = Math.min(startRange.start, endRange.start);
+    const sourceEnd = Math.max(startRange.end, endRange.end);
+    if (startBlock && startBlock === endBlock) {
+      const raw = options.document().markdown.slice(sourceStart, sourceEnd);
+      const matchedRange = findSourceRangeForRenderedText(raw, selectedText);
+      if (matchedRange) {
+        return {
+          sourceStart: sourceStart + matchedRange.start,
+          sourceEnd: sourceStart + matchedRange.end,
+        };
+      }
+
+      return {};
+    }
+
+    return { sourceStart, sourceEnd };
+  }
+
+  function findSourceRangeForRenderedText(source: string, selectedText: string) {
+    const trimmedText = selectedText.trim();
+    if (!trimmedText) {
+      return null;
+    }
+
+    const directIndex = source.indexOf(trimmedText);
+    if (directIndex >= 0) {
+      return {
+        start: directIndex,
+        end: directIndex + trimmedText.length,
+      };
+    }
+
+    const sourceTextMap = normalizeTextMap(buildMarkdownPlainTextMap(source));
+    const queryMap = normalizeTextMap({
+      sourceOffsets: Array.from({ length: trimmedText.length }, (_, index) => index),
+      text: trimmedText,
+    });
+    if (!sourceTextMap.text || !queryMap.text) {
+      return null;
+    }
+
+    const normalizedIndex = sourceTextMap.text.indexOf(queryMap.text);
+    if (normalizedIndex < 0) {
+      return null;
+    }
+
+    const firstSourceOffset = sourceTextMap.sourceOffsets[normalizedIndex];
+    const lastSourceOffset = sourceTextMap.sourceOffsets[normalizedIndex + queryMap.text.length - 1];
+    if (!Number.isFinite(firstSourceOffset) || !Number.isFinite(lastSourceOffset)) {
+      return null;
+    }
+
+    return {
+      start: firstSourceOffset,
+      end: lastSourceOffset + 1,
+    };
+  }
+
+  function buildMarkdownPlainTextMap(source: string) {
+    const text: string[] = [];
+    const sourceOffsets: number[] = [];
+    const lines = source.split(/(\r?\n)/);
+    let offset = 0;
+
+    for (const part of lines) {
+      if (part === "\n" || part === "\r\n") {
+        text.push("\n");
+        sourceOffsets.push(offset);
+        offset += part.length;
+        continue;
+      }
+
+      const lineStartOffset = offset;
+      let index = getMarkdownLineContentStart(part);
+      while (index < part.length) {
+        const link = readMarkdownLink(part, index);
+        if (link) {
+          for (let labelIndex = 0; labelIndex < link.label.length; labelIndex += 1) {
+            text.push(link.label[labelIndex]);
+            sourceOffsets.push(lineStartOffset + link.labelStart + labelIndex);
+          }
+          index = link.end;
+          continue;
+        }
+
+        const skipped = markdownDelimiterLength(part, index);
+        if (skipped > 0) {
+          index += skipped;
+          continue;
+        }
+
+        text.push(part[index]);
+        sourceOffsets.push(lineStartOffset + index);
+        index += 1;
+      }
+
+      offset += part.length;
+    }
+
+    return {
+      text: text.join(""),
+      sourceOffsets,
+    };
+  }
+
+  function getMarkdownLineContentStart(line: string) {
+    const match = line.match(/^\s*(?:(?:#{1,6}|[-*+]|\d+[.)]|>)\s+)+/);
+    return match?.[0].length ?? 0;
+  }
+
+  function readMarkdownLink(line: string, index: number) {
+    const imagePrefix = line[index] === "!" && line[index + 1] === "[";
+    const labelStart = imagePrefix ? index + 2 : index + 1;
+    if (!imagePrefix && line[index] !== "[") {
+      return null;
+    }
+
+    const labelEnd = line.indexOf("]", labelStart);
+    if (labelEnd < 0 || line[labelEnd + 1] !== "(") {
+      return null;
+    }
+
+    const targetEnd = line.indexOf(")", labelEnd + 2);
+    if (targetEnd < 0) {
+      return null;
+    }
+
+    return {
+      end: targetEnd + 1,
+      label: line.slice(labelStart, labelEnd),
+      labelStart,
+    };
+  }
+
+  function markdownDelimiterLength(source: string, index: number) {
+    const twoCharDelimiter = source.slice(index, index + 2);
+    if (
+      twoCharDelimiter === "$$" ||
+      twoCharDelimiter === "\\(" ||
+      twoCharDelimiter === "\\)" ||
+      twoCharDelimiter === "\\[" ||
+      twoCharDelimiter === "\\]"
+    ) {
+      return 2;
+    }
+
+    const char = source[index];
+    if (char === "$" || char === "*" || char === "_" || char === "`") {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  function normalizeTextMap(source: { sourceOffsets: number[]; text: string }) {
+    const normalizedText: string[] = [];
+    const normalizedOffsets: number[] = [];
+    let hasPendingSpace = false;
+    let pendingSpaceOffset = 0;
+
+    for (let index = 0; index < source.text.length; index += 1) {
+      const char = source.text[index];
+      if (/\s/.test(char)) {
+        if (normalizedText.length > 0 && !hasPendingSpace) {
+          hasPendingSpace = true;
+          pendingSpaceOffset = source.sourceOffsets[index] ?? 0;
+        }
+        continue;
+      }
+
+      if (hasPendingSpace) {
+        normalizedText.push(" ");
+        normalizedOffsets.push(pendingSpaceOffset);
+        hasPendingSpace = false;
+      }
+
+      normalizedText.push(char);
+      normalizedOffsets.push(source.sourceOffsets[index] ?? 0);
+    }
+
+    if (normalizedText[normalizedText.length - 1] === " ") {
+      normalizedText.pop();
+      normalizedOffsets.pop();
+    }
+
+    return {
+      text: normalizedText.join(""),
+      sourceOffsets: normalizedOffsets,
+    };
+  }
+
+  function resolveSourceBlock(node: Node | null) {
+    const element = node instanceof Element ? node : node?.parentElement;
+    return element?.closest<HTMLElement>("[data-note-insert-before][data-note-insert-after]") ?? null;
+  }
+
+  function readSourceRange(block: HTMLElement | null) {
+    const start = Number(block?.dataset.noteInsertBefore);
+    const end = Number(block?.dataset.noteInsertAfter);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) {
+      return null;
+    }
+
+    return { start, end };
   }
 
   function isTextSelectionContextTarget(target: EventTarget | null) {
@@ -157,9 +421,11 @@ export function useNoteContextSelection(options: NoteContextSelectionOptions) {
     buildSelectionPayload,
     closeContextMenu,
     contextMenu,
+    contextMenuCanJumpToSource,
     contextMenuHasSelection,
     contextMenuImages,
     contextMenuSupportsInsert,
+    getContextMenuSourceRange,
     handleContextMenu,
     handleTextSelectionChange,
   };

@@ -1,8 +1,11 @@
 .notebook-markdown-rendered mjx-container[display="true"] {
   display: block;
-  margin: 1.15em 0;
+  margin: 1.15em 0 1.35em;
+  padding: 0.1em 0 0.42em;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted), transparent 82%) transparent;
 }
 
 .notebook-markdown-rendered mjx-container {

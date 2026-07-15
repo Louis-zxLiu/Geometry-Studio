@@ -172,6 +172,20 @@ type AIWorkflowFailedEvent struct {
 	Attempt    int                  `json:"attempt"`
 }
 
+type AIAskRequest struct {
+	SceneName   string             `json:"sceneName"`
+	CurrentCode string             `json:"currentCode"`
+	ContextKind string             `json:"contextKind"`
+	Question    string             `json:"question"`
+	Selection   AISelectionPayload `json:"selection"`
+	Settings    AIProviderSettings `json:"settings"`
+}
+
+type AIAskResult struct {
+	Answer string `json:"answer"`
+	Source string `json:"source"`
+}
+
 type GeometryWorkflowRequest struct {
 	SceneName    string             `json:"sceneName"`
 	ImageDataURL string             `json:"imageDataUrl"`

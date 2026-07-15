@@ -1,12 +1,18 @@
 @media (max-width: 1280px) {
   .workspace-body {
-    grid-template-columns: minmax(0, 1.08fr) 0 minmax(240px, 0.78fr);
+    grid-template-columns:
+      minmax(240px, var(--editor-pane-fr, 580fr))
+      8px
+      minmax(240px, var(--note-pane-fr, 420fr));
   }
 }
 
 @media (max-width: 1080px) {
   .workspace-body {
-    grid-template-columns: minmax(0, 1fr) 0 minmax(220px, 0.72fr);
+    grid-template-columns:
+      minmax(220px, var(--editor-pane-fr, 580fr))
+      8px
+      minmax(220px, var(--note-pane-fr, 420fr));
   }
   
   .notebook-scroll {
@@ -16,7 +22,10 @@
 
 @media (max-width: 920px) {
   .workspace-body {
-    grid-template-columns: minmax(0, 1fr) 0 minmax(200px, 0.64fr);
+    grid-template-columns:
+      minmax(200px, var(--editor-pane-fr, 580fr))
+      8px
+      minmax(200px, var(--note-pane-fr, 420fr));
   }
 
   .notebook-scroll {

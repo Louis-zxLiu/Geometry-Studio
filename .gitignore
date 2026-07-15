@@ -30,7 +30,6 @@ Thumbs.db
 /.runtime-pack/
 __pycache__/
 *.py[cod]
-thirdparty/screeningzoom/build/
 
 # Legacy root docs
 Tec.md

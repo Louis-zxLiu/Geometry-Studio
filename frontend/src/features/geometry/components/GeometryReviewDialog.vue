@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { renderMarkdownToHtml } from "../../notebook/rendering/markdownRenderer";
 import type { GeometrySpec } from "../services/geometryTypes";
 
 const props = defineProps<{
@@ -41,12 +42,20 @@ function addConstraint() {
   });
 }
 
+function addConstructionHint() {
+  editableSpec.value.constructionHints.push("");
+}
+
 function removeEntity(index: number) {
   editableSpec.value.entities.splice(index, 1);
 }
 
 function removeConstraint(index: number) {
   editableSpec.value.constraints.splice(index, 1);
+}
+
+function removeConstructionHint(index: number) {
+  editableSpec.value.constructionHints.splice(index, 1);
 }
 
 function updateConstraintArgs(index: number, value: string) {
@@ -61,6 +70,11 @@ function submit() {
     return;
   }
   emit("confirm", cloneSpec(editableSpec.value));
+}
+
+function renderReviewMarkdown(markdown: string) {
+  const text = markdown.trim();
+  return text ? renderMarkdownToHtml(text) : "";
 }
 
 function createEmptySpec(): GeometrySpec {
@@ -93,6 +107,11 @@ function cloneSpec(spec: GeometrySpec): GeometrySpec {
               :disabled="pending"
               rows="3"
             ></textarea>
+            <div
+              v-if="editableSpec.problemText.trim()"
+              class="geometry-review-preview notebook-markdown-rendered"
+              v-html="renderReviewMarkdown(editableSpec.problemText)"
+            ></div>
           </label>
 
           <label class="geometry-review-field wide">
@@ -102,6 +121,11 @@ function cloneSpec(spec: GeometrySpec): GeometrySpec {
               :disabled="pending"
               rows="2"
             ></textarea>
+            <div
+              v-if="editableSpec.goalText.trim()"
+              class="geometry-review-preview notebook-markdown-rendered"
+              v-html="renderReviewMarkdown(editableSpec.goalText)"
+            ></div>
           </label>
         </div>
 
@@ -133,24 +157,63 @@ function cloneSpec(spec: GeometrySpec): GeometrySpec {
             <div
               v-for="(constraint, index) in editableSpec.constraints"
               :key="`${constraint.type}-${index}`"
-              class="geometry-review-row constraint-row"
+              class="geometry-review-constraint-item"
             >
-              <input v-model="constraint.type" :disabled="pending" />
-              <input
-                :value="constraint.args.join(', ')"
-                :disabled="pending"
-                @input="updateConstraintArgs(index, ($event.target as HTMLInputElement).value)"
-              />
-              <input v-model="constraint.text" :disabled="pending" />
-              <input
-                v-model.number="constraint.confidence"
-                :disabled="pending"
-                type="number"
-                min="0"
-                max="1"
-                step="0.05"
-              />
-              <button type="button" :disabled="pending" @click="removeConstraint(index)">删</button>
+              <div class="geometry-review-row constraint-row">
+                <input v-model="constraint.type" :disabled="pending" />
+                <input
+                  :value="constraint.args.join(', ')"
+                  :disabled="pending"
+                  @input="updateConstraintArgs(index, ($event.target as HTMLInputElement).value)"
+                />
+                <textarea
+                  v-model="constraint.text"
+                  :disabled="pending"
+                  rows="2"
+                ></textarea>
+                <input
+                  v-model.number="constraint.confidence"
+                  :disabled="pending"
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                />
+                <button type="button" :disabled="pending" @click="removeConstraint(index)">删</button>
+              </div>
+              <div
+                v-if="constraint.text.trim()"
+                class="geometry-review-preview notebook-markdown-rendered"
+                v-html="renderReviewMarkdown(constraint.text)"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="geometry-review-section">
+          <div class="geometry-review-heading">
+            <strong>构造提示</strong>
+            <button type="button" :disabled="pending" @click="addConstructionHint">加提示</button>
+          </div>
+          <div class="geometry-review-list">
+            <div
+              v-for="(_hint, index) in editableSpec.constructionHints"
+              :key="`hint-${index}`"
+              class="geometry-review-hint-item"
+            >
+              <div class="geometry-review-row hint-row">
+                <textarea
+                  v-model="editableSpec.constructionHints[index]"
+                  :disabled="pending"
+                  rows="2"
+                ></textarea>
+                <button type="button" :disabled="pending" @click="removeConstructionHint(index)">删</button>
+              </div>
+              <div
+                v-if="editableSpec.constructionHints[index]?.trim()"
+                class="geometry-review-preview notebook-markdown-rendered"
+                v-html="renderReviewMarkdown(editableSpec.constructionHints[index])"
+              ></div>
             </div>
           </div>
         </div>

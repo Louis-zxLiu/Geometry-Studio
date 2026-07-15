@@ -21,7 +21,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  "ai-optimize": [position: { x: number; y: number }];
+  "ai-optimize": [position: { selectedText: string; x: number; y: number }];
   "delete-design-card": [cardId: string];
   "design-card-anchor-line": [line: number];
   "move-design-card": [payload: { cardId: string; delta: number }];

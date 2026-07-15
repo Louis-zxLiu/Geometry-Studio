@@ -26,7 +26,7 @@ type CodeMirrorEditorOptions = {
   editorRoot: Ref<HTMLElement | null>;
   normalizedCode: ComputedRef<string>;
   disabled: () => boolean | undefined;
-  onAIOptimize: (position: { x: number; y: number }) => void;
+  onAIOptimize: (position: { selectedText: string; x: number; y: number }) => void;
   onCodeChange: (code: string) => void;
   onEditorActivity: () => void;
   shouldIgnoreContextMenu: (target: EventTarget | null) => boolean;
@@ -131,7 +131,11 @@ export function useCodeMirrorEditor(options: CodeMirrorEditorOptions) {
     }
 
     event.preventDefault();
-    options.onAIOptimize({ x: event.clientX, y: event.clientY });
+    options.onAIOptimize({
+      x: event.clientX,
+      y: event.clientY,
+      selectedText: getSelectedCodeText(),
+    });
     return true;
   }
 
@@ -175,6 +179,20 @@ export function useCodeMirrorEditor(options: CodeMirrorEditorOptions) {
     searchQuery.value = value;
     searchActiveIndex.value = 0;
     refreshSearch(true);
+  }
+
+  function getSelectedCodeText() {
+    const view = editorView.value;
+    if (!view) {
+      return "";
+    }
+
+    const selection = view.state.selection.main;
+    if (selection.empty) {
+      return "";
+    }
+
+    return view.state.sliceDoc(selection.from, selection.to).trim();
   }
 
   function focusEditor() {

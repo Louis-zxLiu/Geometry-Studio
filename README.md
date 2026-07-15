@@ -1,111 +1,241 @@
-<p align="center">
-  <a href="https://github.com/Wingflow/PlotKityCat">
-    <img src="geometry-studio-logo.svg" alt="Geometry Studio Logo" width="180">
-  </a>
-</p>
+# Geometry Studio
 
-<h1 align="center">Geometry Studio</h1>
+> Geometry Studio 是一个面向几何题解题、教学证明和可视化演示的 Windows 桌面工作台：支持图片或文本输入题目，通过多 agent 工作流完成题目解析、教师复核、构图、Matplotlib 代码生成、中文证明和 Markdown + MathJax 笔记。
 
-<p align="center">
-  一款专为数学老师打造的 AI-native 可视化教学工具。
-</p>
+适合数学教师、竞赛教练、几何题整理者、解题视频制作者，以及需要把几何题快速整理成“可运行图形 + 中文证明笔记”的用户。
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Wails-v2-red?style=flat-square" alt="Wails">
-  <img src="https://img.shields.io/badge/Vue-3-4fc08d?style=flat-square" alt="Vue">
-  <img src="https://img.shields.io/badge/Go-1.21+-00add8?style=flat-square" alt="Go">
-  <img src="https://img.shields.io/badge/Python-3.13+-3776ab?style=flat-square" alt="Python">
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
-</p>
+最快上手方式：下载 release 包，解压后运行 `GeometryStudio.exe`。
 
-## 简介
+```powershell
+# 开发者本地构建
+npm install --prefix frontend
+npm run build --prefix frontend
+go test ./...
+wails build -clean
+```
 
-PlotKityCat 是一个面向数学教学场景的 AI-native 可视化工具。它基于 Matplotlib 执行绘图代码，支持自然语言生成可视化，并以便携式 runtime 支撑课堂演示与离线分发。
+## 项目亮点
 
-## 视频介绍
+- 图片/文本双入口：可以上传题图，也可以直接输入没有配图的几何题文字；图片题会交给支持视觉输入的 MLLM 解析题干和图形关系。
+- 多 agent 几何解题：题目解析、几何规格整理、教师复核、构造规划、场景生成、Matplotlib 代码生成、教学证明、运行检查、自我修正和发布分阶段执行。
+- 用户可感知流程：工作流会暴露当前 agent 正在做什么；几何规格会先进入复核面板，让用户确认题干、结论、对象、条件和构造提示。
+- 中文优先输出：面向用户的题干、标签、约束、证明、解答笔记和课堂提问均以中文生成；数学公式走 Markdown + MathJax，不生成完整 LaTeX 文档。
+- 可运行几何图：生成的是 Python + Matplotlib 代码，包含可交互控件、中文标注和运行检查；失败时会进入自我修正。
+- 三段式工作区：左侧场景/工作区，中间代码区，右侧笔记区；代码区和笔记区宽度可以拖动调整。
+- 右侧笔记区支持渲染/源码切换：Markdown 笔记可直接渲染公式，也可切到源码编辑。
+- 选区提问：渲染后的文字、公式和代码区选中内容都可以右键提问；关闭提问浮窗后会留下可复用角标，方便继续追问或删除。
+- 源码定位：在渲染笔记中选中文字后，可通过右键菜单跳转到对应 Markdown 源码片段。
+- 场景包和工作区包：支持导入/导出 `.pkc` 场景包和 `.pkcw` 工作区包，方便分发和迁移。
 
-https://github.com/user-attachments/assets/df8167a7-d1e9-4f6a-a42d-de15596a4456
+## 当前核心流程
 
-## 开发初衷
+1. 打开或创建一个场景。
+2. 在 AI 设置中配置 OpenAI 兼容接口，图片题建议使用支持视觉输入的多模态模型。
+3. 点击顶部的拍照解题入口。
+4. 上传题图，或直接粘贴/输入题干文本。
+5. 等待 agent 完成题目图文解析和几何规格整理。
+6. 在“几何规格复核”面板确认或修改题干、结论、对象、条件和构造提示。
+7. 确认后继续生成 Matplotlib 代码和中文教学证明。
+8. 在代码区运行/调整生成的图形，在右侧笔记区查看 Markdown + MathJax 解题笔记。
+9. 选中证明、公式或代码后右键提问；关闭提问浮窗后，可以通过角标继续追问。
 
-PlotKityCat 源于对 GGBPuppy 开发过程中 GGB Web API 封闭性的反思。我们转向 Matplotlib，为初高中数学可视化提供 AI-native 方案。
+## 多 agent 工作流
 
-> 那天，我在研究 GGB 的 webapi，AI 总是写下错误的 GGB 代码，让我的另外一个项目 GGBPuppy 很受挫折。我突然发现一个 GGB 的 api 接口不完整，于是以开发者的口吻发了一封信给他们团队，结果收到了他们希望我付钱的要求......好吧，那天晚上关掉它肮脏线条和色彩的窗口，我梦见了 Jobs.....
+几何解题由 `internal/bridge/geometry_agent.py` 中的 LangGraph 工作流驱动，当前节点包括：
 
-1. **开源**：好的工具应该像太阳一样，太阳是闭源的吗？
-2. **美**：拒绝 GGB 沉闷的色彩与线条。
-3. **AI 原生**：通过 AI 直接生成可视化代码，无需老师学习编程。
+```text
+problem_vision_parse
+geometry_spec_organize
+teacher_review
+construction_plan
+dual_scene_generate
+matplotlib_code_generate
+teaching_proof_generate
+runtime_check
+self_correct
+publish
+```
 
-PlotKityCat 支持优盘便携，旨在让老师将其带入教室、讲台及学生手中。
+这些节点分别负责：
+
+- `problem_vision_parse`：解析图片和文本题干，提取可结构化的几何规格。
+- `geometry_spec_organize`：把题目信息整理成稳定 ID、对象、约束、结论和构造提示。
+- `teacher_review`：暂停工作流，把规格交给用户复核。
+- `construction_plan`：规划几何构造和图形表达方式。
+- `dual_scene_generate`：生成内部几何场景和证明步骤。
+- `matplotlib_code_generate`：生成可运行的 Matplotlib 代码。
+- `teaching_proof_generate`：生成中文教学证明和右侧 Markdown 笔记。
+- `runtime_check`：运行生成代码，检查是否可执行。
+- `self_correct`：根据运行错误修复代码。
+- `publish`：把代码和笔记写回当前场景。
+
+## 笔记与提问
+
+右侧笔记区采用 Markdown + MathJax 渲染，不依赖本机 LaTeX 编译器。公式约定：
+
+```markdown
+行内公式使用 $AB=AC$
+
+块级公式使用：
+
+$$
+\angle ABC = 60^\circ
+$$
+```
+
+选区交互：
+
+- 渲染态文字和公式可以直接拖选。
+- 选中后右键可以提问。
+- 选中后右键可以跳转到对应 Markdown 源码。
+- 代码区选中代码后也可以右键提问。
+- 提问窗口是浮动窗口，可拖动。
+- 关闭提问窗口后会生成一个角标；点击角标可复用上下文继续问，点击角标上的关闭按钮可删除。
+
+## 安装与运行
+
+### 使用 release 包
+
+1. 从 GitHub Releases 下载最新的 `GeometryStudio-v*.zip`。
+2. 解压到本地目录。
+3. 运行 `GeometryStudio.exe`。
+4. 首次启动会使用随包携带的 runtime 资源准备 Python 运行环境。
+
+正式入口：
+
+- 仓库地址：https://github.com/Louis-zxLiu/Geometry-Studio
+- Releases：https://github.com/Louis-zxLiu/Geometry-Studio/releases
+
+### AI 配置
+
+应用支持自定义 OpenAI 兼容服务和订阅服务两种模式。配置会写入：
+
+```text
+config/ai-settings.json
+```
+
+图片题需要模型支持多模态图片输入；纯文本几何题可以只使用文本模型，但建议仍使用推理能力较强的模型。
+
+## 开发环境
+
+推荐环境：
+
+- Windows 10/11
+- Go 1.22 或更高版本
+- Wails v2.10.2
+- Node.js + npm
+- Python runtime 由项目工具准备或由 release 包携带
+
+确认命令可用：
+
+```powershell
+go version
+wails version
+node --version
+npm --version
+```
+
+安装前端依赖并构建：
+
+```powershell
+npm install --prefix frontend
+npm run build --prefix frontend
+```
+
+运行 Go 测试：
+
+```powershell
+go test ./...
+```
+
+本地 Wails 构建：
+
+```powershell
+wails build -clean
+```
+
+如果只是前端或非导出 Go 接口发生变化，也可以在已有绑定基础上跳过绑定生成：
+
+```powershell
+wails build -clean -skipbindings
+```
+
+## Runtime 与打包
+
+准备几何解题 runtime：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\prepare-geometry-runtime.ps1
+```
+
+版本化构建：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build-versioned-app.ps1
+```
+
+生成 release 包：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\package-release.ps1
+```
+
+打包脚本会读取 `version.json` 中的 `appVersion`，生成：
+
+```text
+build/release/GeometryStudio-v<version>.zip
+```
+
+注意：如果 `resources/screeningzoom/zoomit.exe` 不存在，打包脚本会给出 warning，并在不包含该资源的情况下继续打包；这不影响几何解题主流程。
+
+## 项目结构
+
+```text
+.
+├── frontend/                 # Vue + Vite 前端
+│   ├── src/components/        # 通用 UI、代码区、笔记区、提问浮窗
+│   ├── src/features/geometry/ # 拍照/文本几何解题 UI 与工作流状态
+│   ├── src/features/notebook/ # Markdown 笔记、公式渲染和图片块
+│   ├── src/features/plot/     # 主工作区编排
+│   └── wailsjs/               # Wails 绑定
+├── internal/                  # Go 后端
+│   ├── ai/                    # AI 服务、提问、生成、优化、修复
+│   ├── aicode/                # AI 代码工作流和补丁应用
+│   ├── bridge/                # Wails 暴露接口和几何 agent 桥接
+│   ├── files/                 # 场景、笔记、图片资源存储
+│   ├── runner/                # Python/Matplotlib 运行器
+│   └── workspaces/            # 工作区管理
+├── resources/                 # runtime 等发布资源
+├── tools/                     # runtime 准备、验证、构建和打包脚本
+├── wails.json                 # Wails 配置
+├── version.json               # 应用版本
+└── runtime.version.json       # runtime 版本说明
+```
+
+## 验证
+
+常用验证命令：
+
+```powershell
+npm run build --prefix frontend
+go test ./...
+python -m py_compile internal\bridge\geometry_agent.py
+```
+
+如果 runtime 已准备好，可以运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\verify-geometry-studio.ps1
+```
 
 ## 设计原则
 
-1. **开源**：以可审查、可扩展的技术栈承载教学工具。
-2. **美感**：避免传统数学软件沉闷的视觉体验。
-3. **AI 原生**：让老师通过自然语言驱动可视化生成，而不是先学编程。
+- 拍照解题和文本解题是核心入口，不把图形预览或辅助功能放在主流程前面。
+- 多 agent 做什么要让用户看得见，关键中间结果必须能复核。
+- 面向用户的内容以中文输出，公式使用 Markdown + MathJax。
+- 生成的可视化代码应尽量简洁、可运行、可教学，不堆砌无关图例和说明框。
+- 右侧笔记区是证明和提问的主要承载，不提供额外导出按钮，优先保证阅读、渲染和追问体验。
 
-## 功能特性
+## License
 
-- **AI 绘图**：通过自然语言描述数学概念，由 AI 生成 Matplotlib 绘图代码。
-- **笔记系统**：集成 Markdown 与 LaTeX 公式渲染，绑定代码，看到可视化的结果，更看到可视化的设计。
-- **便携运行**：依赖便携 Python runtime，适合 U 盘和教室环境分发。
-- **场景包导入导出**：支持 `.pck` 场景包的交换与复用。
-
-## 技术栈
-
-- **前端**: Vue 3, TypeScript, Vite
-- **后端**: Go, Wails Framework
-- **运行时**: WinPython (NumPy, Matplotlib, SciPy, PyQt5)
-- **AI 接口**: OpenAI API / 自定义兼容接口
-
-## 快速开始
-
-1. 下载便携版压缩包。
-2. 配置 AI 服务商 API Key。
-3. 启动应用并新建场景。
-4. 在笔记区输入描述后运行可视化或可视化设计。
-
-## 开发入口
-
-- **Windows**
-- **Go**: 1.22+
-- **Node.js**: 18+
-- **Wails**: v2.x
-
-开发启动：
-
-```powershell
-cd frontend
-npm install
-cd ..
-wails dev
-```
-
-runtime 打包入口：
-
-```powershell
-.\tools\prepare-runtime.ps1 -SourceRuntimeDir <你的 runtime 目录>
-```
-
-应用打包入口：
-
-```powershell
-.\tools\build-versioned-app.ps1
-.\tools\package-release.ps1
-.\tools\prepare-update-release.ps1
-```
-
-## 文档索引
-
-- 开发与构建总说明： [DEVELOPMENT.md](D:/projects/plotkitycat/DEVELOPMENT.md)
-- runtime 分发与重建： [RUNTIME_BUILD.md](D:/projects/plotkitycat/RUNTIME_BUILD.md)
-- 在线更新与发布： [UPDATE_RELEASE.md](D:/projects/plotkitycat/UPDATE_RELEASE.md)
-
-## 致谢
-
-- [Matplotlib](https://matplotlib.org/): 本项目核心渲染引擎。
-- [ManimCat](https://github.com/Wing900/ManimCat): 提供了开发的基础和灵感。
-- [ZoomIt (PowerToys)](https://github.com/microsoft/PowerToys/tree/main/src/modules/ZoomIt): 放映模式辅助功能的实现基础。
-## 愿景
-
-期待更多的可视化资源可以被开发、开源、开放，打破教育资源长期以来的垄断，让教育越来越清晰、越来越公平。期待有一天能够建立一个 PlotKityCat 交流社区。
+本项目使用仓库中的 `LICENSE` 文件授权。

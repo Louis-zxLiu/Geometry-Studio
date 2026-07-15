@@ -26,6 +26,7 @@ export type AINoteSelectionPayload = {
 };
 
 export type AINoteSceneActionRequest = {
+  origin?: { x: number; y: number };
   sceneName: string;
   selection: AINoteSelectionPayload;
 };
@@ -50,6 +51,20 @@ export type AIWorkflowRequest = {
   selection: AINoteSelectionPayload;
   maxAttempts: number;
   settings: AIProviderSettings;
+};
+
+export type AIAskRequest = {
+  sceneName: string;
+  currentCode: string;
+  contextKind: "note" | "code";
+  question: string;
+  selection: AINoteSelectionPayload;
+  settings: AIProviderSettings;
+};
+
+export type AIAskResult = {
+  answer: string;
+  source: string;
 };
 
 export type AIWorkflowSession = {

@@ -1,6 +1,5 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipNetwork,
     [switch]$SkipWailsBuild
 )
 
@@ -76,14 +75,6 @@ if ($graph.nodes.Count -ne 10 -or -not ($graph.nodes -contains "self_correct") -
     throw "Geometry graph is incomplete: $graphOutput"
 }
 Write-Host "Geometry graph nodes:" ($graph.nodes -join ", ")
-
-if (-not $SkipNetwork.IsPresent) {
-    Invoke-CheckedCommand -FilePath "runtime\Scripts\python.exe" -Arguments @(
-        "tools\crawl-olympiad-geometry.py",
-        "--years",
-        "2020"
-    )
-}
 
 Invoke-CheckedCommand -FilePath "npm" -Arguments @("run", "build") -WorkingDirectory (Join-Path $repoRoot "frontend")
 Invoke-CheckedCommand -FilePath $goExe -Arguments @("test", "./...")

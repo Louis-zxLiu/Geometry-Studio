@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"plotkitycat/internal/ai/ask"
 	"plotkitycat/internal/ai/generation"
 	"plotkitycat/internal/ai/optimize"
 	"plotkitycat/internal/ai/provider"
@@ -13,6 +14,7 @@ import (
 )
 
 type Service struct {
+	ask        *ask.Service
 	generation *generation.Service
 	optimize   *optimize.Service
 	repair     *repair.Service
@@ -25,6 +27,7 @@ func NewService(subscriptionService *subscription.Service) *Service {
 		provider.NewSubscriptionClient(subscriptionService),
 	)
 	return &Service{
+		ask:        ask.NewService(router),
 		generation: generation.NewService(router, prompts),
 		optimize:   optimize.NewService(router, prompts),
 		repair:     repair.NewService(router, prompts),
@@ -88,10 +91,47 @@ func (s *Service) Optimize(ctx context.Context, request OptimizeRequest) (Optimi
 	}, nil
 }
 
+func (s *Service) Ask(ctx context.Context, request AskRequest) (AskResult, error) {
+	result, err := s.ask.Ask(ctx, ask.Request{
+		SceneName:   request.SceneName,
+		CurrentCode: request.CurrentCode,
+		ContextKind: request.ContextKind,
+		Question:    request.Question,
+		Settings:    request.Settings.ToProviderSettings(),
+		Selection: ask.SelectionPayload{
+			Items: mapAskSelectionItems(request.Selection.Items),
+		},
+	})
+	if err != nil {
+		return AskResult{}, err
+	}
+
+	return AskResult{
+		Answer: result.Answer,
+		Source: result.Source,
+	}, nil
+}
+
 func mapGenerationSelectionItems(items []SelectionItem) []generation.SelectionItem {
 	mapped := make([]generation.SelectionItem, 0, len(items))
 	for _, item := range items {
 		mapped = append(mapped, generation.SelectionItem{
+			Kind:         item.Kind,
+			Text:         item.Text,
+			Name:         item.Name,
+			Alt:          item.Alt,
+			DataURL:      item.DataURL,
+			RelativePath: item.RelativePath,
+		})
+	}
+
+	return mapped
+}
+
+func mapAskSelectionItems(items []SelectionItem) []ask.SelectionItem {
+	mapped := make([]ask.SelectionItem, 0, len(items))
+	for _, item := range items {
+		mapped = append(mapped, ask.SelectionItem{
 			Kind:         item.Kind,
 			Text:         item.Text,
 			Name:         item.Name,

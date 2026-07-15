@@ -6,6 +6,10 @@ export function AddScriptNoteImages(arg1, arg2) {
   return window['go']['bridge']['App']['AddScriptNoteImages'](arg1, arg2);
 }
 
+export function AskAI(arg1) {
+  return window['go']['bridge']['App']['AskAI'](arg1);
+}
+
 export function BootstrapWorkspace() {
   return window['go']['bridge']['App']['BootstrapWorkspace']();
 }

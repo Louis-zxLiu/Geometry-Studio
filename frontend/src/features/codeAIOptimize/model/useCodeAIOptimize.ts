@@ -31,7 +31,7 @@ type UseCodeAIOptimizeOptions = {
 
 export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
   const isDialogOpen = ref(false);
-  const contextMenu = ref<{ x: number; y: number } | null>(null);
+  const contextMenu = ref<{ selectedText: string; x: number; y: number } | null>(null);
   const versions = ref<CodeAIVersion[]>([]);
   const activeVersionId = ref("");
 
@@ -39,14 +39,18 @@ export function useCodeAIOptimize(options: UseCodeAIOptimizeOptions) {
     () => versions.value.find((version) => version.id === activeVersionId.value) ?? null,
   );
 
-  function openContextMenu(position: { x: number; y: number }) {
+  function openContextMenu(position: { selectedText?: string; x: number; y: number }) {
     if (
       !options.currentFile.value
     ) {
       return;
     }
 
-    contextMenu.value = position;
+    contextMenu.value = {
+      x: position.x,
+      y: position.y,
+      selectedText: position.selectedText?.trim() ?? "",
+    };
   }
 
   function closeContextMenu(_context: CloseContext = {}) {

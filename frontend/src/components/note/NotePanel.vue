@@ -42,6 +42,7 @@ const emit = defineEmits<{
   "ai-geometry": [request: AINoteSceneActionRequest];
   "ai-generate": [request: AINoteSceneActionRequest];
   "ai-design": [request: AINoteSceneActionRequest];
+  "ai-ask": [request: AINoteSceneActionRequest];
   "delete-design-card": [cardId: string];
   "insert-design-card": [payload: { cardId: string; insertAt: number; source?: "editor" | "note" }];
   "move-image": [payload: {
@@ -66,6 +67,7 @@ const notebookScroll = ref<HTMLElement | null>(null);
 const markdownSurface = ref<HTMLElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const markdownInput = ref<HTMLTextAreaElement | null>(null);
+const notePreviewMode = ref<"rendered" | "source">("rendered");
 
 const { nextSelectionOrder } = useNoteSelectionOrder();
 const imagePreview = useNoteImagePreview();
@@ -95,9 +97,11 @@ const {
   buildSelectionPayload,
   closeContextMenu,
   contextMenu,
+  contextMenuCanJumpToSource,
   contextMenuHasSelection,
   contextMenuImages,
   contextMenuSupportsInsert,
+  getContextMenuSourceRange,
   handleContextMenu,
   handleTextSelectionChange,
 } = contextSelection;
@@ -118,6 +122,7 @@ const {
   cancelMarkdownInputResize,
   editableMarkdown,
   focusMarkdownInputAtEnd,
+  focusMarkdownInputAtRange,
   getCurrentInsertionIndex,
   handleMarkdownFocus,
   maybeStopEditingFromPointerDown,
@@ -180,12 +185,15 @@ const {
 
 const {
   runAIDesign,
+  runAIAsk,
   runAIGeneration,
   runAIGeometry,
 } = useNoteAIActions({
   buildSelectionPayload,
   closeContextMenu,
   currentFile: () => props.currentFile,
+  getOriginPosition: () => contextMenu.value,
+  onAsk: (request) => emit("ai-ask", request),
   onDesign: (request) => emit("ai-design", request),
   onGenerate: (request) => emit("ai-generate", request),
   onGeometry: (request) => emit("ai-geometry", request),
@@ -222,6 +230,21 @@ function openFilePicker() {
 function openContextImagePicker() {
   closeContextMenu();
   openFilePicker();
+}
+
+function setNotePreviewMode(mode: "rendered" | "source") {
+  notePreviewMode.value = mode;
+}
+
+function jumpContextSelectionToSource() {
+  const range = getContextMenuSourceRange();
+  closeContextMenu();
+  if (!range) {
+    return;
+  }
+
+  notePreviewMode.value = "source";
+  focusMarkdownInputAtRange(range.start, range.end);
 }
 
 function getDropInsertionPoint(event: DragEvent): NoteDropInsertionPoint {
@@ -302,6 +325,7 @@ useNotePanelEffects({
       :drop-insertion-point="dropInsertionPoint"
       :editable-markdown="editableMarkdown"
       :is-scene-switching="isSceneSwitching"
+      :preview-mode="notePreviewMode"
       :render-blocks="renderBlocks"
       :selected-image-paths="selectedImagePaths"
       :should-show-markdown-input="shouldShowMarkdownInput"
@@ -319,6 +343,7 @@ useNotePanelEffects({
       @select-text="handleTextSelectionChange"
       @surface-click="handleNotebookClick"
       @surface-context="handleContextMenu"
+      @toggle-preview-mode="setNotePreviewMode"
       @write-more="focusMarkdownInputAtEnd"
     />
 
@@ -326,16 +351,19 @@ useNotePanelEffects({
       <NoteFloatingOverlays
         :ai-busy="aiBusy"
         :context-menu="contextMenu"
+        :context-menu-can-jump-to-source="contextMenuCanJumpToSource"
         :context-menu-has-selection="contextMenuHasSelection"
         :context-menu-supports-insert="contextMenuSupportsInsert"
         :context-menu-images="contextMenuImages"
         :preview-image="previewImage"
         :preview-scale="previewScale"
+        @ask="runAIAsk"
         @close-preview="closePreview"
         @design="runAIDesign"
         @generate="runAIGeneration"
         @geometry="runAIGeometry"
         @insert-image="openContextImagePicker"
+        @jump-source="jumpContextSelectionToSource"
         @preview-context-image="previewContextImage"
         @remove-context-images="removeContextImages"
         @reset-preview="resetPreviewZoom"

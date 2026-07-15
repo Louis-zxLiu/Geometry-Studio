@@ -75,7 +75,7 @@ func extractCode(raw string) string {
 	trimmed := strings.TrimSpace(raw)
 	fenceStart := strings.Index(trimmed, "```")
 	if fenceStart < 0 {
-		return trimmed
+		return sanitizeMatplotlibTextSymbols(trimmed)
 	}
 
 	content := trimmed[fenceStart+3:]
@@ -87,8 +87,41 @@ func extractCode(raw string) string {
 
 	end := strings.Index(content, "```")
 	if end < 0 {
-		return strings.TrimSpace(content)
+		return sanitizeMatplotlibTextSymbols(strings.TrimSpace(content))
 	}
 
-	return strings.TrimSpace(content[:end])
+	return sanitizeMatplotlibTextSymbols(strings.TrimSpace(content[:end]))
+}
+
+func sanitizeMatplotlibTextSymbols(code string) string {
+	replacer := strings.NewReplacer(
+		`\u2713`, "正确",
+		`\U00002713`, "正确",
+		"✓", "正确",
+		`\u2714`, "通过",
+		`\U00002714`, "通过",
+		"✔", "通过",
+		`\u2705`, "通过",
+		`\U00002705`, "通过",
+		"✅", "通过",
+		`\u2717`, "错误",
+		`\U00002717`, "错误",
+		"✗", "错误",
+		`\u2718`, "错误",
+		`\U00002718`, "错误",
+		"✘", "错误",
+		`\u274c`, "错误",
+		`\U0000274C`, "错误",
+		`\U0000274c`, "错误",
+		"❌", "错误",
+		`\u2611`, "是",
+		`\U00002611`, "是",
+		"☑", "是",
+		`\u2612`, "否",
+		`\U00002612`, "否",
+		"☒", "否",
+		`\ufe0f`, "",
+		"\ufe0f", "",
+	)
+	return replacer.Replace(code)
 }

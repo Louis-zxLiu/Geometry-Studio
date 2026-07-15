@@ -1,5 +1,23 @@
-export namespace bridge {
-	
+﻿export namespace bridge {
+
+	export class AIProviderSettings {
+	    mode: string;
+	    url: string;
+	    key: string;
+	    model: string;
+
+	    static createFrom(source: any = {}) {
+	        return new AIProviderSettings(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.url = source["url"];
+	        this.key = source["key"];
+	        this.model = source["model"];
+	    }
+	}
 	export class AISelectionItem {
 	    kind: string;
 	    text: string;
@@ -7,11 +25,11 @@ export namespace bridge {
 	    alt: string;
 	    dataUrl: string;
 	    relativePath: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AISelectionItem(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.kind = source["kind"];
@@ -24,16 +42,16 @@ export namespace bridge {
 	}
 	export class AISelectionPayload {
 	    items: AISelectionItem[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AISelectionPayload(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.items = this.convertValues(source["items"], AISelectionItem);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -52,40 +70,76 @@ export namespace bridge {
 		    return a;
 		}
 	}
-	export class AIProviderSettings {
-	    mode: string;
-	    url: string;
-	    key: string;
-	    model: string;
-	
+	export class AIAskRequest {
+	    sceneName: string;
+	    currentCode: string;
+	    contextKind: string;
+	    question: string;
+	    selection: AISelectionPayload;
+	    settings: AIProviderSettings;
+
 	    static createFrom(source: any = {}) {
-	        return new AIProviderSettings(source);
+	        return new AIAskRequest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.mode = source["mode"];
-	        this.url = source["url"];
-	        this.key = source["key"];
-	        this.model = source["model"];
+	        this.sceneName = source["sceneName"];
+	        this.currentCode = source["currentCode"];
+	        this.contextKind = source["contextKind"];
+	        this.question = source["question"];
+	        this.selection = this.convertValues(source["selection"], AISelectionPayload);
+	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AIAskResult {
+	    answer: string;
+	    source: string;
+
+	    static createFrom(source: any = {}) {
+	        return new AIAskResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.answer = source["answer"];
+	        this.source = source["source"];
 	    }
 	}
 	export class AIDesignCardGenerationRequest {
 	    sceneName: string;
 	    settings: AIProviderSettings;
 	    selection: AISelectionPayload;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AIDesignCardGenerationRequest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.sceneName = source["sceneName"];
 	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
 	        this.selection = this.convertValues(source["selection"], AISelectionPayload);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -109,11 +163,11 @@ export namespace bridge {
 	    cardId: string;
 	    instruction: string;
 	    settings: AIProviderSettings;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AIDesignCardOptimizeRequest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.sceneName = source["sceneName"];
@@ -121,7 +175,7 @@ export namespace bridge {
 	        this.instruction = source["instruction"];
 	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -148,11 +202,11 @@ export namespace bridge {
 	    order: number;
 	    plan: string;
 	    svg: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DesignCard(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -167,17 +221,17 @@ export namespace bridge {
 	export class AIDesignCardResult {
 	    card: DesignCard;
 	    source: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AIDesignCardResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.card = this.convertValues(source["card"], DesignCard);
 	        this.source = source["source"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -196,9 +250,9 @@ export namespace bridge {
 		    return a;
 		}
 	}
-	
-	
-	
+
+
+
 	export class AIWorkflowRequest {
 	    kind: string;
 	    sceneName: string;
@@ -208,11 +262,11 @@ export namespace bridge {
 	    selection: AISelectionPayload;
 	    maxAttempts: number;
 	    settings: AIProviderSettings;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AIWorkflowRequest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.kind = source["kind"];
@@ -224,7 +278,7 @@ export namespace bridge {
 	        this.maxAttempts = source["maxAttempts"];
 	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -246,11 +300,11 @@ export namespace bridge {
 	export class AIWorkflowSession {
 	    sessionId: string;
 	    state: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AIWorkflowSession(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.sessionId = source["sessionId"];
@@ -263,11 +317,11 @@ export namespace bridge {
 	    note: string;
 	    code: string;
 	    createdAt: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CodeAIVersion(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -281,11 +335,11 @@ export namespace bridge {
 	    sceneName: string;
 	    note: string;
 	    code: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CreateCodeAIVersionRequest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.sceneName = source["sceneName"];
@@ -293,15 +347,15 @@ export namespace bridge {
 	        this.code = source["code"];
 	    }
 	}
-	
+
 	export class DesignCardPlacement {
 	    cardId: string;
 	    afterLine: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DesignCardPlacement(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.cardId = source["cardId"];
@@ -315,11 +369,11 @@ export namespace bridge {
 	    plan: string;
 	    svg: string;
 	    createdAt: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new DesignCardVersion(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -338,11 +392,11 @@ export namespace bridge {
 	    status: string;
 	    message: string;
 	    exists: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new EnvironmentCheckItem(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.key = source["key"];
@@ -367,11 +421,11 @@ export namespace bridge {
 	    canRebuild: boolean;
 	    runtimeArchivePath: string;
 	    runtimeArchiveExists: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new EnvironmentStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ready = source["ready"];
@@ -387,7 +441,7 @@ export namespace bridge {
 	        this.runtimeArchivePath = source["runtimeArchivePath"];
 	        this.runtimeArchiveExists = source["runtimeArchiveExists"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -411,11 +465,11 @@ export namespace bridge {
 	    text: string;
 	    x: number;
 	    y: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryAnnotation(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -431,11 +485,11 @@ export namespace bridge {
 	    through: string;
 	    label: string;
 	    style: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryCircle(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -451,11 +505,11 @@ export namespace bridge {
 	    args: string[];
 	    text: string;
 	    confidence: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryConstraint(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.type = source["type"];
@@ -474,11 +528,11 @@ export namespace bridge {
 	    step: number;
 	    target: string;
 	    binding: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryControl(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -497,11 +551,11 @@ export namespace bridge {
 	    type: string;
 	    label: string;
 	    attributes: Record<string, string>;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryEntity(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -516,11 +570,11 @@ export namespace bridge {
 	    kind: string;
 	    args: string[];
 	    value: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryMeasurement(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -536,11 +590,11 @@ export namespace bridge {
 	    x: number;
 	    y: number;
 	    fixed: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryPoint(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -555,11 +609,11 @@ export namespace bridge {
 	    points: string[];
 	    label: string;
 	    fill: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryPolygon(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -573,11 +627,11 @@ export namespace bridge {
 	    claim: string;
 	    reason: string;
 	    depends: string[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryProofStep(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -592,11 +646,11 @@ export namespace bridge {
 	    to: string;
 	    label: string;
 	    style: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometrySegment(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -619,11 +673,11 @@ export namespace bridge {
 	    constraints: GeometryConstraint[];
 	    annotations: GeometryAnnotation[];
 	    proofSteps: GeometryProofStep[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryScene(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.version = source["version"];
@@ -639,7 +693,7 @@ export namespace bridge {
 	        this.annotations = this.convertValues(source["annotations"], GeometryAnnotation);
 	        this.proofSteps = this.convertValues(source["proofSteps"], GeometryProofStep);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -661,17 +715,17 @@ export namespace bridge {
 	export class GeometrySceneDocument {
 	    scene: GeometryScene;
 	    sourceImageDataUrl: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometrySceneDocument(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.scene = this.convertValues(source["scene"], GeometryScene);
 	        this.sourceImageDataUrl = source["sourceImageDataUrl"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -690,7 +744,7 @@ export namespace bridge {
 		    return a;
 		}
 	}
-	
+
 	export class GeometrySpec {
 	    problemText: string;
 	    goalText: string;
@@ -698,11 +752,11 @@ export namespace bridge {
 	    constraints: GeometryConstraint[];
 	    constructionHints: string[];
 	    confidence: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometrySpec(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.problemText = source["problemText"];
@@ -712,7 +766,7 @@ export namespace bridge {
 	        this.constructionHints = source["constructionHints"];
 	        this.confidence = source["confidence"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -738,11 +792,11 @@ export namespace bridge {
 	    currentCode: string;
 	    settings: AIProviderSettings;
 	    maxAttempts: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryWorkflowRequest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.sceneName = source["sceneName"];
@@ -752,7 +806,7 @@ export namespace bridge {
 	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
 	        this.maxAttempts = source["maxAttempts"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -774,11 +828,11 @@ export namespace bridge {
 	export class GeometryWorkflowSession {
 	    sessionId: string;
 	    state: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new GeometryWorkflowSession(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.sessionId = source["sessionId"];
@@ -788,11 +842,11 @@ export namespace bridge {
 	export class WorkspaceInfo {
 	    name: string;
 	    sceneCount: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new WorkspaceInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -804,11 +858,11 @@ export namespace bridge {
 	    alt: string;
 	    dataUrl: string;
 	    relativePath: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new NoteImage(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -822,11 +876,11 @@ export namespace bridge {
 	    code: string;
 	    noteMarkdown: string;
 	    noteImages: NoteImage[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ScriptDocument(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.filename = source["filename"];
@@ -834,7 +888,7 @@ export namespace bridge {
 	        this.noteMarkdown = source["noteMarkdown"];
 	        this.noteImages = this.convertValues(source["noteImages"], NoteImage);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -859,11 +913,11 @@ export namespace bridge {
 	    document: ScriptDocument;
 	    workspaces: WorkspaceInfo[];
 	    currentWorkspace: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new WorkspaceSnapshot(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.scripts = source["scripts"];
@@ -872,7 +926,7 @@ export namespace bridge {
 	        this.workspaces = this.convertValues(source["workspaces"], WorkspaceInfo);
 	        this.currentWorkspace = source["currentWorkspace"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -894,17 +948,17 @@ export namespace bridge {
 	export class ImportSceneResult {
 	    cancelled: boolean;
 	    workspace: WorkspaceSnapshot;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ImportSceneResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.cancelled = source["cancelled"];
 	        this.workspace = this.convertValues(source["workspace"], WorkspaceSnapshot);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -927,18 +981,18 @@ export namespace bridge {
 	    cancelled: boolean;
 	    importedWorkspaces: string[];
 	    workspace: WorkspaceSnapshot;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ImportWorkspaceResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.cancelled = source["cancelled"];
 	        this.importedWorkspaces = source["importedWorkspaces"];
 	        this.workspace = this.convertValues(source["workspace"], WorkspaceSnapshot);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -960,17 +1014,17 @@ export namespace bridge {
 	export class InitSnapshot {
 	    environment: EnvironmentStatus;
 	    workspace: WorkspaceSnapshot;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new InitSnapshot(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.environment = this.convertValues(source["environment"], EnvironmentStatus);
 	        this.workspace = this.convertValues(source["workspace"], WorkspaceSnapshot);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -992,17 +1046,17 @@ export namespace bridge {
 	export class NoteDocument {
 	    markdown: string;
 	    images: NoteImage[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new NoteDocument(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.markdown = source["markdown"];
 	        this.images = this.convertValues(source["images"], NoteImage);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1021,16 +1075,16 @@ export namespace bridge {
 		    return a;
 		}
 	}
-	
+
 	export class NoteImageInput {
 	    name: string;
 	    alt: string;
 	    dataUrl: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new NoteImageInput(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -1041,11 +1095,11 @@ export namespace bridge {
 	export class PackageTransferResult {
 	    path: string;
 	    sceneName: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PackageTransferResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
@@ -1055,11 +1109,11 @@ export namespace bridge {
 	export class RunControlResult {
 	    handled: boolean;
 	    message: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RunControlResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.handled = source["handled"];
@@ -1073,11 +1127,11 @@ export namespace bridge {
 	    currentSceneName: string;
 	    poolSize: number;
 	    animation: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ScreeningSessionState(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.active = source["active"];
@@ -1093,11 +1147,11 @@ export namespace bridge {
 	    startIndex: number;
 	    poolSize: number;
 	    animation: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ScreeningStartRequest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.sceneNames = source["sceneNames"];
@@ -1109,28 +1163,28 @@ export namespace bridge {
 	export class ScreeningStopResult {
 	    handled: boolean;
 	    message: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ScreeningStopResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.handled = source["handled"];
 	        this.message = source["message"];
 	    }
 	}
-	
+
 	export class SubscriptionPurchaseResult {
 	    configured: boolean;
 	    url: string;
 	    deviceId: string;
 	    message: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SubscriptionPurchaseResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.configured = source["configured"];
@@ -1148,11 +1202,11 @@ export namespace bridge {
 	    message: string;
 	    model: string;
 	    baseUrl: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SubscriptionStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.status = source["status"];
@@ -1175,11 +1229,11 @@ export namespace bridge {
 	    updateAvailable: boolean;
 	    downloaded: boolean;
 	    readyToInstall: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new UpdateStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.currentVersion = source["currentVersion"];
@@ -1193,15 +1247,15 @@ export namespace bridge {
 	        this.readyToInstall = source["readyToInstall"];
 	    }
 	}
-	
+
 	export class WorkspacePackageTransferResult {
 	    path: string;
 	    workspaces: string[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new WorkspacePackageTransferResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];

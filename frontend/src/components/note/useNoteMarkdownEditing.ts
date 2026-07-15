@@ -57,6 +57,23 @@ export function useNoteMarkdownEditing(options: NoteMarkdownEditingOptions) {
     });
   }
 
+  function focusMarkdownInputAtRange(start: number, end: number) {
+    isEditingMarkdown.value = true;
+    options.onCloseContextMenu();
+    void nextTick(() => {
+      const textarea = options.markdownInput.value;
+      if (!textarea) {
+        return;
+      }
+
+      resizeMarkdownInput();
+      const selectionStart = clampIndex(start, textarea.value.length);
+      const selectionEnd = clampIndex(end, textarea.value.length);
+      textarea.focus();
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    });
+  }
+
   function handleMarkdownFocus() {
     isEditingMarkdown.value = true;
     scheduleMarkdownInputResize();
@@ -71,6 +88,12 @@ export function useNoteMarkdownEditing(options: NoteMarkdownEditingOptions) {
       return false;
     }
     if (target instanceof Element && target.closest(".notebook-design-card-block, .design-card-invalid-block")) {
+      return false;
+    }
+    if (target instanceof Element && target.closest(".notebook-note-source, .notebook-preview-mode-toggle")) {
+      return false;
+    }
+    if (target instanceof Element && target.closest(".notebook-markdown-rendered")) {
       return false;
     }
 
@@ -137,10 +160,19 @@ export function useNoteMarkdownEditing(options: NoteMarkdownEditingOptions) {
     }
   }
 
+  function clampIndex(value: number, max: number) {
+    if (!Number.isFinite(value)) {
+      return max;
+    }
+
+    return Math.min(max, Math.max(0, value));
+  }
+
   return {
     cancelMarkdownInputResize,
     editableMarkdown,
     focusMarkdownInputAtEnd,
+    focusMarkdownInputAtRange,
     getCurrentInsertionIndex,
     handleMarkdownFocus,
     isEditingMarkdown,

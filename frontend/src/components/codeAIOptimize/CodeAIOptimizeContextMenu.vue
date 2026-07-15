@@ -4,6 +4,7 @@ import type { CodeAIOptimizeCloseReason } from "../../features/codeAIOptimize/mo
 
 const props = defineProps<{
   position: { x: number; y: number };
+  canAsk?: boolean;
   disabled?: boolean;
 }>();
 
@@ -14,6 +15,7 @@ const emit = defineEmits<{
     reason: CodeAIOptimizeCloseReason;
     target?: string;
   }];
+  ask: [];
   optimize: [];
 }>();
 
@@ -53,6 +55,10 @@ function optimize() {
   emit("optimize");
 }
 
+function ask() {
+  emit("ask");
+}
+
 onMounted(() => {
   window.addEventListener("pointerdown", closeFromOutsidePointer);
   window.addEventListener("keydown", closeFromKeyboard);
@@ -82,6 +88,19 @@ function describeEventTarget(target: EventTarget | null) {
       @pointerdown.stop
       @mousedown.stop
     >
+      <button
+        class="code-ai-context-action"
+        type="button"
+        :disabled="disabled || !canAsk"
+        @click="ask"
+      >
+        <svg class="code-ai-context-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 5.5h14v9H9l-4 4v-13Z" />
+          <path d="M9 9h6" />
+          <path d="M9 12h4" />
+        </svg>
+        <span>提问</span>
+      </button>
       <button
         class="code-ai-context-action"
         type="button"

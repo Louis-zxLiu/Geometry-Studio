@@ -8,6 +8,7 @@ import {
   getAISettings,
   saveAISettings,
 } from "../../ai/services/aiSettingsBridgeCompat";
+import { askAI } from "../../aiAsk/services/aiAskBridgeCompat";
 import type {
   AppUpdateStatus,
   AIProviderSettings,
@@ -48,12 +49,40 @@ import {
   type UpdateStatusLike,
 } from "../../updates/services/updateBridgeCompat";
 
+type AIAskContextKind = "note" | "code";
+
+type AIAskPinnedContext = {
+  answer: string;
+  contextKind: AIAskContextKind;
+  contextLabel: string;
+  id: string;
+  position: { x: number; y: number };
+  question: string;
+  sceneName: string;
+  selection: AINoteSelectionPayload;
+};
+
 export function usePlotWorkspace() {
   const layoutStorage = createWorkspaceLayoutStorage();
   const isRunning = ref(false);
   const repairAnimatedLineRanges = ref<ChangedLineRange[]>([]);
   const repairAnimationKey = ref(0);
   const isAISettingsDialogOpen = ref(false);
+  const isAIAskDialogOpen = ref(false);
+  const isAIAskPending = ref(false);
+  const aiAskAnswer = ref("");
+  const aiAskContextLabel = ref("");
+  const aiAskDialogPosition = ref<{ x: number; y: number } | null>(null);
+  const aiAskPins = ref<AIAskPinnedContext[]>([]);
+  const aiAskQuestion = ref("");
+  const activeAIAskPinId = ref("");
+  const pendingAIAskContext = ref<{
+    contextKind: AIAskContextKind;
+    contextLabel: string;
+    origin?: { x: number; y: number };
+    sceneName: string;
+    selection: AINoteSelectionPayload;
+  } | null>(null);
   const aiSettings = ref<AIProviderSettings>(createDefaultAISettings());
   const subscriptionStatus = ref<AISubscriptionStatus>({
     status: "unconfigured",
@@ -267,6 +296,205 @@ export function usePlotWorkspace() {
       return;
     }
     isGeometryProblemDialogOpen.value = true;
+  }
+
+  function openAIAskFromNoteSelection(request: AINoteSceneActionRequest) {
+    const sceneName = request.sceneName.trim();
+    if (!sceneName || !request.selection.items.length || isRunning.value || aiActivity.isAIGenerating.value) {
+      return;
+    }
+
+    openAIAskDialog({
+      sceneName,
+      contextKind: "note",
+      contextLabel: "笔记区选中内容",
+      origin: request.origin,
+      selection: request.selection,
+    });
+  }
+
+  function openAIAskFromCodeContext() {
+    const menu = plotAIWorkflow.codeAIOptimize.contextMenu.value;
+    plotAIWorkflow.codeAIOptimize.closeContextMenu();
+    const selectedText = menu?.selectedText.trim() ?? "";
+    const sceneName = scriptWorkspace.currentFile.value.trim();
+    if (!sceneName || !selectedText || isRunning.value || aiActivity.isAIGenerating.value) {
+      return;
+    }
+
+    openAIAskDialog({
+      sceneName,
+      contextKind: "code",
+      contextLabel: "代码区选中内容",
+      origin: { x: menu?.x ?? window.innerWidth - 360, y: menu?.y ?? 80 },
+      selection: {
+        items: [
+          {
+            kind: "text",
+            text: selectedText,
+          },
+        ],
+      },
+    });
+  }
+
+  function openAIAskDialog(context: {
+    contextKind: AIAskContextKind;
+    contextLabel: string;
+    origin?: { x: number; y: number };
+    sceneName: string;
+    selection: AINoteSelectionPayload;
+  }) {
+    activeAIAskPinId.value = "";
+    pendingAIAskContext.value = context;
+    aiAskAnswer.value = "";
+    aiAskQuestion.value = "";
+    aiAskContextLabel.value = `${context.contextLabel} · ${formatSelectionSummary(context.selection)}`;
+    aiAskDialogPosition.value = getAIAskDialogPosition(context.origin);
+    isAIAskDialogOpen.value = true;
+  }
+
+  function reopenAIAskPin(id: string) {
+    const pin = aiAskPins.value.find((item) => item.id === id);
+    if (!pin || isRunning.value || aiActivity.isAIGenerating.value) {
+      return;
+    }
+
+    activeAIAskPinId.value = pin.id;
+    pendingAIAskContext.value = {
+      contextKind: pin.contextKind,
+      contextLabel: pin.contextLabel,
+      origin: pin.position,
+      sceneName: pin.sceneName,
+      selection: pin.selection,
+    };
+    aiAskAnswer.value = pin.answer;
+    aiAskQuestion.value = pin.question;
+    aiAskContextLabel.value = `${pin.contextLabel} · ${formatSelectionSummary(pin.selection)}`;
+    aiAskDialogPosition.value = getAIAskDialogPosition(pin.position);
+    isAIAskDialogOpen.value = true;
+  }
+
+  function removeAIAskPin(id: string) {
+    aiAskPins.value = aiAskPins.value.filter((pin) => pin.id !== id);
+    if (activeAIAskPinId.value === id) {
+      activeAIAskPinId.value = "";
+      if (isAIAskDialogOpen.value) {
+        isAIAskDialogOpen.value = false;
+        aiAskAnswer.value = "";
+        aiAskContextLabel.value = "";
+        aiAskDialogPosition.value = null;
+        aiAskQuestion.value = "";
+        pendingAIAskContext.value = null;
+      }
+    }
+  }
+
+  function closeAIAskDialog() {
+    if (isAIAskPending.value) {
+      return;
+    }
+
+    persistCurrentAIAskPin();
+    isAIAskDialogOpen.value = false;
+    aiAskAnswer.value = "";
+    aiAskContextLabel.value = "";
+    aiAskDialogPosition.value = null;
+    aiAskQuestion.value = "";
+    activeAIAskPinId.value = "";
+    pendingAIAskContext.value = null;
+  }
+
+  async function submitAIAsk(question: string) {
+    const context = pendingAIAskContext.value;
+    const trimmedQuestion = question.trim();
+    if (!context || !trimmedQuestion || isAIAskPending.value || isRunning.value || aiActivity.isAIGenerating.value) {
+      return;
+    }
+
+    aiAskQuestion.value = trimmedQuestion;
+    isAIAskPending.value = true;
+    aiActivity.startWorking();
+    try {
+      const currentCode = await plotAIWorkflowLoadSceneCode(context.sceneName);
+      const result = await askAI({
+        sceneName: context.sceneName,
+        currentCode,
+        contextKind: context.contextKind,
+        question: trimmedQuestion,
+        selection: context.selection,
+        settings: aiSettings.value,
+      });
+      aiAskAnswer.value = result.answer || "AI 没有返回内容。";
+    } catch (error) {
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    } finally {
+      isAIAskPending.value = false;
+      aiActivity.stop();
+    }
+  }
+
+  function persistCurrentAIAskPin() {
+    const context = pendingAIAskContext.value;
+    if (!context) {
+      return;
+    }
+
+    const id = activeAIAskPinId.value || createAIAskPinId();
+    const nextPin: AIAskPinnedContext = {
+      id,
+      answer: aiAskAnswer.value,
+      contextKind: context.contextKind,
+      contextLabel: context.contextLabel,
+      position: getAIAskPinPosition(context.origin ?? aiAskDialogPosition.value),
+      question: aiAskQuestion.value,
+      sceneName: context.sceneName,
+      selection: context.selection,
+    };
+    const existingIndex = aiAskPins.value.findIndex((pin) => pin.id === id);
+    if (existingIndex >= 0) {
+      aiAskPins.value = aiAskPins.value.map((pin) => (pin.id === id ? nextPin : pin));
+    } else {
+      aiAskPins.value = [...aiAskPins.value, nextPin];
+    }
+    activeAIAskPinId.value = id;
+  }
+
+  function createAIAskPinId() {
+    return `ask-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function getAIAskDialogPosition(origin?: { x: number; y: number } | null) {
+    if (origin) {
+      return clampViewportPosition({
+        x: origin.x + 28,
+        y: origin.y + 8,
+      }, 760, 360);
+    }
+
+    return null;
+  }
+
+  function getAIAskPinPosition(origin?: { x: number; y: number } | null) {
+    const fallback = {
+      x: window.innerWidth - 86,
+      y: 96,
+    };
+    return clampViewportPosition(origin ?? fallback, 36, 36);
+  }
+
+  function clampViewportPosition(
+    position: { x: number; y: number },
+    width: number,
+    height: number,
+  ) {
+    const margin = 12;
+    const maxX = Math.max(margin, window.innerWidth - width - margin);
+    const maxY = Math.max(margin, window.innerHeight - height - margin);
+    return {
+      x: Math.min(maxX, Math.max(margin, position.x)),
+      y: Math.min(maxY, Math.max(margin, position.y)),
+    };
   }
 
   function closeGeometryProblemDialog() {
@@ -603,12 +831,17 @@ export function usePlotWorkspace() {
   return {
     aiSettings,
     aiStatusLabel: aiActivity.aiStatusLabel,
+    aiAskAnswer,
+    aiAskContextLabel,
+    aiAskDialogPosition,
+    aiAskPins,
     codeContent: scriptWorkspace.codeContent,
     designCards: designCardWorkspace.cards,
     designCardPlacements: designCardWorkspace.placements,
     designCardReviewCard: designCardWorkspace.activeCard,
     designCardReviewSaveState: designCardWorkspace.saveState,
     closeAISettings,
+    closeAIAskDialog,
     currentNoteDocument: noteWorkspace.currentDocument,
     closePackageTransferDialog: packageTransfer.closePackageTransferDialog,
     closeCreateDialog: scriptWorkspace.closeCreateDialog,
@@ -654,6 +887,8 @@ export function usePlotWorkspace() {
     initProgressMessage: runtime.initProgressMessage,
     initProgressPercent: runtime.initProgressPercent,
     isAIGenerating: aiActivity.isAIGenerating,
+    isAIAskDialogOpen,
+    isAIAskPending,
     isAISettingsDialogOpen,
     isCodeAIOptimizeDialogOpen: plotAIWorkflow.codeAIOptimize.isDialogOpen,
     isDesignCardOptimizeDialogOpen: designCardWorkspace.isOptimizeDialogOpen,
@@ -694,6 +929,8 @@ export function usePlotWorkspace() {
     handleUpdateAction,
     openCreateDialog: scriptWorkspace.openCreateDialog,
     openAISettings,
+    openAIAskFromCodeContext,
+    openAIAskFromNoteSelection,
     openCodeAIOptimizeContextMenu: plotAIWorkflow.codeAIOptimize.openContextMenu,
     openCodeAIOptimizeDialog: plotAIWorkflow.codeAIOptimize.openDialog,
     openGeometryProblemDialog,
@@ -709,6 +946,8 @@ export function usePlotWorkspace() {
     reorderScripts: scriptWorkspace.reorderScripts,
     renameScript,
     renameWorkspace,
+    reopenAIAskPin,
+    removeAIAskPin,
     moveNoteImage: noteWorkspace.moveImage,
     removeNoteImage: noteWorkspace.removeImage,
     insertDesignCardReferenceIntoNote,
@@ -744,6 +983,7 @@ export function usePlotWorkspace() {
     typingScriptName: scriptWorkspace.typingScriptName,
     updateCode: scriptWorkspace.updateCode,
     updateAISettings,
+    submitAIAsk,
     submitCodeAIOptimize: plotAIWorkflow.codeAIOptimize.submitOptimization,
     submitDesignCardOptimize: designCardWorkspace.submitOptimization,
     closeDesignCardOptimizeDialog: designCardWorkspace.closeOptimizeDialog,
@@ -776,6 +1016,21 @@ function collectGeometryText(selection: AINoteSelectionPayload) {
     .map((item) => item.text.trim())
     .filter(Boolean)
     .join("\n\n");
+}
+
+function formatSelectionSummary(selection: AINoteSelectionPayload) {
+  const textLength = selection.items
+    .reduce((total, item) => item.kind === "text" ? total + item.text.trim().length : total, 0);
+  const imageCount = selection.items.filter((item) => item.kind === "image").length;
+  const parts: string[] = [];
+  if (textLength > 0) {
+    parts.push(`${textLength} 字`);
+  }
+  if (imageCount > 0) {
+    parts.push(`${imageCount} 张图片`);
+  }
+
+  return parts.join("，") || "已选中内容";
 }
 
 function firstGeometryImage(selection: AINoteSelectionPayload) {
