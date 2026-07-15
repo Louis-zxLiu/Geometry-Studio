@@ -17,6 +17,11 @@ import type {
   AISubscriptionStatus,
   ChangedLineRange,
 } from "../../ai/services/aiTypes";
+import type {
+  GeometryFailedEvent,
+  GeometryWorkflowResult,
+  GeometryWorkflowSucceededEvent,
+} from "../../geometry/services/geometryTypes";
 import { useRunErrorDialog } from "../../errors/model/useRunErrorDialog";
 import { useDesignCardWorkspace } from "../../designCard/model/useDesignCardWorkspace";
 import { extractDesignCardReferenceIDs } from "../../designCard/services/designCardMarkdownCodec";
@@ -552,26 +557,67 @@ export function usePlotWorkspace() {
           settings: aiSettings.value,
           maxAttempts: 5,
         },
+        createGeometryWorkflowOptions(),
+      );
+    } catch (error) {
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    }
+  }
+
+  function createGeometryWorkflowOptions() {
+    return {
+      onCodeApplied: (event: { sceneName: string; code: string }) => {
+        if (event.sceneName === scriptWorkspace.currentFile.value) {
+          scriptWorkspace.updateCode(event.code);
+        }
+      },
+      onSucceeded: (event: GeometryWorkflowSucceededEvent) => {
+        runErrorDialog.clearRunError();
+        void refreshGeometryResult(event.sceneName, event.result.noteMarkdown, event.result.code);
+      },
+      onFailed: (event: GeometryFailedEvent) => {
+        const repairable = !!event.repairable && !!event.result?.code;
+        runErrorDialog.openRunErrorDialog(
+          formatGeometryFailure(event.errorText, event.diagnostics),
+          {
+            repairable,
+            repairSceneName: event.sceneName,
+            repairText: event.errorText,
+          },
+        );
+      },
+      onInterrupted: (event: { message: string }) => {
+        runErrorDialog.openRunErrorDialog(event.message);
+      },
+    };
+  }
+
+  async function repairGeometryFailure() {
+    const failure = geometryWorkflowSession.lastFailure.value;
+    if (!failure?.repairable) {
+      await plotAIWorkflow.aiRepair.repairCurrentRunError();
+      return;
+    }
+
+    const sceneName = failure.sceneName || scriptWorkspace.currentFile.value;
+    if (!sceneName) {
+      return;
+    }
+
+    try {
+      const currentCode = failure.result?.code || await plotAIWorkflowLoadSceneCode(sceneName);
+      runErrorDialog.closeRunErrorDialog();
+      await geometryWorkflowSession.repairWorkflow(
         {
-          onCodeApplied: (event) => {
-            if (event.sceneName === scriptWorkspace.currentFile.value) {
-              scriptWorkspace.updateCode(event.code);
-            }
-          },
-          onSucceeded: (event) => {
-            runErrorDialog.clearRunError();
-            void refreshGeometryResult(event.sceneName, event.result.noteMarkdown, event.result.code);
-          },
-          onFailed: (event) => {
-            runErrorDialog.openRunErrorDialog(
-              formatGeometryFailure(event.errorText, event.diagnostics),
-              { repairable: false },
-            );
-          },
-          onInterrupted: (event) => {
-            runErrorDialog.openRunErrorDialog(event.message);
-          },
+          sceneName,
+          currentCode,
+          errorText: failure.errorText,
+          diagnostics: failure.diagnostics ?? [],
+          result: normalizeGeometryRepairResult(failure.result, currentCode),
+          settings: aiSettings.value,
+          maxAttempts: 3,
         },
+        createGeometryWorkflowOptions(),
       );
     } catch (error) {
       runErrorDialog.openRunErrorDialog(getErrorMessage(error));
@@ -830,7 +876,7 @@ export function usePlotWorkspace() {
 
   return {
     aiSettings,
-    aiStatusLabel: aiActivity.aiStatusLabel,
+    aiStatusLabel: computed(() => geometryWorkflowSession.agentStatusLabel.value || aiActivity.aiStatusLabel.value),
     aiAskAnswer,
     aiAskContextLabel,
     aiAskDialogPosition,
@@ -880,6 +926,11 @@ export function usePlotWorkspace() {
     generateCodeFromNoteSelection: plotAIWorkflow.aiGeneration.generateCodeFromNoteSelection,
     generateDesignFromNoteSelection: designCardWorkspace.generateFromNoteSelection,
     generateGeometryFromNoteSelection,
+    geometryAgentLogs: geometryWorkflowSession.agentLogs,
+    geometryAgentStatusLabel: geometryWorkflowSession.agentStatusLabel,
+    geometryAgentTimeline: geometryWorkflowSession.agentTimeline,
+    geometryCanRepairLastFailure: geometryWorkflowSession.canRepairLastFailure,
+    geometryHasAgentTimeline: geometryWorkflowSession.hasAgentTimeline,
     geometryProgressLabel: geometryWorkflowSession.progressLabel,
     geometryReviewSpec: geometryWorkflowSession.reviewSpec,
     goToNextScreeningPage: screeningWorkspace.goToNextScreeningPage,
@@ -957,7 +1008,14 @@ export function usePlotWorkspace() {
     rebuildRuntime: lifecycle.rebuildRuntime,
     repairAnimationKey,
     repairAnimatedLineRanges,
-    repairCurrentRunError: plotAIWorkflow.aiRepair.repairCurrentRunError,
+    repairCurrentRunError: async () => {
+      if (geometryWorkflowSession.canRepairLastFailure.value) {
+        await repairGeometryFailure();
+        return;
+      }
+      await plotAIWorkflow.aiRepair.repairCurrentRunError();
+    },
+    repairGeometryFailure,
     runCurrentScript: scriptWorkspace.runCurrentScript,
     runErrorText: runErrorDialog.runErrorText,
     screeningDialogItems: screeningWorkspace.screeningDialogItems,
@@ -1041,6 +1099,40 @@ function formatGeometryFailure(errorText: string, diagnostics: string[]) {
   const readableError = formatLLMServiceError(errorText);
   const detail = diagnostics.filter(Boolean).join("\n");
   return detail ? `${readableError}\n\n${detail}` : readableError;
+}
+
+function normalizeGeometryRepairResult(
+  result: GeometryWorkflowResult | undefined,
+  currentCode: string,
+): GeometryWorkflowResult {
+  return {
+    code: result?.code || currentCode,
+    noteMarkdown: result?.noteMarkdown ?? "",
+    proofMarkdown: result?.proofMarkdown ?? "",
+    spec: result?.spec ?? {
+      problemText: "",
+      goalText: "",
+      entities: [],
+      constraints: [],
+      constructionHints: [],
+      confidence: 0,
+    },
+    scene: result?.scene ?? {
+      version: 1,
+      title: "",
+      sourceImage: "",
+      points: [],
+      segments: [],
+      circles: [],
+      polygons: [],
+      controls: [],
+      measurements: [],
+      constraints: [],
+      annotations: [],
+      proofSteps: [],
+    },
+    diagnostics: result?.diagnostics ?? [],
+  };
 }
 
 function formatLLMServiceError(errorText: string) {

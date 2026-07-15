@@ -1,14 +1,22 @@
 import type {
   GeometrySpec,
+  GeometryWorkflowRepairRequest,
   GeometryWorkflowRequest,
   GeometryWorkflowSession,
 } from "./geometryTypes";
 
 type BridgeAppCompat = {
+  RepairGeometryWorkflow?: (request: GeometryWorkflowRepairRequest) => Promise<GeometryWorkflowSession>;
   ResumeGeometryWorkflow?: (sessionId: string, reviewedSpec: GeometrySpec) => Promise<void>;
   StartGeometryWorkflow?: (request: GeometryWorkflowRequest) => Promise<GeometryWorkflowSession>;
   StopGeometryWorkflow?: (sessionId: string) => Promise<void>;
 };
+
+export async function repairGeometryWorkflow(
+  request: GeometryWorkflowRepairRequest,
+): Promise<GeometryWorkflowSession> {
+  return callBridge("RepairGeometryWorkflow", (app) => app.RepairGeometryWorkflow?.(request));
+}
 
 export async function startGeometryWorkflow(
   request: GeometryWorkflowRequest,

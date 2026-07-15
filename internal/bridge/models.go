@@ -195,6 +195,16 @@ type GeometryWorkflowRequest struct {
 	MaxAttempts  int                `json:"maxAttempts"`
 }
 
+type GeometryWorkflowRepairRequest struct {
+	SceneName   string                 `json:"sceneName"`
+	CurrentCode string                 `json:"currentCode"`
+	ErrorText   string                 `json:"errorText"`
+	Diagnostics []string               `json:"diagnostics"`
+	Result      GeometryWorkflowResult `json:"result"`
+	Settings    AIProviderSettings     `json:"settings"`
+	MaxAttempts int                    `json:"maxAttempts"`
+}
+
 type GeometryWorkflowSession struct {
 	SessionID string `json:"sessionId"`
 	State     string `json:"state"`
@@ -319,11 +329,20 @@ type GeometryWorkflowResult struct {
 }
 
 type GeometryWorkflowProgressEvent struct {
-	SessionID string `json:"sessionId"`
-	SceneName string `json:"sceneName"`
-	Stage     string `json:"stage"`
-	Message   string `json:"message"`
-	Attempt   int    `json:"attempt"`
+	SessionID       string         `json:"sessionId"`
+	SceneName       string         `json:"sceneName"`
+	Stage           string         `json:"stage"`
+	AgentName       string         `json:"agentName"`
+	Title           string         `json:"title"`
+	Description     string         `json:"description"`
+	Message         string         `json:"message"`
+	Status          string         `json:"status"`
+	EventKind       string         `json:"eventKind"`
+	Attempt         int            `json:"attempt"`
+	ArtifactTitle   string         `json:"artifactTitle"`
+	ArtifactSummary string         `json:"artifactSummary"`
+	ArtifactDetail  string         `json:"artifactDetail"`
+	ArtifactData    map[string]any `json:"artifactData"`
 }
 
 type GeometryWorkflowReviewRequiredEvent struct {
@@ -352,10 +371,12 @@ type GeometryWorkflowSucceededEvent struct {
 }
 
 type GeometryWorkflowFailedEvent struct {
-	SessionID   string   `json:"sessionId"`
-	SceneName   string   `json:"sceneName"`
-	ErrorText   string   `json:"errorText"`
-	Diagnostics []string `json:"diagnostics"`
+	SessionID   string                 `json:"sessionId"`
+	SceneName   string                 `json:"sceneName"`
+	ErrorText   string                 `json:"errorText"`
+	Diagnostics []string               `json:"diagnostics"`
+	Repairable  bool                   `json:"repairable"`
+	Result      GeometryWorkflowResult `json:"result"`
 }
 
 type GeometryWorkflowInterruptedEvent struct {

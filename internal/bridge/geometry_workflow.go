@@ -56,12 +56,18 @@ type geometryAgentSettings struct {
 }
 
 type geometryAgentRequest struct {
-	SceneName    string                `json:"sceneName"`
-	ImageDataURL string                `json:"imageDataUrl"`
-	ProblemText  string                `json:"problemText"`
-	CurrentCode  string                `json:"currentCode"`
-	MaxAttempts  int                   `json:"maxAttempts"`
-	Settings     geometryAgentSettings `json:"settings"`
+	SceneName     string                `json:"sceneName"`
+	ImageDataURL  string                `json:"imageDataUrl"`
+	ProblemText   string                `json:"problemText"`
+	CurrentCode   string                `json:"currentCode"`
+	MaxAttempts   int                   `json:"maxAttempts"`
+	Settings      geometryAgentSettings `json:"settings"`
+	ErrorText     string                `json:"errorText"`
+	Diagnostics   []string              `json:"diagnostics"`
+	Spec          GeometrySpec          `json:"spec"`
+	Scene         GeometryScene         `json:"scene"`
+	NoteMarkdown  string                `json:"noteMarkdown"`
+	ProofMarkdown string                `json:"proofMarkdown"`
 }
 
 type geometryAgentCommand struct {
@@ -73,20 +79,30 @@ type geometryAgentCommand struct {
 }
 
 type geometryAgentEvent struct {
-	Type          string                 `json:"type"`
-	SessionID     string                 `json:"sessionId"`
-	SceneName     string                 `json:"sceneName"`
-	Stage         string                 `json:"stage"`
-	Message       string                 `json:"message"`
-	Attempt       int                    `json:"attempt"`
-	Spec          GeometrySpec           `json:"spec"`
-	Scene         GeometryScene          `json:"scene"`
-	Code          string                 `json:"code"`
-	NoteMarkdown  string                 `json:"noteMarkdown"`
-	ProofMarkdown string                 `json:"proofMarkdown"`
-	Result        GeometryWorkflowResult `json:"result"`
-	ErrorText     string                 `json:"errorText"`
-	Diagnostics   []string               `json:"diagnostics"`
+	Type            string                 `json:"type"`
+	SessionID       string                 `json:"sessionId"`
+	SceneName       string                 `json:"sceneName"`
+	Stage           string                 `json:"stage"`
+	AgentName       string                 `json:"agentName"`
+	Title           string                 `json:"title"`
+	Description     string                 `json:"description"`
+	Message         string                 `json:"message"`
+	Status          string                 `json:"status"`
+	EventKind       string                 `json:"eventKind"`
+	Attempt         int                    `json:"attempt"`
+	ArtifactTitle   string                 `json:"artifactTitle"`
+	ArtifactSummary string                 `json:"artifactSummary"`
+	ArtifactDetail  string                 `json:"artifactDetail"`
+	ArtifactData    map[string]any         `json:"artifactData"`
+	Spec            GeometrySpec           `json:"spec"`
+	Scene           GeometryScene          `json:"scene"`
+	Code            string                 `json:"code"`
+	NoteMarkdown    string                 `json:"noteMarkdown"`
+	ProofMarkdown   string                 `json:"proofMarkdown"`
+	Result          GeometryWorkflowResult `json:"result"`
+	ErrorText       string                 `json:"errorText"`
+	Diagnostics     []string               `json:"diagnostics"`
+	Repairable      bool                   `json:"repairable"`
 }
 
 type geometryProbeResult struct {
@@ -137,6 +153,58 @@ func (s *geometryWorkflowService) Start(ctx context.Context, request GeometryWor
 	s.mu.Unlock()
 
 	if err := s.startAgentProcess(runCtx, entry, settings); err != nil {
+		s.clearActive(session.SessionID)
+		cancel()
+		return GeometryWorkflowSession{}, err
+	}
+
+	return session, nil
+}
+
+func (s *geometryWorkflowService) Repair(ctx context.Context, request GeometryWorkflowRepairRequest) (GeometryWorkflowSession, error) {
+	if strings.TrimSpace(request.SceneName) == "" {
+		return GeometryWorkflowSession{}, errors.New("sceneName is required")
+	}
+	if strings.TrimSpace(request.CurrentCode) == "" && strings.TrimSpace(request.Result.Code) == "" {
+		return GeometryWorkflowSession{}, errors.New("geometry repair needs current code")
+	}
+	if request.MaxAttempts <= 0 {
+		request.MaxAttempts = 3
+	}
+
+	settings, err := s.resolveSettings(ctx, request.Settings)
+	if err != nil {
+		return GeometryWorkflowSession{}, err
+	}
+
+	session := GeometryWorkflowSession{
+		SessionID: fmt.Sprintf("geom-%d", atomic.AddUint64(&s.counter, 1)),
+		State:     "repairing",
+	}
+
+	entryRequest := GeometryWorkflowRequest{
+		SceneName:   request.SceneName,
+		CurrentCode: firstNonEmpty(request.CurrentCode, request.Result.Code),
+		Settings:    request.Settings,
+		MaxAttempts: request.MaxAttempts,
+	}
+	runCtx, cancel := context.WithCancel(context.Background())
+	entry := &geometryWorkflowEntry{
+		cancel:  cancel,
+		request: entryRequest,
+		session: session,
+	}
+
+	s.mu.Lock()
+	if s.active != nil {
+		s.mu.Unlock()
+		cancel()
+		return GeometryWorkflowSession{}, errors.New("a geometry workflow is already running")
+	}
+	s.active = entry
+	s.mu.Unlock()
+
+	if err := s.startRepairAgentProcess(runCtx, entry, request, settings); err != nil {
 		s.clearActive(session.SessionID)
 		cancel()
 		return GeometryWorkflowSession{}, err
@@ -247,6 +315,33 @@ func validateGeometryAgentSettings(settings geometryAgentSettings) (geometryAgen
 }
 
 func (s *geometryWorkflowService) startAgentProcess(ctx context.Context, entry *geometryWorkflowEntry, settings geometryAgentSettings) error {
+	return s.startAgentProcessWithRequest(ctx, entry, "start", &geometryAgentRequest{
+		SceneName:    entry.request.SceneName,
+		ImageDataURL: entry.request.ImageDataURL,
+		ProblemText:  entry.request.ProblemText,
+		CurrentCode:  entry.request.CurrentCode,
+		MaxAttempts:  entry.request.MaxAttempts,
+		Settings:     settings,
+	})
+}
+
+func (s *geometryWorkflowService) startRepairAgentProcess(ctx context.Context, entry *geometryWorkflowEntry, request GeometryWorkflowRepairRequest, settings geometryAgentSettings) error {
+	result := s.hydrateGeometryRepairResult(request.SceneName, firstNonEmpty(request.CurrentCode, request.Result.Code), request.Result)
+	return s.startAgentProcessWithRequest(ctx, entry, "repair", &geometryAgentRequest{
+		SceneName:     request.SceneName,
+		CurrentCode:   firstNonEmpty(request.CurrentCode, result.Code),
+		MaxAttempts:   request.MaxAttempts,
+		Settings:      settings,
+		ErrorText:     request.ErrorText,
+		Diagnostics:   request.Diagnostics,
+		Spec:          normalizeGeometrySpec(result.Spec),
+		Scene:         normalizeGeometryScene(result.Scene),
+		NoteMarkdown:  result.NoteMarkdown,
+		ProofMarkdown: result.ProofMarkdown,
+	})
+}
+
+func (s *geometryWorkflowService) startAgentProcessWithRequest(ctx context.Context, entry *geometryWorkflowEntry, commandType string, request *geometryAgentRequest) error {
 	python, args, err := runner.ResolvePythonCommand()
 	if err != nil {
 		return err
@@ -289,16 +384,9 @@ func (s *geometryWorkflowService) startAgentProcess(ctx context.Context, entry *
 	go s.readAgentEvents(ctx, entry, stdout, &stderr, agentPath)
 
 	return entry.write(geometryAgentCommand{
-		Type:      "start",
+		Type:      commandType,
 		SessionID: entry.session.SessionID,
-		Request: &geometryAgentRequest{
-			SceneName:    entry.request.SceneName,
-			ImageDataURL: entry.request.ImageDataURL,
-			ProblemText:  entry.request.ProblemText,
-			CurrentCode:  entry.request.CurrentCode,
-			MaxAttempts:  entry.request.MaxAttempts,
-			Settings:     settings,
-		},
+		Request:   request,
 	})
 }
 
@@ -340,6 +428,8 @@ func (s *geometryWorkflowService) readAgentEvents(ctx context.Context, entry *ge
 				SceneName: entry.request.SceneName,
 				Stage:     "agent_output",
 				Message:   line,
+				Status:    "running",
+				EventKind: "log",
 			})
 			continue
 		}
@@ -370,18 +460,27 @@ func (s *geometryWorkflowService) readAgentEvents(ctx context.Context, entry *ge
 	if message == "" {
 		message = "Geometry agent exited before completing the workflow"
 	}
-	s.finishFailed(entry.session.SessionID, entry.request.SceneName, message, nil)
+	s.finishFailed(entry.session.SessionID, entry.request.SceneName, message, nil, false, GeometryWorkflowResult{})
 }
 
 func (s *geometryWorkflowService) handleAgentEvent(ctx context.Context, entry *geometryWorkflowEntry, event geometryAgentEvent) bool {
 	switch event.Type {
 	case "progress":
 		s.app.emit(EventGeometryProgress, GeometryWorkflowProgressEvent{
-			SessionID: event.SessionID,
-			SceneName: event.SceneName,
-			Stage:     event.Stage,
-			Message:   event.Message,
-			Attempt:   event.Attempt,
+			SessionID:       event.SessionID,
+			SceneName:       event.SceneName,
+			Stage:           event.Stage,
+			AgentName:       event.AgentName,
+			Title:           event.Title,
+			Description:     event.Description,
+			Message:         event.Message,
+			Status:          event.Status,
+			EventKind:       event.EventKind,
+			Attempt:         event.Attempt,
+			ArtifactTitle:   event.ArtifactTitle,
+			ArtifactSummary: event.ArtifactSummary,
+			ArtifactDetail:  event.ArtifactDetail,
+			ArtifactData:    event.ArtifactData,
 		})
 	case "review_required":
 		s.app.emit(EventGeometryReview, GeometryWorkflowReviewRequiredEvent{
@@ -421,13 +520,13 @@ func (s *geometryWorkflowService) handleAgentEvent(ctx context.Context, entry *g
 		}
 		persistedResult, err := s.persistGeometryResult(event.SceneName, entry.request.ImageDataURL, result)
 		if err != nil {
-			s.finishFailed(event.SessionID, event.SceneName, err.Error(), result.Diagnostics)
+			s.finishFailed(event.SessionID, event.SceneName, err.Error(), result.Diagnostics, isRepairableGeometryResult(result), result)
 			return true
 		}
 		s.finishSucceeded(event.SessionID, event.SceneName, persistedResult)
 		return true
 	case "failed":
-		s.finishFailed(event.SessionID, event.SceneName, firstNonEmpty(event.ErrorText, event.Message), event.Diagnostics)
+		s.finishFailed(event.SessionID, event.SceneName, firstNonEmpty(event.ErrorText, event.Message), event.Diagnostics, event.Repairable || isRepairableGeometryResult(event.Result), event.Result)
 		return true
 	case "interrupted":
 		s.finishInterrupted(event.SessionID, event.SceneName, firstNonEmpty(event.Message, "Geometry workflow interrupted"))
@@ -460,6 +559,66 @@ func (s *geometryWorkflowService) probeGeneratedCode(ctx context.Context, sceneN
 		ErrorText:  failure.ErrorText,
 		Repairable: failure.Repairable,
 	}
+}
+
+func (s *geometryWorkflowService) hydrateGeometryRepairResult(sceneName string, currentCode string, result GeometryWorkflowResult) GeometryWorkflowResult {
+	if strings.TrimSpace(result.Code) == "" {
+		result.Code = currentCode
+	}
+	if isEmptyGeometrySpec(result.Spec) {
+		if spec, err := s.readGeometrySpec(sceneName); err == nil {
+			result.Spec = spec
+		}
+	}
+	if isEmptyGeometryScene(result.Scene) {
+		if scene, err := s.readGeometryScene(sceneName); err == nil {
+			result.Scene = scene
+		}
+	}
+	if strings.TrimSpace(result.NoteMarkdown) == "" && s.app.fileStore != nil {
+		if note, err := s.app.fileStore.ReadNote(sceneName); err == nil {
+			result.NoteMarkdown = note.Markdown
+		}
+	}
+	return result
+}
+
+func (s *geometryWorkflowService) readGeometrySpec(sceneName string) (GeometrySpec, error) {
+	if s.app.fileStore == nil {
+		return GeometrySpec{}, errors.New("file store is not ready")
+	}
+	sceneDir, err := s.app.fileStore.SceneDir(sceneName)
+	if err != nil {
+		return GeometrySpec{}, err
+	}
+	content, err := os.ReadFile(filepath.Join(sceneDir, "geometry-spec.json"))
+	if err != nil {
+		return GeometrySpec{}, err
+	}
+	var spec GeometrySpec
+	if err := json.Unmarshal(content, &spec); err != nil {
+		return GeometrySpec{}, err
+	}
+	return normalizeGeometrySpec(spec), nil
+}
+
+func (s *geometryWorkflowService) readGeometryScene(sceneName string) (GeometryScene, error) {
+	if s.app.fileStore == nil {
+		return GeometryScene{}, errors.New("file store is not ready")
+	}
+	sceneDir, err := s.app.fileStore.SceneDir(sceneName)
+	if err != nil {
+		return GeometryScene{}, err
+	}
+	content, err := os.ReadFile(filepath.Join(sceneDir, "geometry-scene.json"))
+	if err != nil {
+		return GeometryScene{}, err
+	}
+	var scene GeometryScene
+	if err := json.Unmarshal(content, &scene); err != nil {
+		return GeometryScene{}, err
+	}
+	return normalizeGeometryScene(scene), nil
 }
 
 func (s *geometryWorkflowService) persistGeometryResult(sceneName string, imageDataURL string, result GeometryWorkflowResult) (GeometryWorkflowResult, error) {
@@ -651,15 +810,20 @@ func (s *geometryWorkflowService) finishSucceeded(sessionID string, sceneName st
 	})
 }
 
-func (s *geometryWorkflowService) finishFailed(sessionID string, sceneName string, errorText string, diagnostics []string) {
+func (s *geometryWorkflowService) finishFailed(sessionID string, sceneName string, errorText string, diagnostics []string, repairable bool, result GeometryWorkflowResult) {
 	if !s.clearActive(sessionID) {
 		return
+	}
+	if result.Diagnostics == nil {
+		result.Diagnostics = diagnostics
 	}
 	s.app.emit(EventGeometryFailed, GeometryWorkflowFailedEvent{
 		SessionID:   sessionID,
 		SceneName:   sceneName,
 		ErrorText:   firstNonEmpty(errorText, "Geometry workflow failed"),
 		Diagnostics: diagnostics,
+		Repairable:  repairable,
+		Result:      result,
 	})
 }
 
@@ -774,6 +938,10 @@ func isEmptyGeometryScene(scene GeometryScene) bool {
 		len(scene.ProofSteps) == 0
 }
 
+func isRepairableGeometryResult(result GeometryWorkflowResult) bool {
+	return strings.TrimSpace(result.Code) != "" && !isEmptyGeometryScene(result.Scene)
+}
+
 func (e *geometryWorkflowEntry) write(command geometryAgentCommand) error {
 	if e == nil || e.stdin == nil {
 		return errors.New("geometry agent is not running")
@@ -800,6 +968,16 @@ func (a *App) StartGeometryWorkflow(request GeometryWorkflowRequest) (GeometryWo
 		return GeometryWorkflowSession{}, errors.New("geometry workflow service is not ready")
 	}
 	return a.geometryWorkflow.Start(a.ctx, request)
+}
+
+func (a *App) RepairGeometryWorkflow(request GeometryWorkflowRepairRequest) (GeometryWorkflowSession, error) {
+	if err := a.requireContext(); err != nil {
+		return GeometryWorkflowSession{}, err
+	}
+	if a.geometryWorkflow == nil {
+		return GeometryWorkflowSession{}, errors.New("geometry workflow service is not ready")
+	}
+	return a.geometryWorkflow.Repair(a.ctx, request)
 }
 
 func (a *App) ResumeGeometryWorkflow(sessionID string, reviewedSpec GeometrySpec) error {

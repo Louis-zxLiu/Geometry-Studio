@@ -113,6 +113,16 @@ export type GeometryWorkflowRequest = {
   maxAttempts: number;
 };
 
+export type GeometryWorkflowRepairRequest = {
+  sceneName: string;
+  currentCode: string;
+  errorText: string;
+  diagnostics: string[];
+  result: GeometryWorkflowResult;
+  settings: AIProviderSettings;
+  maxAttempts: number;
+};
+
 export type GeometryWorkflowSession = {
   sessionId: string;
   state: string;
@@ -131,8 +141,17 @@ export type GeometryProgressEvent = {
   sessionId: string;
   sceneName: string;
   stage: string;
+  agentName?: string;
+  title?: string;
+  description?: string;
   message: string;
+  status?: "pending" | "running" | "waiting" | "completed" | "failed" | "interrupted";
+  eventKind?: "stage" | "artifact" | "review" | "log";
   attempt: number;
+  artifactTitle?: string;
+  artifactSummary?: string;
+  artifactDetail?: string;
+  artifactData?: Record<string, unknown>;
 };
 
 export type GeometryReviewRequiredEvent = {
@@ -159,6 +178,8 @@ export type GeometryFailedEvent = {
   sceneName: string;
   errorText: string;
   diagnostics: string[];
+  repairable?: boolean;
+  result?: GeometryWorkflowResult;
 };
 
 export type GeometryInterruptedEvent = {

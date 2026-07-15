@@ -25,6 +25,59 @@ GRAPH_NODES = [
     "publish",
 ]
 
+STAGE_DETAILS = {
+    "problem_vision_parse": {
+        "agentName": "题目图文解析 agent",
+        "title": "题目图文解析",
+        "description": "识别图片和文本中的题干、标注、几何对象、已知条件和求证目标。",
+    },
+    "geometry_spec_organize": {
+        "agentName": "几何规格整理 agent",
+        "title": "几何规格整理",
+        "description": "把题目信息整理成稳定 ID、对象、约束、结论和构造提示。",
+    },
+    "teacher_review": {
+        "agentName": "教师复核 agent",
+        "title": "教师复核",
+        "description": "暂停工作流，把结构化题目交给用户确认或修正。",
+    },
+    "construction_plan": {
+        "agentName": "构造规划 agent",
+        "title": "构造规划",
+        "description": "规划课堂构图策略、辅助构造和需要突出展示的关系。",
+    },
+    "dual_scene_generate": {
+        "agentName": "双端场景生成 agent",
+        "title": "双端场景生成",
+        "description": "生成可供预览和 Matplotlib 代码共用的几何场景。",
+    },
+    "matplotlib_code_generate": {
+        "agentName": "Matplotlib 代码生成 agent",
+        "title": "Matplotlib 代码生成",
+        "description": "把几何场景转换为可运行、中文标注、适合教学的 Python 图形代码。",
+    },
+    "teaching_proof_generate": {
+        "agentName": "教学证明生成 agent",
+        "title": "教学证明生成",
+        "description": "生成中文证明、解答、课堂提问和右侧 Markdown 笔记。",
+    },
+    "runtime_check": {
+        "agentName": "运行检查 agent",
+        "title": "运行检查",
+        "description": "实际运行生成代码，检查安全性、可执行性和窗口就绪状态。",
+    },
+    "self_correct": {
+        "agentName": "自我修正 agent",
+        "title": "自我修正",
+        "description": "根据运行错误修复 Matplotlib 代码，并保持中文教学表达。",
+    },
+    "publish": {
+        "agentName": "发布 agent",
+        "title": "发布",
+        "description": "把通过检查的代码、场景规格和中文笔记写回当前场景。",
+    },
+}
+
 
 MATPLOTLIB_TEXT_SYMBOL_REPLACEMENTS = (
     ("\\u2713", "正确"),
@@ -450,6 +503,17 @@ class GeometryState(TypedDict, total=False):
     errorText: str
 
 
+def stage_details(stage: str) -> Dict[str, str]:
+    return STAGE_DETAILS.get(
+        stage,
+        {
+            "agentName": "几何 agent",
+            "title": stage,
+            "description": "",
+        },
+    )
+
+
 def emit(event: Dict[str, Any]) -> None:
     print(json.dumps(event, ensure_ascii=False), flush=True)
 
@@ -459,6 +523,95 @@ def read_command() -> Optional[Dict[str, Any]]:
     if not line:
         return None
     return json.loads(line)
+
+
+def preview_text(text: str, limit: int = 180) -> str:
+    normalized = re.sub(r"\s+", " ", str(text or "")).strip()
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 1].rstrip() + "..."
+
+
+def summarize_spec(spec: Dict[str, Any]) -> str:
+    return (
+        f"已整理 {len(spec.get('entities') or [])} 个对象、"
+        f"{len(spec.get('constraints') or [])} 条约束、"
+        f"{len(spec.get('constructionHints') or [])} 条构造提示。"
+    )
+
+
+def spec_detail(spec: Dict[str, Any]) -> str:
+    lines = []
+    problem = preview_text(str(spec.get("problemText") or ""), 220)
+    goal = preview_text(str(spec.get("goalText") or ""), 180)
+    if problem:
+        lines.append("题干：" + problem)
+    if goal:
+        lines.append("目标：" + goal)
+    constraints = [
+        preview_text(str(item.get("text") or item.get("type") or ""), 90)
+        for item in spec.get("constraints") or []
+        if isinstance(item, dict)
+    ]
+    constraints = [item for item in constraints if item]
+    if constraints:
+        lines.append("关键条件：" + "；".join(constraints[:4]))
+    return "\n".join(lines)
+
+
+def summarize_scene(scene: Dict[str, Any]) -> str:
+    return (
+        f"已生成 {len(scene.get('points') or [])} 个点、"
+        f"{len(scene.get('segments') or [])} 条线段、"
+        f"{len(scene.get('circles') or [])} 个圆、"
+        f"{len(scene.get('controls') or [])} 个交互控件。"
+    )
+
+
+def scene_detail(scene: Dict[str, Any]) -> str:
+    title = preview_text(str(scene.get("title") or ""), 120)
+    measurements = [
+        preview_text(str(item.get("label") or item.get("kind") or ""), 60)
+        for item in scene.get("measurements") or []
+        if isinstance(item, dict)
+    ]
+    annotations = [
+        preview_text(str(item.get("text") or ""), 80)
+        for item in scene.get("annotations") or []
+        if isinstance(item, dict)
+    ]
+    lines = []
+    if title:
+        lines.append("场景标题：" + title)
+    if measurements:
+        lines.append("测量：" + "；".join([item for item in measurements if item][:4]))
+    if annotations:
+        lines.append("注释：" + "；".join([item for item in annotations if item][:3]))
+    return "\n".join(lines)
+
+
+def summarize_code(code: str) -> str:
+    lines = [line for line in str(code or "").splitlines() if line.strip()]
+    controls = len(re.findall(r"\b(?:Slider|Button|CheckButtons|RadioButtons)\s*\(", code or ""))
+    control_text = f"，包含 {controls} 个交互控件" if controls else ""
+    return f"已生成 {len(lines)} 行可运行代码{control_text}。"
+
+
+def summarize_markdown(markdown: str, questions: List[str]) -> str:
+    headings = len(re.findall(r"(?m)^#{1,6}\s+", markdown or ""))
+    formulas = len(re.findall(r"\$\$|\$[^$\n]+?\$", markdown or ""))
+    return f"已生成 {headings} 个笔记小节、{formulas} 处公式、{len(questions)} 个课堂追问。"
+
+
+def result_from_state(state: GeometryState) -> Dict[str, Any]:
+    return {
+        "code": state.get("code", ""),
+        "noteMarkdown": state.get("noteMarkdown", ""),
+        "proofMarkdown": state.get("proofMarkdown", ""),
+        "spec": state.get("reviewedSpec") or state.get("spec") or {},
+        "scene": state.get("scene") or {},
+        "diagnostics": list(state.get("diagnostics") or []),
+    }
 
 
 def normalize_openai_base_url(value: str) -> str:
@@ -601,16 +754,61 @@ def json_chat(
     return schema_model.model_validate(payload)
 
 
-def progress(state: GeometryState, stage: str, message: str) -> None:
-    emit(
-        {
-            "type": "progress",
-            "sessionId": state["sessionId"],
-            "sceneName": state["sceneName"],
-            "stage": stage,
-            "message": message,
-            "attempt": int(state.get("attempt") or 1),
-        }
+def progress(
+    state: GeometryState,
+    stage: str,
+    message: str,
+    status: str = "running",
+    event_kind: str = "stage",
+    artifact_title: str = "",
+    artifact_summary: str = "",
+    artifact_detail: str = "",
+    artifact_data: Optional[Dict[str, Any]] = None,
+) -> None:
+    details = stage_details(stage)
+    payload: Dict[str, Any] = {
+        "type": "progress",
+        "sessionId": state["sessionId"],
+        "sceneName": state["sceneName"],
+        "stage": stage,
+        "agentName": details["agentName"],
+        "title": details["title"],
+        "description": details["description"],
+        "message": message,
+        "status": status,
+        "eventKind": event_kind,
+        "attempt": int(state.get("attempt") or 1),
+    }
+    if artifact_title:
+        payload["artifactTitle"] = artifact_title
+    if artifact_summary:
+        payload["artifactSummary"] = artifact_summary
+    if artifact_detail:
+        payload["artifactDetail"] = artifact_detail
+    if artifact_data is not None:
+        payload["artifactData"] = artifact_data
+    emit(payload)
+
+
+def artifact(
+    state: GeometryState,
+    stage: str,
+    title: str,
+    summary: str,
+    detail: str = "",
+    data: Optional[Dict[str, Any]] = None,
+    status: str = "completed",
+) -> None:
+    progress(
+        state,
+        stage,
+        summary or title,
+        status=status,
+        event_kind="artifact",
+        artifact_title=title,
+        artifact_summary=summary,
+        artifact_detail=detail,
+        artifact_data=data,
     )
 
 
@@ -636,7 +834,16 @@ def problem_vision_parse(state: GeometryState) -> Dict[str, Any]:
         user,
         state.get("imageDataUrl", ""),
     )
-    return {"spec": sanitize_geometry_spec_markdown(spec.model_dump())}
+    cleaned = sanitize_geometry_spec_markdown(spec.model_dump())
+    artifact(
+        state,
+        "problem_vision_parse",
+        "图文解析结果",
+        summarize_spec(cleaned),
+        spec_detail(cleaned),
+        {"spec": cleaned},
+    )
+    return {"spec": cleaned}
 
 
 def geometry_spec_organize(state: GeometryState) -> Dict[str, Any]:
@@ -659,11 +866,31 @@ def geometry_spec_organize(state: GeometryState) -> Dict[str, Any]:
         "你是几何规格整理 agent，负责把题目条件整理成中文、结构化、可构造的规格。",
         user,
     )
-    return {"spec": sanitize_geometry_spec_markdown(spec.model_dump())}
+    cleaned = sanitize_geometry_spec_markdown(spec.model_dump())
+    artifact(
+        state,
+        "geometry_spec_organize",
+        "规格整理结果",
+        summarize_spec(cleaned),
+        spec_detail(cleaned),
+        {"spec": cleaned},
+    )
+    return {"spec": cleaned}
 
 
 def teacher_review(state: GeometryState) -> Dict[str, Any]:
     progress(state, "teacher_review", "教师复核")
+    progress(
+        state,
+        "teacher_review",
+        "等待用户确认几何规格",
+        status="waiting",
+        event_kind="review",
+        artifact_title="待确认规格",
+        artifact_summary=summarize_spec(state["spec"]),
+        artifact_detail=spec_detail(state["spec"]),
+        artifact_data={"spec": state["spec"]},
+    )
     emit(
         {
             "type": "review_required",
@@ -686,6 +913,14 @@ def teacher_review(state: GeometryState) -> Dict[str, Any]:
     if command.get("type") != "resume_review" or not command.get("spec"):
         raise RuntimeError("Geometry workflow expected resume_review with spec")
     reviewed = sanitize_geometry_spec_markdown(GeometrySpecModel.model_validate(command["spec"]).model_dump())
+    artifact(
+        state,
+        "teacher_review",
+        "用户已确认",
+        summarize_spec(reviewed),
+        spec_detail(reviewed),
+        {"spec": reviewed},
+    )
     return {"reviewedSpec": reviewed}
 
 
@@ -704,6 +939,14 @@ def construction_plan(state: GeometryState) -> Dict[str, Any]:
         ConstructionPlanModel,
         "你是面向中文课堂的交互几何构造规划 agent。",
         user,
+    )
+    artifact(
+        state,
+        "construction_plan",
+        "构造规划",
+        "已生成课堂构造策略。",
+        preview_text(plan.plan, 360),
+        {"plan": plan.plan, "teachingFocus": plan.teachingFocus},
     )
     return {"constructionPlan": plan.plan}
 
@@ -729,6 +972,14 @@ def dual_scene_generate(state: GeometryState) -> Dict[str, Any]:
         user,
     )
     scene_dict = scene.model_dump(by_alias=True)
+    artifact(
+        state,
+        "dual_scene_generate",
+        "几何场景",
+        summarize_scene(scene_dict),
+        scene_detail(scene_dict),
+        {"scene": scene_dict},
+    )
     emit(
         {
             "type": "preview_updated",
@@ -783,7 +1034,16 @@ def matplotlib_code_generate(state: GeometryState) -> Dict[str, Any]:
         "你是中文几何解题的 Matplotlib 代码生成 agent，尤其注意交互参数和界面标注汉化。",
         user,
     )
-    return {"code": sanitize_matplotlib_text_symbols(code.pythonCode.strip())}
+    cleaned_code = sanitize_matplotlib_text_symbols(code.pythonCode.strip())
+    artifact(
+        state,
+        "matplotlib_code_generate",
+        "代码生成结果",
+        summarize_code(cleaned_code),
+        preview_text(cleaned_code, 520),
+        {"code": cleaned_code},
+    )
+    return {"code": cleaned_code}
 
 
 def teaching_proof_generate(state: GeometryState) -> Dict[str, Any]:
@@ -869,6 +1129,18 @@ def teaching_proof_generate(state: GeometryState) -> Dict[str, Any]:
         note_user,
     )
     note_markdown = sanitize_mathjax_markdown(note.noteMarkdown, "几何解题笔记")
+    artifact(
+        state,
+        "teaching_proof_generate",
+        "中文证明与笔记",
+        summarize_markdown(note_markdown, classroom_questions),
+        preview_text(note_markdown, 520),
+        {
+            "proofMarkdown": proof_markdown,
+            "noteMarkdown": note_markdown,
+            "classroomQuestions": classroom_questions,
+        },
+    )
     return {
         "proofMarkdown": proof_markdown,
         "classroomQuestions": classroom_questions,
@@ -908,12 +1180,30 @@ def runtime_check(state: GeometryState) -> Dict[str, Any]:
         "repairable": True,
     }
     if probe_result.get("ok"):
+        artifact(
+            state,
+            "runtime_check",
+            "运行检查通过",
+            f"第 {int(state.get('attempt') or 1)} 次运行检查通过。",
+            "",
+            {"probeResult": probe_result},
+        )
         return {"probeResult": probe_result, "workflowStatus": "succeeded", "errorText": ""}
 
     attempt = int(state.get("attempt") or 1)
     diagnostics = list(state.get("diagnostics") or [])
     diagnostics.append(f"attempt {attempt} failed: {probe_result.get('errorText', '')}")
     max_attempts = int(state.get("maxAttempts") or 5)
+    can_repair = bool(probe_result.get("repairable", True)) and attempt < max_attempts
+    artifact(
+        state,
+        "runtime_check",
+        "运行检查失败",
+        f"第 {attempt} 次运行失败，{'将进入自我修正。' if can_repair else '已达到当前自动修复上限。'}",
+        preview_text(str(probe_result.get("errorText", "")), 520),
+        {"probeResult": probe_result, "diagnostics": diagnostics},
+        status="failed",
+    )
     if not probe_result.get("repairable", True) or attempt >= max_attempts:
         return {
             "probeResult": probe_result,
@@ -956,8 +1246,17 @@ def self_correct(state: GeometryState) -> Dict[str, Any]:
     )
     diagnostics = list(state.get("diagnostics") or [])
     diagnostics.extend(repaired.repairNotes)
+    cleaned_code = sanitize_matplotlib_text_symbols(repaired.pythonCode.strip())
+    artifact(
+        state,
+        "self_correct",
+        "修复结果",
+        summarize_code(cleaned_code),
+        "\n".join(repaired.repairNotes) or preview_text(cleaned_code, 520),
+        {"code": cleaned_code, "repairNotes": repaired.repairNotes},
+    )
     return {
-        "code": sanitize_matplotlib_text_symbols(repaired.pythonCode.strip()),
+        "code": cleaned_code,
         "diagnostics": diagnostics,
         "workflowStatus": "checking",
     }
@@ -966,14 +1265,15 @@ def self_correct(state: GeometryState) -> Dict[str, Any]:
 def publish(state: GeometryState) -> Dict[str, Any]:
     progress(state, "publish", "发布")
     if state.get("workflowStatus") == "succeeded":
-        result = {
-            "code": state.get("code", ""),
-            "noteMarkdown": state.get("noteMarkdown", ""),
-            "proofMarkdown": state.get("proofMarkdown", ""),
-            "spec": state.get("reviewedSpec") or state.get("spec") or {},
-            "scene": state.get("scene") or {},
-            "diagnostics": list(state.get("diagnostics") or []),
-        }
+        result = result_from_state(state)
+        artifact(
+            state,
+            "publish",
+            "发布完成",
+            "代码、几何规格、场景和中文笔记已准备写回当前场景。",
+            "",
+            {"result": result},
+        )
         emit(
             {
                 "type": "succeeded",
@@ -991,6 +1291,8 @@ def publish(state: GeometryState) -> Dict[str, Any]:
             "sceneName": state["sceneName"],
             "errorText": state.get("errorText", "Geometry workflow failed"),
             "diagnostics": list(state.get("diagnostics") or []),
+            "repairable": bool(state.get("code") and state.get("scene")),
+            "result": result_from_state(state),
         }
     )
     return {}
@@ -1035,6 +1337,25 @@ def build_geometry_graph():
     return graph.compile()
 
 
+def build_repair_graph():
+    graph = StateGraph(GeometryState)
+    graph.add_node("self_correct", self_correct)
+    graph.add_node("runtime_check", runtime_check)
+    graph.add_node("publish", publish)
+    graph.add_edge(START, "self_correct")
+    graph.add_edge("self_correct", "runtime_check")
+    graph.add_conditional_edges(
+        "runtime_check",
+        route_after_runtime_check,
+        {
+            "self_correct": "self_correct",
+            "publish": "publish",
+        },
+    )
+    graph.add_edge("publish", END)
+    return graph.compile()
+
+
 def describe_graph() -> None:
     emit(
         {
@@ -1075,17 +1396,53 @@ def run_session(command: Dict[str, Any]) -> None:
     build_geometry_graph().invoke(state)
 
 
+def run_repair_session(command: Dict[str, Any]) -> None:
+    request = command["request"]
+    diagnostics = list(request.get("diagnostics") or [])
+    error_text = str(request.get("errorText") or "")
+    if error_text:
+        diagnostics.append("manual repair requested: " + error_text)
+    state: GeometryState = {
+        "sessionId": command["sessionId"],
+        "sceneName": request["sceneName"],
+        "imageDataUrl": request.get("imageDataUrl", ""),
+        "problemText": request.get("problemText", ""),
+        "currentCode": request.get("currentCode", ""),
+        "maxAttempts": int(request.get("maxAttempts") or 3),
+        "settings": request.get("settings") or {},
+        "spec": request.get("spec") or {},
+        "reviewedSpec": request.get("spec") or {},
+        "scene": request.get("scene") or {},
+        "code": request.get("currentCode", ""),
+        "proofMarkdown": request.get("proofMarkdown", ""),
+        "noteMarkdown": request.get("noteMarkdown", ""),
+        "attempt": 1,
+        "diagnostics": diagnostics,
+        "probeResult": {
+            "ok": False,
+            "errorText": error_text or "用户要求继续修复当前几何代码。",
+            "repairable": True,
+        },
+        "workflowStatus": "repairing",
+        "errorText": error_text,
+    }
+    build_repair_graph().invoke(state)
+
+
 def main() -> None:
     if "--describe-graph" in sys.argv:
         describe_graph()
         return
 
     command = read_command()
-    if not command or command.get("type") != "start":
-        emit({"type": "failed", "errorText": "Geometry agent expected a start command"})
+    if not command or command.get("type") not in {"start", "repair"}:
+        emit({"type": "failed", "errorText": "Geometry agent expected a start or repair command"})
         return
     try:
-        run_session(command)
+        if command.get("type") == "repair":
+            run_repair_session(command)
+        else:
+            run_session(command)
     except KeyboardInterrupt:
         return
     except Exception as exc:

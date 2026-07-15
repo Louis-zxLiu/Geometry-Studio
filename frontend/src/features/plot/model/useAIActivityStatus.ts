@@ -11,7 +11,7 @@ export function useAIActivityStatus() {
       return "";
     }
 
-    const prefix = aiPhase.value === "checking" ? "AI checking..." : "AI working...";
+    const prefix = aiPhase.value === "checking" ? "AI 正在检查" : "AI 正在工作";
     if (aiElapsedSeconds.value < 3) {
       return prefix;
     }

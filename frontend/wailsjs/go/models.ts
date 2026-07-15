@@ -785,6 +785,46 @@
 		    return a;
 		}
 	}
+	export class GeometryWorkflowResult {
+	    code: string;
+	    noteMarkdown: string;
+	    proofMarkdown: string;
+	    spec: GeometrySpec;
+	    scene: GeometryScene;
+	    diagnostics: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new GeometryWorkflowResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.noteMarkdown = source["noteMarkdown"];
+	        this.proofMarkdown = source["proofMarkdown"];
+	        this.spec = this.convertValues(source["spec"], GeometrySpec);
+	        this.scene = this.convertValues(source["scene"], GeometryScene);
+	        this.diagnostics = source["diagnostics"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class GeometryWorkflowRequest {
 	    sceneName: string;
 	    imageDataUrl: string;
@@ -803,6 +843,48 @@
 	        this.imageDataUrl = source["imageDataUrl"];
 	        this.problemText = source["problemText"];
 	        this.currentCode = source["currentCode"];
+	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
+	        this.maxAttempts = source["maxAttempts"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class GeometryWorkflowRepairRequest {
+	    sceneName: string;
+	    currentCode: string;
+	    errorText: string;
+	    diagnostics: string[];
+	    result: GeometryWorkflowResult;
+	    settings: AIProviderSettings;
+	    maxAttempts: number;
+
+	    static createFrom(source: any = {}) {
+	        return new GeometryWorkflowRepairRequest(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sceneName = source["sceneName"];
+	        this.currentCode = source["currentCode"];
+	        this.errorText = source["errorText"];
+	        this.diagnostics = source["diagnostics"];
+	        this.result = this.convertValues(source["result"], GeometryWorkflowResult);
 	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
 	        this.maxAttempts = source["maxAttempts"];
 	    }
@@ -1264,4 +1346,3 @@
 	}
 
 }
-

@@ -1,6 +1,7 @@
 import { computed, onUnmounted, ref, type Ref } from "vue";
 import { EventsOn } from "../../../../wailsjs/runtime/runtime";
 import {
+  repairGeometryWorkflow,
   resumeGeometryWorkflow,
   startGeometryWorkflow,
   stopGeometryWorkflow,
@@ -13,8 +14,53 @@ import type {
   GeometryReviewRequiredEvent,
   GeometrySpec,
   GeometrySucceededEvent,
+  GeometryWorkflowRepairRequest,
   GeometryWorkflowRequest,
 } from "../services/geometryTypes";
+
+export type GeometryAgentStepStatus =
+  | "pending"
+  | "running"
+  | "waiting"
+  | "completed"
+  | "failed"
+  | "interrupted";
+
+export type GeometryAgentArtifact = {
+  id: string;
+  attempt: number;
+  createdAt: number;
+  data?: Record<string, unknown>;
+  detail: string;
+  status: GeometryAgentStepStatus;
+  summary: string;
+  title: string;
+};
+
+export type GeometryAgentStep = {
+  agentName: string;
+  artifacts: GeometryAgentArtifact[];
+  description: string;
+  endedAt?: number;
+  stage: string;
+  startedAt?: number;
+  status: GeometryAgentStepStatus;
+  title: string;
+  attempt: number;
+};
+
+export type GeometryAgentLogItem = {
+  id: string;
+  attempt: number;
+  createdAt: number;
+  data?: Record<string, unknown>;
+  detail: string;
+  eventKind: string;
+  message: string;
+  stage: string;
+  status: GeometryAgentStepStatus;
+  title: string;
+};
 
 type AIActivityStatus = {
   isAIGenerating: Ref<boolean>;
@@ -37,18 +83,112 @@ type GeometryTerminalResult =
   | { ok: false; type: "failed"; event: GeometryFailedEvent }
   | { ok: false; type: "interrupted"; event: GeometryInterruptedEvent };
 
+const STAGE_DEFINITIONS: Array<Pick<GeometryAgentStep, "agentName" | "description" | "stage" | "title">> = [
+  {
+    stage: "problem_vision_parse",
+    title: "题目图文解析",
+    agentName: "题目图文解析 agent",
+    description: "识别图片和文本中的题干、标注、几何对象、已知条件和求证目标。",
+  },
+  {
+    stage: "geometry_spec_organize",
+    title: "几何规格整理",
+    agentName: "几何规格整理 agent",
+    description: "把题目信息整理成稳定 ID、对象、约束、结论和构造提示。",
+  },
+  {
+    stage: "teacher_review",
+    title: "教师复核",
+    agentName: "教师复核 agent",
+    description: "暂停工作流，把结构化题目交给用户确认或修正。",
+  },
+  {
+    stage: "construction_plan",
+    title: "构造规划",
+    agentName: "构造规划 agent",
+    description: "规划课堂构图策略、辅助构造和需要突出展示的关系。",
+  },
+  {
+    stage: "dual_scene_generate",
+    title: "双端场景生成",
+    agentName: "双端场景生成 agent",
+    description: "生成可供预览和 Matplotlib 代码共用的几何场景。",
+  },
+  {
+    stage: "matplotlib_code_generate",
+    title: "Matplotlib 代码生成",
+    agentName: "Matplotlib 代码生成 agent",
+    description: "把几何场景转换为可运行、中文标注、适合教学的 Python 图形代码。",
+  },
+  {
+    stage: "teaching_proof_generate",
+    title: "教学证明生成",
+    agentName: "教学证明生成 agent",
+    description: "生成中文证明、解答、课堂提问和右侧 Markdown 笔记。",
+  },
+  {
+    stage: "runtime_check",
+    title: "运行检查",
+    agentName: "运行检查 agent",
+    description: "实际运行生成代码，检查安全性、可执行性和窗口就绪状态。",
+  },
+  {
+    stage: "self_correct",
+    title: "自我修正",
+    agentName: "自我修正 agent",
+    description: "根据运行错误修复 Matplotlib 代码，并保持中文教学表达。",
+  },
+  {
+    stage: "publish",
+    title: "发布",
+    agentName: "发布 agent",
+    description: "把通过检查的代码、场景规格和中文笔记写回当前场景。",
+  },
+];
+
 export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
   const activeSessionId = ref("");
   const activeSceneName = ref("");
+  const activeStage = ref("");
+  const agentLogs = ref<GeometryAgentLogItem[]>([]);
+  const agentTimeline = ref<GeometryAgentStep[]>(createInitialTimeline());
+  const lastFailure = ref<GeometryFailedEvent | null>(null);
   const progressLabel = ref("");
   const reviewSpec = ref<GeometrySpec | null>(null);
   const cleanupEvents = bindGeometryEvents();
 
   let pendingResolver: ((result: GeometryTerminalResult) => void) | null = null;
   let activeOptions: StartGeometryOptions | null = null;
+  let logSequence = 0;
 
   const isSessionActive = computed(() => activeSessionId.value !== "");
   const isReviewing = computed(() => reviewSpec.value !== null);
+  const hasAgentTimeline = computed(
+    () => agentLogs.value.length > 0 || agentTimeline.value.some((step) => step.status !== "pending"),
+  );
+  const activeAgentStep = computed(() => {
+    const stage = activeStage.value;
+    if (stage) {
+      return agentTimeline.value.find((step) => step.stage === stage) ?? null;
+    }
+    return agentTimeline.value.find((step) => step.status === "running" || step.status === "waiting") ?? null;
+  });
+  const agentStatusLabel = computed(() => {
+    const step = activeAgentStep.value;
+    if (!step || !isSessionActive.value) {
+      return progressLabel.value;
+    }
+    if (step.status === "waiting") {
+      return `${step.title} · 等待确认`;
+    }
+    if (step.stage === "runtime_check") {
+      return `${step.title} · 第 ${Math.max(1, step.attempt)} 次检查`;
+    }
+    return step.title;
+  });
+  const canRepairLastFailure = computed(
+    () => !!lastFailure.value?.repairable && !isSessionActive.value && !aiActivity.isAIGenerating.value,
+  );
 
   async function startWorkflow(
     request: GeometryWorkflowRequest,
@@ -58,21 +198,36 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
       throw new Error("已有 AI 工作流正在运行，请等待完成或手动停止");
     }
 
-    aiActivity.startWorking();
-    activeOptions = options;
-    progressLabel.value = "Reading geometry problem";
+    prepareRun(request.sceneName, options, "准备几何解题");
 
     try {
       const session = await startGeometryWorkflow(request);
       activeSessionId.value = session.sessionId;
       activeSceneName.value = request.sceneName;
-      return await new Promise<GeometryTerminalResult>((resolve) => {
-        pendingResolver = resolve;
-      });
+      return await waitForTerminalResult();
     } catch (error) {
-      aiActivity.stop();
-      activeOptions = null;
-      progressLabel.value = "";
+      resetActiveRun();
+      throw error;
+    }
+  }
+
+  async function repairWorkflow(
+    request: GeometryWorkflowRepairRequest,
+    options: StartGeometryOptions = {},
+  ): Promise<GeometryTerminalResult> {
+    if (activeSessionId.value || aiActivity.isAIGenerating.value) {
+      throw new Error("已有 AI 工作流正在运行，请等待完成或手动停止");
+    }
+
+    prepareRun(request.sceneName, options, "准备几何代码修复", true);
+
+    try {
+      const session = await repairGeometryWorkflow(request);
+      activeSessionId.value = session.sessionId;
+      activeSceneName.value = request.sceneName;
+      return await waitForTerminalResult();
+    } catch (error) {
+      resetActiveRun();
       throw error;
     }
   }
@@ -118,7 +273,28 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     ];
   }
 
-  function isActiveEvent(event?: { sessionId: string }) {
+  function prepareRun(sceneName: string, options: StartGeometryOptions, label: string, repairOnly = false) {
+    aiActivity.startWorking();
+    activeOptions = options;
+    activeSceneName.value = sceneName;
+    activeStage.value = "";
+    agentLogs.value = [];
+    agentTimeline.value = repairOnly
+      ? createInitialTimeline(["self_correct", "runtime_check", "publish"])
+      : createInitialTimeline();
+    lastFailure.value = null;
+    progressLabel.value = label;
+    reviewSpec.value = null;
+    pendingResolver = null;
+  }
+
+  function waitForTerminalResult() {
+    return new Promise<GeometryTerminalResult>((resolve) => {
+      pendingResolver = resolve;
+    });
+  }
+
+  function isActiveEvent<T extends { sessionId: string }>(event?: T): event is T {
     return !!event && event.sessionId === activeSessionId.value;
   }
 
@@ -127,10 +303,11 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
       return;
     }
 
+    applyProgressEvent(event);
     progressLabel.value = event?.message ?? "";
     if (event?.stage === "runtime_check") {
       aiActivity.startChecking();
-    } else {
+    } else if (event?.status !== "waiting") {
       aiActivity.startWorking();
     }
     safeInvoke(() => activeOptions?.onProgress?.(event));
@@ -142,6 +319,12 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     }
 
     reviewSpec.value = event?.spec ?? null;
+    markStage("teacher_review", "waiting", {
+      message: "等待用户确认几何规格",
+      title: "教师复核",
+      agentName: "教师复核 agent",
+      description: "暂停工作流，把结构化题目交给用户确认或修正。",
+    });
     aiActivity.stop();
     safeInvoke(() => activeOptions?.onReviewRequired?.(event));
   }
@@ -159,6 +342,8 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
       return;
     }
 
+    markAllStartedStages("completed");
+    lastFailure.value = null;
     try {
       activeOptions?.onSucceeded?.(event);
     } finally {
@@ -171,6 +356,17 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
       return;
     }
 
+    lastFailure.value = event ?? null;
+    markActiveStage("failed");
+    appendLog({
+      stage: activeStage.value || "publish",
+      title: "工作流失败",
+      message: event?.errorText ?? "几何工作流失败",
+      detail: (event?.diagnostics ?? []).join("\n"),
+      status: "failed",
+      eventKind: "failed",
+      attempt: 1,
+    });
     try {
       activeOptions?.onFailed?.(event);
     } finally {
@@ -183,11 +379,171 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
       return;
     }
 
+    markActiveStage("interrupted");
     try {
       activeOptions?.onInterrupted?.(event);
     } finally {
       settle({ ok: false, type: "interrupted", event });
     }
+  }
+
+  function applyProgressEvent(event: GeometryProgressEvent) {
+    const status = normalizeStatus(event.status);
+    const stage = event.stage || "agent_output";
+    const step = ensureStep(stage, event);
+    const now = Date.now();
+
+    if (status === "running") {
+      markOtherRunningStagesCompleted(stage);
+      step.status = "running";
+      step.startedAt = step.startedAt ?? now;
+      step.endedAt = undefined;
+      activeStage.value = stage;
+    } else if (status === "waiting") {
+      step.status = "waiting";
+      step.startedAt = step.startedAt ?? now;
+      step.endedAt = undefined;
+      activeStage.value = stage;
+    } else if (status === "completed" || status === "failed" || status === "interrupted") {
+      step.status = status;
+      step.startedAt = step.startedAt ?? now;
+      step.endedAt = now;
+      if (activeStage.value === stage && status === "completed") {
+        activeStage.value = "";
+      } else if (status !== "completed") {
+        activeStage.value = stage;
+      }
+    }
+
+    step.attempt = Math.max(1, event.attempt || step.attempt || 1);
+    step.title = event.title || step.title;
+    step.agentName = event.agentName || step.agentName;
+    step.description = event.description || step.description;
+
+    if (event.artifactTitle || event.artifactSummary || event.artifactDetail || event.artifactData) {
+      step.artifacts = [
+        ...step.artifacts,
+        {
+          id: createLogId("artifact"),
+          attempt: Math.max(1, event.attempt || 1),
+          createdAt: now,
+          data: event.artifactData,
+          detail: event.artifactDetail ?? "",
+          status,
+          summary: event.artifactSummary || event.message || "",
+          title: event.artifactTitle || event.title || step.title,
+        },
+      ];
+    }
+
+    appendLog({
+      stage,
+      title: event.artifactTitle || event.title || step.title,
+      message: event.artifactSummary || event.message || "",
+      detail: event.artifactDetail ?? "",
+      data: event.artifactData,
+      status,
+      eventKind: event.eventKind || "stage",
+      attempt: Math.max(1, event.attempt || 1),
+    });
+    agentTimeline.value = [...agentTimeline.value];
+  }
+
+  function ensureStep(stage: string, event?: Partial<GeometryProgressEvent>) {
+    let step = agentTimeline.value.find((item) => item.stage === stage);
+    if (step) {
+      return step;
+    }
+
+    const definition = STAGE_DEFINITIONS.find((item) => item.stage === stage);
+    step = {
+      stage,
+      title: event?.title || definition?.title || stage,
+      agentName: event?.agentName || definition?.agentName || "几何 agent",
+      description: event?.description || definition?.description || "",
+      status: "pending",
+      attempt: 1,
+      artifacts: [],
+    };
+    agentTimeline.value = [...agentTimeline.value, step];
+    return step;
+  }
+
+  function markStage(
+    stage: string,
+    status: GeometryAgentStepStatus,
+    event: { agentName?: string; description?: string; message?: string; title?: string },
+  ) {
+    const step = ensureStep(stage, event);
+    const now = Date.now();
+    step.status = status;
+    step.startedAt = step.startedAt ?? now;
+    if (status === "completed" || status === "failed" || status === "interrupted") {
+      step.endedAt = now;
+    }
+    step.title = event.title || step.title;
+    step.agentName = event.agentName || step.agentName;
+    step.description = event.description || step.description;
+    activeStage.value = stage;
+    appendLog({
+      stage,
+      title: step.title,
+      message: event.message || step.title,
+      detail: "",
+      status,
+      eventKind: "stage",
+      attempt: step.attempt,
+    });
+    agentTimeline.value = [...agentTimeline.value];
+  }
+
+  function markActiveStage(status: GeometryAgentStepStatus) {
+    const stage = activeStage.value || [...agentTimeline.value].reverse().find((step) => step.status === "running")?.stage;
+    if (!stage) {
+      return;
+    }
+    const step = ensureStep(stage);
+    step.status = status;
+    step.endedAt = Date.now();
+    agentTimeline.value = [...agentTimeline.value];
+  }
+
+  function markOtherRunningStagesCompleted(nextStage: string) {
+    const now = Date.now();
+    for (const step of agentTimeline.value) {
+      if (step.stage !== nextStage && step.status === "running") {
+        step.status = "completed";
+        step.endedAt = now;
+      }
+    }
+  }
+
+  function markAllStartedStages(status: GeometryAgentStepStatus) {
+    const now = Date.now();
+    for (const step of agentTimeline.value) {
+      if (step.status !== "pending" && step.status !== "failed" && step.status !== "interrupted") {
+        step.status = status;
+        step.endedAt = step.endedAt ?? now;
+      }
+    }
+    activeStage.value = "";
+    agentTimeline.value = [...agentTimeline.value];
+  }
+
+  function appendLog(item: Omit<GeometryAgentLogItem, "createdAt" | "id">) {
+    agentLogs.value = [
+      ...agentLogs.value,
+      {
+        ...item,
+        id: createLogId("log"),
+        createdAt: Date.now(),
+      },
+    ].slice(-160);
+  }
+
+  function createLogId(prefix: string) {
+    logSequence += 1;
+    return `${prefix}-${Date.now()}-${logSequence}`;
   }
 
   function settle(result: GeometryTerminalResult) {
@@ -200,6 +556,17 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     reviewSpec.value = null;
     aiActivity.stop();
     resolve?.(result);
+  }
+
+  function resetActiveRun() {
+    pendingResolver = null;
+    activeOptions = null;
+    activeSessionId.value = "";
+    activeSceneName.value = "";
+    activeStage.value = "";
+    progressLabel.value = "";
+    reviewSpec.value = null;
+    aiActivity.stop();
   }
 
   onUnmounted(() => {
@@ -223,16 +590,51 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
   });
 
   return {
+    activeAgentStep,
     activeSceneName,
     activeSessionId,
+    agentLogs,
+    agentStatusLabel,
+    agentTimeline,
+    canRepairLastFailure,
+    hasAgentTimeline,
     isReviewing,
     isSessionActive,
+    lastFailure,
     progressLabel,
+    repairWorkflow,
     resumeReview,
     reviewSpec,
     startWorkflow,
     stopActiveWorkflow,
   };
+}
+
+function createInitialTimeline(stages?: string[]): GeometryAgentStep[] {
+  const allowed = stages ? new Set(stages) : null;
+  return STAGE_DEFINITIONS
+    .filter((definition) => !allowed || allowed.has(definition.stage))
+    .map((definition) => ({
+      ...definition,
+      status: "pending" as const,
+      attempt: 1,
+      artifacts: [],
+    }));
+}
+
+function normalizeStatus(status?: GeometryProgressEvent["status"]): GeometryAgentStepStatus {
+  if (
+    status === "pending" ||
+    status === "running" ||
+    status === "waiting" ||
+    status === "completed" ||
+    status === "failed" ||
+    status === "interrupted"
+  ) {
+    return status;
+  }
+
+  return "running";
 }
 
 function safeInvoke(fn: () => void) {

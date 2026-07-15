@@ -11,6 +11,7 @@ import DesignCardOptimizeDialog from "./features/designCard/components/DesignCar
 import DesignCardReviewRoom from "./features/designCard/components/DesignCardReviewRoom.vue";
 import EditorPane from "./components/editor/EditorPane.vue";
 import EnvironmentIndicator from "./components/EnvironmentIndicator.vue";
+import GeometryAgentTimeline from "./features/geometry/components/GeometryAgentTimeline.vue";
 import GeometryProblemDialog from "./features/geometry/components/GeometryProblemDialog.vue";
 import GeometryReviewDialog from "./features/geometry/components/GeometryReviewDialog.vue";
 import PackageTransferDialog from "./components/PackageTransferDialog.vue";
@@ -274,6 +275,14 @@ onBeforeUnmount(() => {
             :versions="workspace.codeAIOptimizeVersions"
             :active-id="workspace.codeAIOptimizeActiveVersionId"
             @select="workspace.selectCodeAIOptimizeVersion"
+          />
+
+          <GeometryAgentTimeline
+            v-if="workspace.geometryHasAgentTimeline"
+            :steps="workspace.geometryAgentTimeline"
+            :logs="workspace.geometryAgentLogs"
+            :can-repair="workspace.geometryCanRepairLastFailure"
+            @repair="workspace.repairGeometryFailure"
           />
 
           <EnvironmentIndicator

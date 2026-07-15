@@ -80,6 +80,8 @@ export function PreviousScreeningPage():Promise<bridge.ScreeningSessionState>;
 
 export function RebuildRuntime():Promise<bridge.EnvironmentStatus>;
 
+export function RepairGeometryWorkflow(arg1:bridge.GeometryWorkflowRepairRequest):Promise<bridge.GeometryWorkflowSession>;
+
 export function RefreshWorkspace(arg1:string):Promise<bridge.WorkspaceSnapshot>;
 
 export function RemoveScriptNoteImage(arg1:string,arg2:string):Promise<bridge.NoteDocument>;

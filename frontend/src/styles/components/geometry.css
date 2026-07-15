@@ -199,6 +199,371 @@
   padding-bottom: 0.35em;
 }
 
+.geometry-agent-timeline {
+  --geometry-agent-ok: #52684a;
+  --geometry-agent-danger: #9b4d45;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: min(52vh, 460px);
+  min-height: 0;
+  margin: 0 12px 12px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-soft), var(--surface) 30%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text), transparent 91%);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.geometry-agent-timeline.collapsed {
+  display: block;
+  flex: 0 0 auto;
+  max-height: none;
+}
+
+.geometry-agent-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 10px 12px;
+}
+
+.geometry-agent-header-main {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.geometry-agent-header-main strong,
+.geometry-agent-header-main small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geometry-agent-header-main strong {
+  font-size: 0.9rem;
+}
+
+.geometry-agent-header-main small,
+.geometry-agent-kicker {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.geometry-agent-kicker {
+  letter-spacing: 0.06em;
+}
+
+.geometry-agent-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.geometry-agent-action,
+.geometry-agent-failure button,
+.geometry-agent-tabs button {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: var(--fill-soft);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 0.76rem;
+}
+
+.geometry-agent-action:hover,
+.geometry-agent-failure button:hover,
+.geometry-agent-tabs button:hover,
+.geometry-agent-tabs button.active {
+  background: var(--fill-strong);
+  color: var(--text);
+}
+
+.geometry-agent-action.primary,
+.geometry-agent-failure button {
+  background: color-mix(in srgb, var(--run), transparent 78%);
+  color: var(--text);
+}
+
+.geometry-agent-body {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  padding: 0 12px 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.geometry-agent-stage-list {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  max-height: 100%;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  overflow: auto;
+}
+
+.geometry-agent-stage button {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--fill-soft), transparent 32%);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.geometry-agent-stage.active button {
+  background: color-mix(in srgb, var(--run), transparent 84%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--run), transparent 54%);
+}
+
+.geometry-agent-stage-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted), transparent 32%);
+}
+
+.geometry-agent-stage.running .geometry-agent-stage-dot,
+.geometry-agent-stage.waiting .geometry-agent-stage-dot {
+  background: var(--run);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--run), transparent 84%);
+}
+
+.geometry-agent-stage.completed .geometry-agent-stage-dot {
+  background: var(--geometry-agent-ok);
+}
+
+.geometry-agent-stage.failed .geometry-agent-stage-dot,
+.geometry-agent-stage.interrupted .geometry-agent-stage-dot {
+  background: var(--geometry-agent-danger);
+}
+
+.geometry-agent-stage-text {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.geometry-agent-stage-text strong,
+.geometry-agent-stage-text small,
+.geometry-agent-stage-text em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geometry-agent-stage-text strong {
+  font-size: 0.82rem;
+}
+
+.geometry-agent-stage-text em,
+.geometry-agent-stage-meta {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-style: normal;
+}
+
+.geometry-agent-stage-meta {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.geometry-agent-detail {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface), var(--surface-soft) 38%);
+}
+
+.geometry-agent-timeline + .environment-bar {
+  min-height: 34px;
+  padding: 0 40px 10px;
+}
+
+.geometry-agent-detail-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.geometry-agent-detail-header div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.geometry-agent-detail-header span,
+.geometry-agent-description,
+.geometry-agent-empty {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.geometry-agent-detail-header strong {
+  font-size: 0.92rem;
+}
+
+.geometry-agent-status-pill {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--fill-soft);
+  color: var(--text-soft);
+  font-size: 0.72rem;
+}
+
+.geometry-agent-status-pill.running,
+.geometry-agent-status-pill.waiting {
+  background: color-mix(in srgb, var(--run), transparent 82%);
+  color: var(--text);
+}
+
+.geometry-agent-status-pill.completed {
+  background: color-mix(in srgb, var(--geometry-agent-ok), transparent 82%);
+  color: var(--text);
+}
+
+.geometry-agent-status-pill.failed,
+.geometry-agent-status-pill.interrupted {
+  background: color-mix(in srgb, var(--geometry-agent-danger), transparent 82%);
+  color: var(--text);
+}
+
+.geometry-agent-description {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.geometry-agent-failure {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--geometry-agent-danger), transparent 88%);
+}
+
+.geometry-agent-failure p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.geometry-agent-failure button {
+  justify-self: start;
+}
+
+.geometry-agent-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.geometry-agent-artifacts,
+.geometry-agent-log-list {
+  display: grid;
+  gap: 8px;
+}
+
+.geometry-agent-artifact,
+.geometry-agent-log {
+  display: grid;
+  gap: 6px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--fill-soft), transparent 42%);
+}
+
+.geometry-agent-artifact.failed,
+.geometry-agent-log.failed {
+  background: color-mix(in srgb, var(--geometry-agent-danger), transparent 90%);
+}
+
+.geometry-agent-artifact > div,
+.geometry-agent-log {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.geometry-agent-artifact > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.geometry-agent-artifact strong,
+.geometry-agent-log strong {
+  font-size: 0.8rem;
+}
+
+.geometry-agent-artifact time,
+.geometry-agent-log time {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.geometry-agent-artifact p,
+.geometry-agent-log p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.geometry-agent-artifact details {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.geometry-agent-artifact summary {
+  cursor: pointer;
+}
+
+.geometry-agent-artifact pre,
+.geometry-agent-log pre,
+.geometry-agent-json {
+  max-height: 260px;
+  margin: 6px 0 0;
+  padding: 10px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface), black 8%);
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.geometry-agent-empty {
+  margin: 0;
+  padding: 10px;
+}
+
 @media (max-width: 960px) {
   .geometry-problem-dialog,
   .geometry-review-dialog {
@@ -209,5 +574,17 @@
   .geometry-review-row.constraint-row,
   .geometry-review-row.hint-row {
     grid-template-columns: 1fr;
+  }
+
+  .geometry-agent-body {
+    grid-template-columns: 1fr;
+  }
+
+  .geometry-agent-header {
+    grid-template-columns: 1fr;
+  }
+
+  .geometry-agent-header-actions {
+    justify-content: flex-start;
   }
 }
