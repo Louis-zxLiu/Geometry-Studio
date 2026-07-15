@@ -9,7 +9,6 @@ import type {
   GeometryCodeAppliedEvent,
   GeometryFailedEvent,
   GeometryInterruptedEvent,
-  GeometryPreviewUpdatedEvent,
   GeometryProgressEvent,
   GeometryReviewRequiredEvent,
   GeometrySpec,
@@ -28,7 +27,6 @@ type StartGeometryOptions = {
   onCodeApplied?: (event: GeometryCodeAppliedEvent) => void;
   onFailed?: (event: GeometryFailedEvent) => void;
   onInterrupted?: (event: GeometryInterruptedEvent) => void;
-  onPreviewUpdated?: (event: GeometryPreviewUpdatedEvent) => void;
   onProgress?: (event: GeometryProgressEvent) => void;
   onReviewRequired?: (event: GeometryReviewRequiredEvent) => void;
   onSucceeded?: (event: GeometrySucceededEvent) => void;
@@ -105,9 +103,6 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
       EventsOn("geometry:review_required", (...payload) => {
         handleReviewRequired(payload[0] as GeometryReviewRequiredEvent | undefined);
       }),
-      EventsOn("geometry:preview_updated", (...payload) => {
-        handlePreviewUpdated(payload[0] as GeometryPreviewUpdatedEvent | undefined);
-      }),
       EventsOn("geometry:code_applied", (...payload) => {
         handleCodeApplied(payload[0] as GeometryCodeAppliedEvent | undefined);
       }),
@@ -149,14 +144,6 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     reviewSpec.value = event?.spec ?? null;
     aiActivity.stop();
     safeInvoke(() => activeOptions?.onReviewRequired?.(event));
-  }
-
-  function handlePreviewUpdated(event?: GeometryPreviewUpdatedEvent) {
-    if (!isActiveEvent(event)) {
-      return;
-    }
-
-    safeInvoke(() => activeOptions?.onPreviewUpdated?.(event));
   }
 
   function handleCodeApplied(event?: GeometryCodeAppliedEvent) {

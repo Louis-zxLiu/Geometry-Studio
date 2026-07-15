@@ -1,20 +1,14 @@
 import type {
-  GeometrySceneDocument,
   GeometrySpec,
   GeometryWorkflowRequest,
   GeometryWorkflowSession,
 } from "./geometryTypes";
 
 type BridgeAppCompat = {
-  GetGeometryScene?: (sceneName: string) => Promise<GeometrySceneDocument>;
   ResumeGeometryWorkflow?: (sessionId: string, reviewedSpec: GeometrySpec) => Promise<void>;
   StartGeometryWorkflow?: (request: GeometryWorkflowRequest) => Promise<GeometryWorkflowSession>;
   StopGeometryWorkflow?: (sessionId: string) => Promise<void>;
 };
-
-export async function getGeometryScene(sceneName: string): Promise<GeometrySceneDocument> {
-  return callBridge("GetGeometryScene", (app) => app.GetGeometryScene?.(sceneName));
-}
 
 export async function startGeometryWorkflow(
   request: GeometryWorkflowRequest,

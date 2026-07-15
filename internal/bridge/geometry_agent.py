@@ -314,17 +314,21 @@ def progress(state: GeometryState, stage: str, message: str) -> None:
 
 
 def problem_vision_parse(state: GeometryState) -> Dict[str, Any]:
-    progress(state, "problem_vision_parse", "题面视觉解析")
+    progress(state, "problem_vision_parse", "题目图文解析")
     user = (
-        "Extract the complete olympiad geometry problem from the image and optional text. "
-        "Identify all named objects, geometric relationships, given conditions, and target conclusion. "
-        "Preserve the original problem language when possible.\n\n"
-        f"Optional text:\n{state.get('problemText', '')}"
+        "请从图片和/或题干文本中提取完整几何题。图片可能只是拍摄的题干文字，"
+        "也可能包含几何图形、点名、角度、辅助线或条件标注；如果没有图片，"
+        "就完全根据文本解析，不要因为缺少配图而失败。"
+        "如果图片存在，请使用多模态能力识别题干文字、图中标注和几何关系。"
+        "识别所有命名对象、已知条件、几何关系、求证目标和可能的辅助构造。"
+        "所有 problemText、goalText、constraints、constructionHints 都使用中文表达；"
+        "如果原题不是中文，请翻译为中文并保留关键数学符号、点名和等式。\n\n"
+        f"题干文本（可为空）:\n{state.get('problemText', '')}"
     )
     spec = json_chat(
         state,
         GeometrySpecModel,
-        "You are the visual parser agent for olympiad geometry problems.",
+        "你是几何拍照解题的图文解析 agent，负责把图片/文本输入转成中文几何题规格。",
         user,
         state.get("imageDataUrl", ""),
     )
@@ -334,15 +338,16 @@ def problem_vision_parse(state: GeometryState) -> Dict[str, Any]:
 def geometry_spec_organize(state: GeometryState) -> Dict[str, Any]:
     progress(state, "geometry_spec_organize", "几何规格整理")
     user = (
-        "Normalize this GeometrySpec for downstream construction. "
-        "Keep the mathematical meaning, use stable IDs, make constraints reference entity IDs, "
-        "and make every condition explicit.\n\n"
+        "请整理下面的 GeometrySpec，供后续构造、代码生成和中文解答使用。"
+        "保持数学含义，使用稳定 ID，让 constraints 引用 entity ID，并把隐含条件显式化。"
+        "面向用户的 label、text、problemText、goalText、constructionHints 必须使用中文；"
+        "ID 可以保持 ASCII，便于代码引用。\n\n"
         + json.dumps(state["spec"], ensure_ascii=False, indent=2)
     )
     spec = json_chat(
         state,
         GeometrySpecModel,
-        "You are the geometry specification organizer agent.",
+        "你是几何规格整理 agent，负责把题目条件整理成中文、结构化、可构造的规格。",
         user,
     )
     return {"spec": spec.model_dump()}
@@ -379,15 +384,16 @@ def construction_plan(state: GeometryState) -> Dict[str, Any]:
     progress(state, "construction_plan", "构造规划")
     spec = state.get("reviewedSpec") or state["spec"]
     user = (
-        "Create a concise construction plan for a classroom-ready interactive geometry model. "
-        "The same GeometryScene must drive both Vue/SVG preview and Matplotlib/PyQt code. "
-        "Prefer draggable points or parameter controls when they help explain invariants.\n\n"
+        "请为这道几何题生成简洁的课堂解题构造规划。"
+        "同一个 GeometryScene 要同时驱动 Vue/SVG 预览和 Matplotlib/PyQt 代码。"
+        "当拖动点或参数控件有助于解释不变量、角度关系、比例关系时，请优先加入。"
+        "所有教学重点和构造说明都使用中文。\n\n"
         + json.dumps(spec, ensure_ascii=False, indent=2)
     )
     plan = json_chat(
         state,
         ConstructionPlanModel,
-        "You are the construction planning agent for interactive geometry teaching.",
+        "你是面向中文课堂的交互几何构造规划 agent。",
         user,
     )
     return {"constructionPlan": plan.plan}
@@ -397,9 +403,11 @@ def dual_scene_generate(state: GeometryState) -> Dict[str, Any]:
     progress(state, "dual_scene_generate", "双端场景生成")
     spec = state.get("reviewedSpec") or state["spec"]
     user = (
-        "Generate GeometryScene v1 from this specification and construction plan. "
-        "Use readable coordinates. Include the objects needed for the proof, constraints, measurements, "
-        "annotations, and at least one control when a parameter can be varied.\n\n"
+        "请根据规格和构造规划生成 GeometryScene v1。"
+        "使用易读坐标，包含证明所需对象、条件、测量、注释；"
+        "如果存在可变化参数，请至少提供一个 control。"
+        "title、control.label、measurement.label、annotation.text、constraint.text "
+        "以及 proofSteps 中的 claim/reason 都必须是中文。\n\n"
         "GeometrySpec:\n"
         + json.dumps(spec, ensure_ascii=False, indent=2)
         + "\n\nConstruction plan:\n"
@@ -408,7 +416,7 @@ def dual_scene_generate(state: GeometryState) -> Dict[str, Any]:
     scene = json_chat(
         state,
         GeometrySceneModel,
-        "You are the dual-end scene generation agent.",
+        "你是双端几何场景生成 agent，输出中文标注的可交互几何场景。",
         user,
     )
     scene_dict = scene.model_dump(by_alias=True)
@@ -427,11 +435,18 @@ def matplotlib_code_generate(state: GeometryState) -> Dict[str, Any]:
     progress(state, "matplotlib_code_generate", "Matplotlib 代码生成")
     spec = state.get("reviewedSpec") or state["spec"]
     user = (
-        "Generate self-contained Python code for Geometry Studio. "
-        "Use the GeometryScene as the source of truth. Allowed imports are math, numpy, sympy, "
-        "matplotlib.pyplot, matplotlib.patches, and matplotlib.widgets. "
-        "The code must call plt.show(), render labels clearly, and expose interactive controls when present. "
-        "Do not read files, write files, start processes, or use network access.\n\n"
+        "请为 Geometry Studio 生成自包含 Python/Matplotlib 代码。"
+        "以 GeometryScene 为唯一事实来源。允许导入 math、numpy、sympy、"
+        "matplotlib.pyplot、matplotlib.patches、matplotlib.widgets。"
+        "代码必须调用 plt.show()，清晰渲染点名、线段、角度、测量和注释，"
+        "并在 scene.controls 存在时暴露交互控件。"
+        "所有面向用户的 Matplotlib 文本必须中文，包括图标题、图例、坐标轴标签、"
+        "点/线/圆注释、Slider/Button/CheckButtons 等控件标签、参数说明、测量值说明。"
+        "代码变量名可以用英文或拼音，但显示给用户的参数名必须中文，例如“角度”“半径”“比例”“位置”。"
+        "请设置中文字体回退，例如 Microsoft YaHei、SimHei、Arial Unicode MS、DejaVu Sans，"
+        "并设置 axes.unicode_minus=False。"
+        "不要把中文放进 MathText/LaTeX 的 $...$ 或 \\text{} 中，中文与数学符号用普通字符串拼接。"
+        "不要读取文件、写入文件、启动进程或访问网络。\n\n"
         "GeometrySpec:\n"
         + json.dumps(spec, ensure_ascii=False, indent=2)
         + "\n\nGeometryScene:\n"
@@ -442,7 +457,7 @@ def matplotlib_code_generate(state: GeometryState) -> Dict[str, Any]:
     code = json_chat(
         state,
         CodeResultModel,
-        "You are the Matplotlib code generation agent.",
+        "你是中文几何解题的 Matplotlib 代码生成 agent，尤其注意交互参数和界面标注汉化。",
         user,
     )
     return {"code": code.pythonCode.strip()}
@@ -452,9 +467,11 @@ def teaching_proof_generate(state: GeometryState) -> Dict[str, Any]:
     progress(state, "teaching_proof_generate", "教学证明生成")
     spec = state.get("reviewedSpec") or state["spec"]
     proof_user = (
-        "Write a classroom teaching proof for this olympiad geometry problem. "
-        "Use concise Chinese Markdown unless the source problem is not Chinese. "
-        "Also return structured proof steps and classroom questions.\n\n"
+        "请为这道几何题写出面向中文课堂的证明和解答。"
+        "无论原题语言是什么，proofMarkdown、proofSteps、classroomQuestions 都必须使用中文；"
+        "如原题不是中文，请在题目部分给出中文译文，并保留关键点名和数学符号。"
+        "证明要条理清晰、适合教学，解答要明确最终结论。"
+        "同时返回结构化证明步骤和课堂提问。\n\n"
         "GeometrySpec:\n"
         + json.dumps(spec, ensure_ascii=False, indent=2)
         + "\n\nGeometryScene:\n"
@@ -463,14 +480,15 @@ def teaching_proof_generate(state: GeometryState) -> Dict[str, Any]:
     proof = json_chat(
         state,
         ProofResultModel,
-        "You are the teaching proof agent.",
+        "你是中文几何教学证明与解答 agent。",
         proof_user,
     )
     scene = dict(state["scene"])
     scene["proofSteps"] = [step.model_dump() for step in proof.proofSteps]
     note_user = (
         "Create the final Geometry Studio note as Markdown with sections: "
-        "题目, 已识别条件, 交互模型说明, 教学证明, 课堂提问. "
+        "题目, 已识别条件, 交互模型说明, 教学证明, 解答, 课堂提问. "
+        "整篇笔记必须使用中文；如果原题不是中文，请放中文译文。"
         "Use the provided proof markdown as the proof source.\n\n"
         "GeometrySpec:\n"
         + json.dumps(spec, ensure_ascii=False, indent=2)
@@ -484,7 +502,7 @@ def teaching_proof_generate(state: GeometryState) -> Dict[str, Any]:
     note = json_chat(
         state,
         NoteResultModel,
-        "You write concise classroom-ready geometry lesson notes.",
+        "你负责撰写中文课堂可直接使用的几何解题笔记。",
         note_user,
     )
     return {
@@ -551,8 +569,10 @@ def runtime_check(state: GeometryState) -> Dict[str, Any]:
 def self_correct(state: GeometryState) -> Dict[str, Any]:
     progress(state, "self_correct", "自我修正")
     user = (
-        "Repair this Python code so it runs successfully in Geometry Studio while preserving the same "
-        "GeometryScene and teaching intent. Return only the repaired code and repair notes in JSON.\n\n"
+        "请修复这段 Python/Matplotlib 代码，使它能在 Geometry Studio 中成功运行，"
+        "同时保持同一个 GeometryScene 和中文教学意图。"
+        "修复后仍必须保留中文图标题、中文注释、中文控件/参数标签和中文测量说明。"
+        "Return only the repaired code and repair notes in JSON.\n\n"
         "GeometryScene:\n"
         + json.dumps(state["scene"], ensure_ascii=False, indent=2)
         + "\n\nRuntime or validation error:\n"
@@ -563,7 +583,7 @@ def self_correct(state: GeometryState) -> Dict[str, Any]:
     repaired = json_chat(
         state,
         RepairResultModel,
-        "You are the self-correction agent for safe Matplotlib geometry programs.",
+        "你是安全 Matplotlib 几何程序的自我修正 agent，并负责保持中文界面文本。",
         user,
     )
     diagnostics = list(state.get("diagnostics") or [])

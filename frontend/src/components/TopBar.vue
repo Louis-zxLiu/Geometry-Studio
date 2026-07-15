@@ -56,7 +56,7 @@ function closeWindow() {
         :disabled="geometryDisabled"
         @click="emit('geometry')"
       >
-        <span>拍题建模</span>
+        <span>拍照解题</span>
       </button>
 
       <button

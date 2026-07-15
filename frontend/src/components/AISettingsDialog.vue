@@ -54,7 +54,7 @@ function updateField(field: "url" | "key" | "model", value: string) {
             <span class="ai-mode-check" aria-hidden="true"></span>
             <span class="ai-mode-copy">
               <strong>自定义 OpenAI 兼容 API</strong>
-              <small>在这里填写 LLM API，代码 AI、设计卡和拍题建模会共用这份配置。</small>
+              <small>在这里填写 LLM API，代码 AI、设计卡和拍照解题会共用这份配置。</small>
             </span>
           </button>
 

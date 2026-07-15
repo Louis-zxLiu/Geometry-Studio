@@ -486,7 +486,7 @@ func (s *geometryWorkflowService) persistGeometryResult(sceneName string, imageD
 		if noteMarkdown != "" {
 			noteMarkdown += "\n\n"
 		}
-		noteMarkdown += fmt.Sprintf("![Geometry source](%s)\n", imageRel)
+		noteMarkdown += fmt.Sprintf("![题目原图](%s)\n", imageRel)
 	}
 	if strings.TrimSpace(result.ProofMarkdown) != "" && !strings.Contains(noteMarkdown, strings.TrimSpace(result.ProofMarkdown)) {
 		if noteMarkdown != "" {

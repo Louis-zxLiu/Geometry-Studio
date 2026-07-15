@@ -22,8 +22,6 @@ import { extractDesignCardReferenceIDs } from "../../designCard/services/designC
 import type { DesignCardDragSource } from "../../designCard/services/designCardDragData";
 import type { DesignCard } from "../../designCard/services/designCardTypes";
 import { useGeometryWorkflowSession } from "../../geometry/model/useGeometryWorkflowSession";
-import { getGeometryScene } from "../../geometry/services/geometryBridgeCompat";
-import type { GeometrySceneDocument } from "../../geometry/services/geometryTypes";
 import { useNoteWorkspace } from "../../notebook/model/useNoteWorkspace";
 import { createRuntimeRepository } from "../../runtime/services/runtimeRepository";
 import { useRuntimeState } from "../../runtime/model/useRuntimeState";
@@ -69,8 +67,6 @@ export function usePlotWorkspace() {
   });
   const isSettingsDialogOpen = ref(false);
   const isGeometryProblemDialogOpen = ref(false);
-  const geometrySceneDocument = ref<GeometrySceneDocument | null>(null);
-  const geometrySourceImageDataUrl = ref("");
   const updateStatus = ref<AppUpdateStatus>(normalizeUpdateStatus({}));
   const isCheckingUpdates = ref(false);
   const isDownloadingUpdate = ref(false);
@@ -318,7 +314,6 @@ export function usePlotWorkspace() {
 
     try {
       const currentCode = await plotAIWorkflowLoadSceneCode(payload.sceneName);
-      geometrySourceImageDataUrl.value = payload.imageDataUrl;
       setWorkspaceLayoutMode("split");
       await geometryWorkflowSession.startWorkflow(
         {
@@ -330,12 +325,6 @@ export function usePlotWorkspace() {
           maxAttempts: 5,
         },
         {
-          onPreviewUpdated: (event) => {
-            geometrySceneDocument.value = {
-              scene: event.scene,
-              sourceImageDataUrl: geometrySourceImageDataUrl.value,
-            };
-          },
           onCodeApplied: (event) => {
             if (event.sceneName === scriptWorkspace.currentFile.value) {
               scriptWorkspace.updateCode(event.code);
@@ -382,34 +371,9 @@ export function usePlotWorkspace() {
         const document = await scriptRepository.getScriptContent(sceneName);
         noteWorkspace.hydrateFromScriptDocument(document);
       }
-      geometrySceneDocument.value = await getGeometryScene(sceneName);
-      geometrySourceImageDataUrl.value = geometrySceneDocument.value.sourceImageDataUrl;
     } catch (error) {
       runErrorDialog.openRunErrorDialog(getErrorMessage(error));
     }
-  }
-
-  async function refreshCurrentGeometryScene(sceneName: string) {
-    if (!sceneName) {
-      geometrySceneDocument.value = null;
-      geometrySourceImageDataUrl.value = "";
-      return;
-    }
-
-    try {
-      const document = await getGeometryScene(sceneName);
-      geometrySceneDocument.value = document.scene.points.length || document.scene.segments.length || document.scene.title
-        ? document
-        : null;
-      geometrySourceImageDataUrl.value = document.sourceImageDataUrl;
-    } catch {
-      geometrySceneDocument.value = null;
-      geometrySourceImageDataUrl.value = "";
-    }
-  }
-
-  function closeGeometryPreview() {
-    geometrySceneDocument.value = null;
   }
 
   async function confirmGeometryReview(spec: Parameters<typeof geometryWorkflowSession.resumeReview>[0]) {
@@ -636,14 +600,6 @@ export function usePlotWorkspace() {
     { immediate: true },
   );
 
-  watch(
-    scriptWorkspace.currentFile,
-    (sceneName) => {
-      void refreshCurrentGeometryScene(sceneName);
-    },
-    { immediate: true },
-  );
-
   return {
     aiSettings,
     aiStatusLabel: aiActivity.aiStatusLabel,
@@ -665,7 +621,6 @@ export function usePlotWorkspace() {
     codeAIOptimizeVersions: plotAIWorkflow.codeAIOptimize.versions,
     closeCodeAIOptimizeContextMenu: plotAIWorkflow.codeAIOptimize.closeContextMenu,
     closeCodeAIOptimizeDialog: plotAIWorkflow.codeAIOptimize.closeDialog,
-    closeGeometryPreview,
     closeGeometryProblemDialog,
     copyRunError: async () => {
       try {
@@ -694,7 +649,6 @@ export function usePlotWorkspace() {
     generateGeometryFromNoteSelection,
     geometryProgressLabel: geometryWorkflowSession.progressLabel,
     geometryReviewSpec: geometryWorkflowSession.reviewSpec,
-    geometrySceneDocument,
     goToNextScreeningPage: screeningWorkspace.goToNextScreeningPage,
     hasNoteContent: noteWorkspace.hasContent,
     initProgressMessage: runtime.initProgressMessage,

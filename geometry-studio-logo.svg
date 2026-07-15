@@ -1,14 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">Geometry Studio</title>
-  <desc id="desc">A geometric mark made from crossing construction lines and points.</desc>
+  <desc id="desc">A G-shaped geometric mark with aligned construction points and angle lines.</desc>
   <rect width="256" height="256" rx="56" fill="#F8F7F6"/>
-  <circle cx="128" cy="128" r="80" fill="#F3E5C3" opacity=".72"/>
-  <circle cx="128" cy="128" r="80" fill="none" stroke="#93A27D" stroke-width="9" opacity=".9"/>
-  <path d="M70 75 186 181" fill="none" stroke="#2C2C2C" stroke-width="15" stroke-linecap="round"/>
-  <path d="M70 181 186 75" fill="none" stroke="#93A27D" stroke-width="15" stroke-linecap="round"/>
-  <circle cx="128" cy="128" r="18" fill="#F8F7F6" stroke="#2C2C2C" stroke-width="8"/>
-  <circle cx="70" cy="75" r="12" fill="#2C2C2C"/>
-  <circle cx="186" cy="181" r="12" fill="#2C2C2C"/>
-  <circle cx="70" cy="181" r="12" fill="#93A27D"/>
-  <circle cx="186" cy="75" r="12" fill="#93A27D"/>
+  <path d="M172 92 A66 66 0 1 0 188 146" fill="none" stroke="#93A27D" stroke-width="12" stroke-linecap="round"/>
+  <path d="M113 146H188" fill="none" stroke="#2C2C2C" stroke-width="12" stroke-linecap="round"/>
+  <path d="M113 146 172 92" fill="none" stroke="#2C2C2C" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="113" cy="146" r="10" fill="#2C2C2C"/>
+  <circle cx="172" cy="92" r="9" fill="#2C2C2C"/>
+  <circle cx="188" cy="146" r="9" fill="#93A27D"/>
 </svg>

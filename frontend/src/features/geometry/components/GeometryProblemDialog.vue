@@ -69,7 +69,7 @@ function readFileAsDataUrl(file: File) {
   <Transition name="dialog-enter">
     <div v-if="open" class="dialog-backdrop" @mousedown.self="emit('cancel')">
       <section class="create-dialog geometry-problem-dialog">
-        <h2>拍题建模</h2>
+        <h2>拍照解题</h2>
 
         <button
           class="geometry-image-picker"
@@ -82,7 +82,7 @@ function readFileAsDataUrl(file: File) {
             :src="imageDataUrl"
             :alt="imageName"
           />
-          <span v-else>选择题图</span>
+          <span v-else>选择题图或拍照</span>
         </button>
 
         <textarea
@@ -90,7 +90,7 @@ function readFileAsDataUrl(file: File) {
           :value="problemText"
           :disabled="pending"
           rows="5"
-          placeholder="题干文本"
+          placeholder="也可以直接输入题干文本；没有配图的几何题会按文字解析"
           @input="problemText = ($event.target as HTMLTextAreaElement).value"
         ></textarea>
 
@@ -117,7 +117,7 @@ function readFileAsDataUrl(file: File) {
             :disabled="pending || (!imageDataUrl && !problemText.trim())"
             @click="submit"
           >
-            开始
+            开始解题
           </button>
         </div>
       </section>

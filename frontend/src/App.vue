@@ -9,7 +9,6 @@ import DesignCardOptimizeDialog from "./features/designCard/components/DesignCar
 import DesignCardReviewRoom from "./features/designCard/components/DesignCardReviewRoom.vue";
 import EditorPane from "./components/editor/EditorPane.vue";
 import EnvironmentIndicator from "./components/EnvironmentIndicator.vue";
-import GeometryPreviewPane from "./features/geometry/components/GeometryPreviewPane.vue";
 import GeometryProblemDialog from "./features/geometry/components/GeometryProblemDialog.vue";
 import GeometryReviewDialog from "./features/geometry/components/GeometryReviewDialog.vue";
 import PackageTransferDialog from "./components/PackageTransferDialog.vue";
@@ -192,13 +191,6 @@ onBeforeUnmount(() => {
           @ai-geometry="workspace.generateGeometryFromNoteSelection"
         />
       </div>
-
-      <GeometryPreviewPane
-        :document="workspace.geometrySceneDocument"
-        :busy="workspace.isAIGenerating"
-        :progress-label="workspace.geometryProgressLabel"
-        @close="workspace.closeGeometryPreview"
-      />
     </main>
 
     <CreateScriptDialog

@@ -1,6 +1,7 @@
 param(
     [string]$Version = "",
-    [switch]$IncludeScripts = $true
+    [switch]$IncludeScripts = $true,
+    [switch]$RequireScreeningZoom
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,8 +27,28 @@ function Resolve-ScreeningZoomExecutablePath {
         }
     }
 
+    return ""
+}
+
+function Resolve-BuiltExecutablePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot
+    )
+
+    $candidates = @(
+        (Join-Path $RepoRoot "build/bin/GeometryStudio.exe"),
+        (Join-Path $RepoRoot "build/bin/PlotKityCat.exe")
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+
     $joined = $candidates -join [Environment]::NewLine
-    throw "Missing screening zoom executable. Expected one of:`n$joined"
+    throw "Missing built executable. Expected one of:`n$joined"
 }
 
 function Get-AppVersionFromFile {
@@ -53,18 +74,14 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = Get-AppVersionFromFile -Path $versionFilePath
 }
 
-$releaseName = "PlotKityCat-v$Version"
+$releaseName = "GeometryStudio-v$Version"
 $releaseRoot = Join-Path $repoRoot "build/release/$releaseName"
 $releaseZip = "$releaseRoot.zip"
-$binExe = Join-Path $repoRoot "build/bin/PlotKityCat.exe"
+$binExe = Resolve-BuiltExecutablePath -RepoRoot $repoRoot
 $runtimeArchive = Join-Path $repoRoot "resources/runtime/runtime.7z"
 $runtime7ZipDir = Join-Path $repoRoot "tools/7zip/extra/x64"
 $screeningZoomExe = Resolve-ScreeningZoomExecutablePath -RepoRoot $repoRoot
 $scriptsDir = Join-Path $repoRoot "Scripts"
-
-if (-not (Test-Path $binExe)) {
-    throw "Missing built executable: $binExe"
-}
 
 if (-not (Test-Path $runtimeArchive)) {
     throw "Missing runtime archive: $runtimeArchive"
@@ -88,13 +105,19 @@ if (Test-Path $releaseZip) {
 
 New-Item -ItemType Directory -Path (Join-Path $releaseRoot "resources/runtime") -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $releaseRoot "resources/runtime/7zip") -Force | Out-Null
-Copy-Item -LiteralPath $binExe -Destination (Join-Path $releaseRoot "PlotKityCat.exe") -Force
+Copy-Item -LiteralPath $binExe -Destination (Join-Path $releaseRoot "GeometryStudio.exe") -Force
 Copy-Item -LiteralPath $runtimeArchive -Destination (Join-Path $releaseRoot "resources/runtime/runtime.7z") -Force
 Copy-Item -LiteralPath (Join-Path $runtime7ZipDir "7za.exe") -Destination (Join-Path $releaseRoot "resources/runtime/7zip/7za.exe") -Force
 Copy-Item -LiteralPath (Join-Path $runtime7ZipDir "7za.dll") -Destination (Join-Path $releaseRoot "resources/runtime/7zip/7za.dll") -Force
 
-New-Item -ItemType Directory -Path (Join-Path $releaseRoot "resources/screeningzoom") -Force | Out-Null
-Copy-Item -LiteralPath $screeningZoomExe -Destination (Join-Path $releaseRoot "resources/screeningzoom/zoomit.exe") -Force
+if (-not [string]::IsNullOrWhiteSpace($screeningZoomExe)) {
+    New-Item -ItemType Directory -Path (Join-Path $releaseRoot "resources/screeningzoom") -Force | Out-Null
+    Copy-Item -LiteralPath $screeningZoomExe -Destination (Join-Path $releaseRoot "resources/screeningzoom/zoomit.exe") -Force
+} elseif ($RequireScreeningZoom.IsPresent) {
+    throw "Missing screening zoom executable. Re-run without -RequireScreeningZoom to package without it."
+} else {
+    Write-Warning "Missing screening zoom executable; packaging without resources/screeningzoom/zoomit.exe."
+}
 
 if ($IncludeScripts -and (Test-Path $scriptsDir)) {
     Copy-Item -LiteralPath $scriptsDir -Destination (Join-Path $releaseRoot "Scripts") -Recurse -Force

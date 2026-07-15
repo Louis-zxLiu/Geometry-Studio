@@ -104,11 +104,6 @@ export type GeometryScene = {
   proofSteps: GeometryProofStep[];
 };
 
-export type GeometrySceneDocument = {
-  scene: GeometryScene;
-  sourceImageDataUrl: string;
-};
-
 export type GeometryWorkflowRequest = {
   sceneName: string;
   imageDataUrl: string;
@@ -144,12 +139,6 @@ export type GeometryReviewRequiredEvent = {
   sessionId: string;
   sceneName: string;
   spec: GeometrySpec;
-};
-
-export type GeometryPreviewUpdatedEvent = {
-  sessionId: string;
-  sceneName: string;
-  scene: GeometryScene;
 };
 
 export type GeometryCodeAppliedEvent = {

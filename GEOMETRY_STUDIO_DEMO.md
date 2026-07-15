@@ -22,13 +22,13 @@ powershell -ExecutionPolicy Bypass -File tools/prepare-geometry-runtime.ps1 -Ind
 - `KEY`：你的 API Key
 - `MODEL`：支持图片输入的多模态模型
 
-保存后会写入 `config/ai-settings.json`。代码 AI、设计卡和 `拍题建模` 会共用这份配置。
+保存后会写入 `config/ai-settings.json`。代码 AI、设计卡和 `拍照解题` 会共用这份配置。
 
 ## 3 分钟演示流程
 
 1. 打开 `build/bin/GeometryStudio-wails.exe` 或开发版 `build/bin/GeometryStudio-dev.exe`。
 2. 确认 AI 设置里已经填好多模态模型。
-3. 选择空白场景，点击顶部 `拍题建模`。
+3. 选择空白场景，点击顶部 `拍照解题`。
 4. 上传几何题截图，或粘贴网络奥数几何题题干。
 5. 复核弹窗出现后检查点、线、圆、条件和结论，确认继续。
 6. 应用内 SVG 预览出现，展示 `geometry-scene.json` 的双端场景。
@@ -39,7 +39,7 @@ powershell -ExecutionPolicy Bypass -File tools/prepare-geometry-runtime.ps1 -Ind
 ## 演示话术
 
 - PlotKityCat 原能力保留：代码编辑、AI 绘图、笔记、设计卡、场景包、放映模式。
-- Geometry Studio 新增主线：几何截图/题干 -> 多智能体建模 -> 教师复核 -> 双端交互展示 -> 教学证明。
+- Geometry Studio 新增主线：几何截图/题干 -> 多智能体解题 -> 教师复核 -> 双端交互展示 -> 教学证明。
 - Python worker 是完整 LangGraph 节点图：题面视觉解析、几何规格整理、教师复核、构造规划、双端场景生成、Matplotlib 代码生成、教学证明生成、运行检查、自我修正、发布。
 - 生成结果由同一份 `GeometryScene` 驱动应用内 SVG 预览和 Python 交互模型。
 
@@ -63,4 +63,4 @@ powershell -ExecutionPolicy Bypass -File tools/prepare-geometry-runtime.ps1 -Ind
 runtime\Scripts\python.exe tools\crawl-olympiad-geometry.py --years 2020
 ```
 
-演示时建议先复制 `IMO 2020 Shortlist G1` 或 `G2` 的题干到 `拍题建模`，它们对象清晰，适合展示规格复核、SVG 预览、Matplotlib 交互模型和教学证明。
+演示时建议先复制 `IMO 2020 Shortlist G1` 或 `G2` 的题干到 `拍照解题`，它们对象清晰，适合展示规格复核、SVG 预览、Matplotlib 交互模型和教学证明。
