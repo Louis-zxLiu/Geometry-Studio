@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const props = defineProps<{
   open: boolean;
@@ -41,7 +41,28 @@ async function handleFileChange(event: Event) {
     return;
   }
 
+  await applyImageFile(file);
+}
+
+async function handlePaste(event: ClipboardEvent) {
+  if (!props.open || props.pending) {
+    return;
+  }
+
+  const file = getClipboardImage(event.clipboardData);
+  if (!file) {
+    return;
+  }
+
+  event.preventDefault();
+  await applyImageFile(file, "粘贴的题图");
+}
+
+async function applyImageFile(file: File, fallbackName = "题图") {
   imageName.value = file.name;
+  if (!imageName.value) {
+    imageName.value = fallbackName;
+  }
   imageDataUrl.value = await readFileAsDataUrl(file);
 }
 
@@ -63,6 +84,30 @@ function readFileAsDataUrl(file: File) {
     reader.readAsDataURL(file);
   });
 }
+
+function getClipboardImage(data: DataTransfer | null) {
+  const items = Array.from(data?.items ?? []);
+  for (const item of items) {
+    if (item.kind !== "file" || !item.type.startsWith("image/")) {
+      continue;
+    }
+
+    const file = item.getAsFile();
+    if (file) {
+      return file;
+    }
+  }
+
+  return Array.from(data?.files ?? []).find((file) => file.type.startsWith("image/")) ?? null;
+}
+
+onMounted(() => {
+  window.addEventListener("paste", handlePaste);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("paste", handlePaste);
+});
 </script>
 
 <template>
@@ -82,7 +127,7 @@ function readFileAsDataUrl(file: File) {
             :src="imageDataUrl"
             :alt="imageName"
           />
-          <span v-else>选择题图或拍照</span>
+          <span v-else>选择/粘贴题图</span>
         </button>
 
         <textarea
