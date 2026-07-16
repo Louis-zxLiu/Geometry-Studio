@@ -47,6 +47,8 @@ def compact_construction_for_prompt(
         "constructionIntent": construction.get("constructionIntent") or [],
         "solution": compact_solution_for_prompt(solution, include_points=include_solution_points, residual_limit=residual_limit),
     }
+    if construction.get("diagnostics"):
+        payload["diagnostics"] = list(construction.get("diagnostics") or [])[:residual_limit]
     if validation:
         payload["validation"] = {
             "isValid": bool(validation.get("isValid")),

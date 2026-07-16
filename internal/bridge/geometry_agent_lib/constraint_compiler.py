@@ -28,9 +28,151 @@ def normalize_construction(
     data["reviewStatus"] = review_status
     data["specFingerprint"] = spec_fingerprint(dict(spec))
     data["diagnostics"] = list(diagnostics or data.get("diagnostics") or [])
+    normalize_shape_metadata(data, spec)
+    relax_implicit_orientation_constraints(data, spec)
+    data["diagnostics"].extend(branch_hardcoding_issues(data, spec))
     if not data.get("dslCode"):
         data["dslCode"] = construction_debug_summary(data)
     return GeometryConstructionModel.model_validate(data).model_dump()
+
+
+def normalize_shape_metadata(data: Dict[str, Any], spec: Mapping[str, Any]) -> None:
+    expected_shape = quadrilateral_shape_from_spec(spec)
+    if expected_shape != "convex":
+        return
+    for obj in data.get("objects") or []:
+        if not isinstance(obj, dict):
+            continue
+        attrs = obj.get("attributes") if isinstance(obj.get("attributes"), dict) else {}
+        label = str(obj.get("label") or "")
+        shape = str(attrs.get("shape") or "").strip().lower()
+        if "凹四边形" in label or shape in {"concave", "凹四边形", "凹"}:
+            obj["label"] = label.replace("凹四边形", "凸四边形") or "凸四边形"
+            obj.setdefault("attributes", {})["shape"] = "convex"
+            data.setdefault("diagnostics", []).append(
+                f"题意为凸四边形，已修正对象 {obj.get('id') or '<unknown>'} 的凹四边形标签/属性。"
+            )
+    for constraint in data.get("constraints") or []:
+        if not isinstance(constraint, dict):
+            continue
+        ctype = str(constraint.get("type") or "").strip().lower()
+        if ctype != "concave_quadrilateral":
+            continue
+        constraint["type"] = "convex_quadrilateral"
+        constraint["text"] = "四边形 ABCD 为凸四边形。"
+        data.setdefault("diagnostics", []).append(
+            f"题意为凸四边形，已将约束 {constraint.get('id') or '<unknown>'} 从 concave_quadrilateral 改为 convex_quadrilateral。"
+        )
+
+
+def relax_implicit_orientation_constraints(data: Dict[str, Any], spec: Mapping[str, Any]) -> None:
+    if spec_mentions_directed_orientation(spec):
+        return
+    changed: List[str] = []
+    for constraint in data.get("constraints") or []:
+        if not isinstance(constraint, dict):
+            continue
+        if str(constraint.get("type") or "").strip().lower() != "orientation":
+            continue
+        args = constraint.get("args")
+        if not isinstance(args, dict):
+            continue
+        value = str(args.get("value") or args.get("orientation") or args.get("sign") or "").strip().lower()
+        if value not in {"ccw", "cw", "counterclockwise", "clockwise", "positive", "negative"}:
+            continue
+        args["value"] = "auto"
+        args.pop("orientation", None)
+        args.pop("sign", None)
+        changed.append(str(constraint.get("id") or "orientation"))
+    if changed:
+        diagnostics = data.setdefault("diagnostics", [])
+        diagnostics.append(
+            "已将未由题意明确指定方向的 orientation 分支约束改为 auto，避免硬编码 ccw/cw 导致可行构型冲突："
+            + ", ".join(changed)
+        )
+
+
+def branch_hardcoding_issues(data: Mapping[str, Any], spec: Mapping[str, Any]) -> List[str]:
+    issues: List[str] = []
+    expected_shape = quadrilateral_shape_from_spec(spec)
+    for constraint in data.get("constraints") or []:
+        if not isinstance(constraint, dict):
+            continue
+        ctype = str(constraint.get("type") or "").strip().lower()
+        text = " ".join(
+            str(part or "")
+            for part in (
+                constraint.get("id"),
+                constraint.get("text"),
+                constraint.get("source"),
+            )
+        )
+        if ctype == "orientation":
+            args = constraint.get("args") if isinstance(constraint.get("args"), dict) else {}
+            value = str(args.get("value") or args.get("orientation") or args.get("sign") or "").strip().lower()
+            if value in {"ccw", "cw", "clockwise", "counterclockwise", "positive", "negative"} and not spec_mentions_directed_orientation(spec):
+                issues.append(
+                    f"约束 {constraint.get('id') or '<unknown>'} 使用未由题意指定的固定 orientation 分支 {value}；应改为 auto 或真实侧向关系。"
+                )
+        if expected_shape == "convex" and ctype in {"same_side", "opposite_sides"} and contains_any(
+            text,
+            ("凹四边形", "concave", "凸四边形", "convex"),
+        ):
+            issues.append(
+                f"约束 {constraint.get('id') or '<unknown>'} 用 {ctype} 表达四边形凸凹分支；凸四边形应使用 convex_quadrilateral，避免硬编码侧向分支。"
+            )
+    return issues
+
+
+def quadrilateral_shape_from_spec(spec: Mapping[str, Any]) -> str:
+    text_parts = [
+        str(spec.get("problemText") or ""),
+        str(spec.get("goalText") or ""),
+    ]
+    for entity in spec.get("entities") or []:
+        if isinstance(entity, dict):
+            text_parts.append(str(entity.get("label") or ""))
+            attrs = entity.get("attributes") if isinstance(entity.get("attributes"), dict) else {}
+            text_parts.append(str(attrs.get("shape") or ""))
+    for item in spec.get("constraints") or []:
+        if isinstance(item, dict):
+            text_parts.append(str(item.get("text") or ""))
+            text_parts.append(str(item.get("type") or ""))
+    text = " ".join(text_parts).lower()
+    if contains_any(text, ("凸四边形", "convex_quadrilateral", "convex quadrilateral")):
+        return "convex"
+    if contains_any(text, ("凹四边形", "concave_quadrilateral", "concave quadrilateral")):
+        return "concave"
+    return ""
+
+
+def contains_any(text: str, markers: tuple[str, ...]) -> bool:
+    lowered = text.lower()
+    return any(marker.lower() in lowered for marker in markers)
+
+
+def spec_mentions_directed_orientation(spec: Mapping[str, Any]) -> bool:
+    text_parts = [
+        str(spec.get("problemText") or ""),
+        str(spec.get("goalText") or ""),
+    ]
+    for item in spec.get("constraints") or []:
+        if isinstance(item, dict):
+            text_parts.append(str(item.get("text") or ""))
+            text_parts.append(str(item.get("type") or ""))
+    text = " ".join(text_parts).lower()
+    markers = (
+        "顺时针",
+        "逆时针",
+        "clockwise",
+        "counterclockwise",
+        "counter-clockwise",
+        "ccw",
+        "cw",
+        "有向",
+        "取向",
+    )
+    return any(marker in text for marker in markers)
 
 
 def solve_and_summarize(construction: Mapping[str, Any]) -> Dict[str, Any]:

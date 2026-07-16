@@ -245,6 +245,9 @@ def expected_component_count(constraint: Mapping[str, Any]) -> int:
     if constraint_type == "collinear":
         count = len(args.get("points") or args.get("items") or [])
         return max(1, count - 2)
+    if constraint_type in {"convex", "convex_polygon", "convex_quadrilateral"}:
+        count = len(args.get("points") or args.get("vertices") or args.get("items") or [])
+        return max(3, count or 4)
     return 1
 
 

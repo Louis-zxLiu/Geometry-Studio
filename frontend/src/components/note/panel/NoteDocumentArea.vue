@@ -79,12 +79,16 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
       <div
         ref="markdownSurface"
         class="notebook-markdown-surface"
-        :class="{ editing: shouldShowMarkdownInput }"
+        :class="{
+          editing: shouldShowMarkdownInput || previewMode === 'source',
+          source: previewMode === 'source',
+        }"
       >
         <textarea
-          v-show="shouldShowMarkdownInput"
+          v-show="shouldShowMarkdownInput || previewMode === 'source'"
           ref="markdownInput"
           class="notebook-markdown-input"
+          :class="{ source: previewMode === 'source' }"
           :value="editableMarkdown"
           placeholder=""
           rows="1"
@@ -95,11 +99,7 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
           @click.stop
         />
 
-        <template v-if="!shouldShowMarkdownInput && previewMode === 'source'">
-          <pre class="notebook-note-source">{{ editableMarkdown }}</pre>
-        </template>
-
-        <template v-else-if="!shouldShowMarkdownInput">
+        <template v-if="!shouldShowMarkdownInput && previewMode !== 'source'">
           <template v-for="block in renderBlocks" :key="block.id">
             <div
               class="notebook-render-block"
@@ -139,7 +139,7 @@ const fileInput = defineModel<HTMLInputElement | null>("fileInput", { default: n
         </template>
 
         <button
-          v-if="!shouldShowMarkdownInput && currentFile"
+          v-if="!shouldShowMarkdownInput && currentFile && previewMode !== 'source'"
           class="notebook-continue-writing"
           type="button"
           @click.stop="emit('write-more')"

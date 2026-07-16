@@ -187,12 +187,13 @@ type AIAskResult struct {
 }
 
 type GeometryWorkflowRequest struct {
-	SceneName    string             `json:"sceneName"`
-	ImageDataURL string             `json:"imageDataUrl"`
-	ProblemText  string             `json:"problemText"`
-	CurrentCode  string             `json:"currentCode"`
-	Settings     AIProviderSettings `json:"settings"`
-	MaxAttempts  int                `json:"maxAttempts"`
+	SceneName           string             `json:"sceneName"`
+	ImageDataURL        string             `json:"imageDataUrl"`
+	ProblemText         string             `json:"problemText"`
+	CurrentCode         string             `json:"currentCode"`
+	DynamicConstruction bool               `json:"dynamicConstruction"`
+	Settings            AIProviderSettings `json:"settings"`
+	MaxAttempts         int                `json:"maxAttempts"`
 }
 
 type GeometryWorkflowRepairRequest struct {

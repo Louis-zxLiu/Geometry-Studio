@@ -110,7 +110,8 @@ constraints:
 - circumcenter: {center: K, points: [C,D,P]}.
 - collinear: {points: [A,B,C,...]}.
 - opposite_sides/same_side: {first: C, second: D, line: AB}.
-- orientation: {a, b, c, value: ccw/cw}.
+- orientation: {a, b, c, value: ccw/cw/auto}; use ccw/cw only when the problem explicitly states clockwise/counterclockwise.
+- convex_polygon / convex_quadrilateral: {points: [A,B,C,D]} or {object: quad_ABCD}; accepts either clockwise or counterclockwise order and enforces convexity without choosing a fixed branch.
 - order: {point, a, b}; point lies between a and b.
 - inside/outside: {point, object}; currently object is usually a circle.
 
@@ -123,6 +124,8 @@ Rules:
 6. Leave dslCode empty or use it only as a readable debug summary; it is not executable and not authoritative.
 7. Every named object in the problem statement or goal must be represented as an object, including arcs, semicircles, polygons, and derived circles such as the circumcircle of a named triangle.
 8. Point attributes x/y are initializer hints only unless attributes.fixed is true. Use fixed:true only for genuinely fixed givens or explicit gauge anchors, never for movable points such as P, C, D.
+9. Preserve shape words exactly: 凸四边形 means convex and must not be rewritten as 凹四边形/concave. Use convex_polygon/convex_quadrilateral for convex quadrilaterals; do not encode convexity as a single hard-coded orientation: ccw/cw.
+10. If a branch constraint is only meant to avoid degeneracy, use orientation value auto. Use same_side/opposite_sides for actual side-of-line facts from the problem.
 """.strip()
 
 
@@ -132,6 +135,7 @@ MATHJAX_MARKDOWN_RULES = r"""
 - 允许使用标题、段落、有序/无序列表、简单表格、粗体，以及 `$...$`、`$$...$$` 公式。
 - 禁止使用 `\documentclass`、`\usepackage`、`\begin{document}`、`\end{document}`、TeX 导言区、代码围栏、HTML、Mermaid、SVG。
 - 行内短公式使用 `$AB=AC$`，推导链或关键等式使用 `$$...$$`。
+- 块公式的 `$$` 分隔符必须顶格独立成行，前面不要加空格或列表缩进。
 - 公式内只放数学符号、字母、数字和 LaTeX 数学命令；中文必须放在公式外。
 """.strip()
 
@@ -180,6 +184,8 @@ def build_constraint_repair_prompt(
         "你只能修改 objects / constraints / constructionIntent；不得改成场景坐标生成，不得新增题型命令，"
         "不得把条件写成自然语言假声明。"
         "尽量保留已经正确的对象和约束，只修复失败项、遗漏项或引用错误。"
+        "如果反馈指出 orientation 分支冲突，应优先改为 orientation:auto、convex_polygon/convex_quadrilateral 或真实的 same_side/opposite_sides；"
+        "不要把动态可行分支硬改成固定 ccw/cw，也不要把凸四边形修成凹四边形。"
         "返回完整 GeometryConstruction JSON。solution 与 validation 可以留空，runtime 会重新求解。"
         "\n\nConstraint reference:\n"
         + CONSTRAINT_REFERENCE

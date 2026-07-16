@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 import type { DesignCard } from "../../features/designCard/services/designCardTypes";
 import type { WorkspaceLayoutMode } from "../../features/plot/services/workspaceLayoutStorage";
 import { useDropTargetController } from "../../features/designCard/services/useDropTargetController";
@@ -234,6 +234,9 @@ function openContextImagePicker() {
 
 function setNotePreviewMode(mode: "rendered" | "source") {
   notePreviewMode.value = mode;
+  if (mode === "source") {
+    void nextTick(() => markdownInput.value?.focus());
+  }
 }
 
 function jumpContextSelectionToSource() {
@@ -351,7 +354,7 @@ useNotePanelEffects({
       <NoteFloatingOverlays
         :ai-busy="aiBusy"
         :context-menu="contextMenu"
-        :context-menu-can-jump-to-source="contextMenuCanJumpToSource"
+        :context-menu-can-jump-to-source="notePreviewMode !== 'source' && contextMenuCanJumpToSource"
         :context-menu-has-selection="contextMenuHasSelection"
         :context-menu-supports-insert="contextMenuSupportsInsert"
         :context-menu-images="contextMenuImages"

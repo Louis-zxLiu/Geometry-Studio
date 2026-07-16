@@ -1,6 +1,6 @@
 param(
     [string]$Version = "",
-    [switch]$IncludeScripts = $true,
+    [switch]$IncludeScripts,
     [switch]$RequireScreeningZoom
 )
 
@@ -68,6 +68,104 @@ function Get-AppVersionFromFile {
     return $value.Trim()
 }
 
+function Get-SevenZipArchivePaths {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SevenZipExe,
+        [Parameter(Mandatory = $true)]
+        [string]$ArchivePath
+    )
+
+    $output = & $SevenZipExe l -slt $ArchivePath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to inspect archive with 7-Zip: $ArchivePath"
+    }
+
+    $paths = New-Object System.Collections.Generic.List[string]
+    foreach ($line in $output) {
+        if (-not $line.StartsWith("Path = ")) {
+            continue
+        }
+
+        $pathValue = $line.Substring("Path = ".Length).Trim()
+        if ([string]::IsNullOrWhiteSpace($pathValue)) {
+            continue
+        }
+        if ([System.IO.Path]::GetFullPath($pathValue) -eq [System.IO.Path]::GetFullPath($ArchivePath)) {
+            continue
+        }
+
+        $paths.Add($pathValue.Replace("/", "\"))
+    }
+
+    return $paths
+}
+
+function Assert-PortableRuntimeArchive {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ArchivePath,
+        [Parameter(Mandatory = $true)]
+        [string]$SevenZipExe
+    )
+
+    $entries = @(Get-SevenZipArchivePaths -SevenZipExe $SevenZipExe -ArchivePath $ArchivePath)
+    if (-not ($entries -contains "python.exe")) {
+        throw "Runtime archive is not portable: missing root python.exe. Rebuild it with tools/prepare-geometry-runtime.ps1 -RuntimeKind portable -Recreate -CreateArchive."
+    }
+
+    $hasStdlibZip = $false
+    foreach ($entry in $entries) {
+        if ($entry -match "^python\d+\.zip$") {
+            $hasStdlibZip = $true
+            break
+        }
+    }
+    if (-not $hasStdlibZip) {
+        throw "Runtime archive is not portable: missing pythonXY.zip standard library."
+    }
+
+    if ($entries -contains "pyvenv.cfg") {
+        throw "Runtime archive contains pyvenv.cfg and may depend on the build machine Python. Rebuild with -RuntimeKind portable -Recreate -CreateArchive."
+    }
+}
+
+function Write-PortableReadme {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ReleaseRoot
+    )
+
+    $content = @"
+Geometry Studio Portable Package
+
+How to run:
+1. Extract the whole zip to a writable folder.
+2. Run GeometryStudio.exe.
+3. On first startup, the app extracts resources/runtime/runtime.7z to runtime/.
+
+Required files for portable distribution:
+- GeometryStudio.exe
+- resources/runtime/runtime.7z
+- resources/runtime/7zip/7za.exe
+- resources/runtime/7zip/7za.dll
+
+Notes:
+- Do not run GeometryStudio.exe directly from inside the zip.
+- The app does not need Go, Node.js, Wails, npm, or a system Python install.
+- Windows still needs Microsoft Edge WebView2 Runtime. Build with
+  tools/build-versioned-app.ps1 -WebView2Strategy embed if you want the Wails
+  bootstrapper embedded in the exe.
+- AI features still need network access and an API/subscription configuration.
+"@
+
+    [System.IO.File]::WriteAllText(
+        (Join-Path $ReleaseRoot "README-PORTABLE.txt"),
+        $content,
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = Get-AppVersionFromFile -Path $versionFilePath
 }
@@ -92,6 +190,10 @@ if (-not (Test-Path (Join-Path $runtime7ZipDir "7za.exe"))) {
 if (-not (Test-Path (Join-Path $runtime7ZipDir "7za.dll"))) {
     throw "Missing runtime extractor DLL: $(Join-Path $runtime7ZipDir '7za.dll')"
 }
+
+Assert-PortableRuntimeArchive `
+    -ArchivePath $runtimeArchive `
+    -SevenZipExe (Join-Path $runtime7ZipDir "7za.exe")
 
 if (Test-Path $releaseRoot) {
     Remove-Item -LiteralPath $releaseRoot -Recurse -Force
@@ -121,8 +223,20 @@ if ($IncludeScripts -and (Test-Path $scriptsDir)) {
     Copy-Item -LiteralPath $scriptsDir -Destination (Join-Path $releaseRoot "Scripts") -Recurse -Force
 }
 
+Write-PortableReadme -ReleaseRoot $releaseRoot
+
 Compress-Archive -LiteralPath $releaseRoot -DestinationPath $releaseZip -CompressionLevel Optimal
+
+$releaseZipHash = (Get-FileHash -LiteralPath $releaseZip -Algorithm SHA256).Hash.ToLowerInvariant()
+$checksumPath = "$releaseZip.sha256"
+[System.IO.File]::WriteAllText(
+    $checksumPath,
+    "$releaseZipHash  $(Split-Path -Leaf $releaseZip)`n",
+    [System.Text.UTF8Encoding]::new($false)
+)
 
 Write-Host "Packaged release:"
 Write-Host "  Directory: $releaseRoot"
 Write-Host "  Zip:       $releaseZip"
+Write-Host "  SHA256:    $releaseZipHash"
+Write-Host "  Checksum:  $checksumPath"

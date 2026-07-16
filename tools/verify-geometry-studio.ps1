@@ -44,6 +44,23 @@ function Add-ToolPath {
     }
 }
 
+function Resolve-RuntimePython {
+    $candidates = @(
+        (Join-Path $repoRoot "runtime\python.exe"),
+        (Join-Path $repoRoot "runtime\Scripts\python.exe"),
+        (Join-Path $repoRoot "runtime\bin\python.exe"),
+        (Join-Path $repoRoot "runtime\bin\python")
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+
+    throw "Runtime Python was not found under runtime/."
+}
+
 $goExe = Resolve-GoExe
 $goBin = Split-Path -Parent $goExe
 Add-ToolPath -PathValue $goBin
@@ -60,19 +77,30 @@ Invoke-CheckedCommand -FilePath "powershell" -Arguments @(
     "-SkipInstall"
 )
 
-Invoke-CheckedCommand -FilePath "runtime\Scripts\python.exe" -Arguments @(
+$runtimePython = Resolve-RuntimePython
+
+Invoke-CheckedCommand -FilePath $runtimePython -Arguments @(
     "-m",
     "py_compile",
     "internal\bridge\geometry_agent.py"
 )
 
-$graphOutput = & "runtime\Scripts\python.exe" "internal\bridge\geometry_agent.py" "--describe-graph"
+$graphOutput = & $runtimePython "internal\bridge\geometry_agent.py" "--describe-graph"
 if ($LASTEXITCODE -ne 0) {
     throw "Geometry graph description failed"
 }
 $graph = $graphOutput | ConvertFrom-Json
-if ($graph.nodes.Count -ne 10 -or -not ($graph.nodes -contains "self_correct") -or -not ($graph.nodes -contains "publish")) {
-    throw "Geometry graph is incomplete: $graphOutput"
+$requiredGraphNodes = @(
+    "parse_spec",
+    "teacher_review",
+    "runtime_check",
+    "self_correct",
+    "publish"
+)
+foreach ($node in $requiredGraphNodes) {
+    if (-not ($graph.nodes -contains $node)) {
+        throw "Geometry graph is incomplete; missing $node`: $graphOutput"
+    }
 }
 Write-Host "Geometry graph nodes:" ($graph.nodes -join ", ")
 

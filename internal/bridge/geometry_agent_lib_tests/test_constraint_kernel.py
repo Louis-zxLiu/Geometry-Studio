@@ -180,6 +180,102 @@ class ConstraintKernelTest(unittest.TestCase):
         self.assertAlmostEqual(construction["solution"]["points"]["K"]["x"], 0.0, places=4)
         self.assertAlmostEqual(construction["solution"]["points"]["K"]["y"], 0.0, places=4)
 
+    def test_convex_polygon_accepts_clockwise_quadrilateral(self):
+        construction = solve(
+            {
+                "objects": [
+                    {"id": "A", "kind": "point", "label": "A", "attributes": {"x": 0, "y": 0, "fixed": True}},
+                    {"id": "B", "kind": "point", "label": "B", "attributes": {"x": 0, "y": 1, "fixed": True}},
+                    {"id": "C", "kind": "point", "label": "C", "attributes": {"x": 1, "y": 1, "fixed": True}},
+                    {"id": "D", "kind": "point", "label": "D", "attributes": {"x": 1, "y": 0, "fixed": True}},
+                    {"id": "quad_ABCD", "kind": "polygon", "refs": ["A", "B", "C", "D"], "label": "ABCD"},
+                ],
+                "constraints": [
+                    {"id": "convex", "type": "convex_quadrilateral", "args": {"object": "quad_ABCD"}},
+                ],
+                "constructionIntent": [],
+            }
+        )
+        self.assertLess(construction["solution"]["maxResidual"], 1e-5)
+
+    def test_implicit_orientation_branch_is_relaxed_to_auto(self):
+        construction = normalize_construction(
+            {
+                "objects": [
+                    {"id": "A", "kind": "point", "label": "A"},
+                    {"id": "B", "kind": "point", "label": "B"},
+                    {"id": "C", "kind": "point", "label": "C"},
+                ],
+                "constraints": [
+                    {"id": "orient", "type": "orientation", "args": {"a": "A", "b": "B", "c": "C", "value": "ccw"}},
+                ],
+                "constructionIntent": [],
+            },
+            {"problemText": "在凸四边形ABCD中，连接AC。", "constraints": []},
+            review_status="test",
+        )
+        self.assertEqual(construction["constraints"][0]["args"]["value"], "auto")
+        self.assertIn("orientation 分支约束改为 auto", construction["diagnostics"][0])
+
+    def test_explicit_clockwise_orientation_is_preserved(self):
+        construction = normalize_construction(
+            {
+                "objects": [
+                    {"id": "A", "kind": "point", "label": "A"},
+                    {"id": "B", "kind": "point", "label": "B"},
+                    {"id": "C", "kind": "point", "label": "C"},
+                ],
+                "constraints": [
+                    {"id": "orient", "type": "orientation", "args": {"a": "A", "b": "B", "c": "C", "value": "cw"}},
+                ],
+                "constructionIntent": [],
+            },
+            {"problemText": "点A,B,C按顺时针方向排列。", "constraints": []},
+            review_status="test",
+        )
+        self.assertEqual(construction["constraints"][0]["args"]["value"], "cw")
+
+    def test_convex_shape_metadata_is_corrected_and_side_branch_is_flagged(self):
+        construction = normalize_construction(
+            {
+                "objects": [
+                    {
+                        "id": "quad_ABCD",
+                        "kind": "polygon",
+                        "label": "凹四边形ABCD",
+                        "refs": ["A", "B", "C", "D"],
+                        "attributes": {"shape": "concave"},
+                    },
+                    {"id": "A", "kind": "point", "label": "A"},
+                    {"id": "B", "kind": "point", "label": "B"},
+                    {"id": "C", "kind": "point", "label": "C"},
+                    {"id": "D", "kind": "point", "label": "D"},
+                    {"id": "line_AB", "kind": "line", "refs": ["A", "B"]},
+                ],
+                "constraints": [
+                    {"id": "shape", "type": "concave_quadrilateral", "args": {"object": "quad_ABCD"}},
+                    {
+                        "id": "side_shape",
+                        "type": "same_side",
+                        "args": {"first": "C", "second": "D", "line": "line_AB"},
+                        "text": "用同侧关系表达凹四边形分支",
+                    },
+                ],
+                "constructionIntent": [],
+            },
+            {"problemText": "在凸四边形ABCD中，连接AC。", "constraints": []},
+            review_status="test",
+        )
+
+        quad = next(obj for obj in construction["objects"] if obj["id"] == "quad_ABCD")
+        self.assertEqual(quad["label"], "凸四边形ABCD")
+        self.assertEqual(quad["attributes"]["shape"], "convex")
+        self.assertEqual(construction["constraints"][0]["type"], "convex_quadrilateral")
+        self.assertTrue(
+            any("convex_quadrilateral" in item and "硬编码侧向分支" in item for item in construction["diagnostics"]),
+            construction["diagnostics"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

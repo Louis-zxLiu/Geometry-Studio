@@ -100,12 +100,17 @@ def normalize_markdown_math_delimiters(markdown: str) -> str:
         markdown,
         flags=re.S,
     )
-    return re.sub(
+    text = re.sub(
         r"\\\((.*?)\\\)",
         lambda match: "$" + match.group(1).strip() + "$",
         text,
         flags=re.S,
     )
+    return normalize_display_math_delimiter_lines(text)
+
+
+def normalize_display_math_delimiter_lines(markdown: str) -> str:
+    return re.sub(r"(?m)^[ \t]+\$\$[ \t]*$", "$$", markdown)
 
 
 def sanitize_mathjax_segments(markdown: str) -> str:
@@ -136,10 +141,6 @@ def sanitize_mathjax_body(body: str) -> str:
     text = re.sub(r"[\u4e00-\u9fff]+", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
-
-
-def contains_cjk(text: str) -> bool:
-    return bool(re.search(r"[\u4e00-\u9fff]", text or ""))
 
 
 def sanitize_inline_markdown_text(text: str) -> str:

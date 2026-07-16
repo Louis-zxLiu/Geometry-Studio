@@ -11,9 +11,10 @@ build/update/
 *.exe
 *.dll
 *.zip
+!/GeometryStudio.exe
 !/resources/runtime/
 !/resources/runtime/.gitkeep
-/resources/runtime/runtime.7z
+!/resources/runtime/runtime.7z
 .runtime-staging/
 .runtime-staging.7z
 .tools_py/

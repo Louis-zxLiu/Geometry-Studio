@@ -201,6 +201,7 @@ class GeometryState(TypedDict, total=False):
     imageDataUrl: str
     problemText: str
     currentCode: str
+    dynamicConstruction: bool
     maxAttempts: int
     settings: Dict[str, str]
     spec: Dict[str, Any]

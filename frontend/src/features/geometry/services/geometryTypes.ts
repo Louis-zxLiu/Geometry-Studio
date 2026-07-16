@@ -150,6 +150,7 @@ export type GeometryWorkflowRequest = {
   imageDataUrl: string;
   problemText: string;
   currentCode: string;
+  dynamicConstruction: boolean;
   settings: AIProviderSettings;
   maxAttempts: number;
 };

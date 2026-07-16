@@ -9,6 +9,8 @@ import numpy as np
 
 
 EPSILON = 1e-9
+ORIENTATION_MIN_AREA_RATIO = 1e-4
+CONVEX_MIN_TURN_RATIO = 1e-4
 
 
 @dataclass(frozen=True)
@@ -102,6 +104,8 @@ def evaluate_constraint(
             components = residual_side_relation(context, points, args, opposite=False)
         elif constraint_type == "orientation":
             components = residual_orientation(context, points, args)
+        elif constraint_type in {"convex", "convex_polygon", "convex_quadrilateral"}:
+            components = residual_convex_polygon(context, points, args)
         elif constraint_type == "order":
             components = residual_order(context, points, args)
         elif constraint_type == "inside":
@@ -537,10 +541,58 @@ def residual_orientation(context: ResidualContext, points: Mapping[str, np.ndarr
     b = point(context, points, first_arg(args, "b", "p2"))
     c = point(context, points, first_arg(args, "c", "p3"))
     desired = normalize_type(str(first_arg(args, "value", "orientation", "sign") or "ccw"))
-    sign = -1.0 if desired in {"cw", "clockwise", "negative"} else 1.0
     area = cross2(b - a, c - a)
     scale = max(distance(a, b) * distance(a, c), 1.0)
+    if desired in {"auto", "either", "any", "nonzero", "non_collinear", "noncollinear"}:
+        return [max(0.0, ORIENTATION_MIN_AREA_RATIO - abs(area) / scale)]
+    sign = -1.0 if desired in {"cw", "clockwise", "negative"} else 1.0
     return [max(0.0, -sign * area / scale)]
+
+
+def residual_convex_polygon(context: ResidualContext, points: Mapping[str, np.ndarray], args: Mapping[str, Any]) -> List[float]:
+    refs = polygon_point_refs(context, args)
+    if len(refs) < 3:
+        raise ValueError("convex polygon needs at least three vertices")
+    coords = [points[ref] for ref in refs]
+    desired = normalize_type(str(first_arg(args, "value", "orientation", "sign") or "auto"))
+    if desired in {"ccw", "counterclockwise", "positive"}:
+        sign = 1.0
+    elif desired in {"cw", "clockwise", "negative"}:
+        sign = -1.0
+    else:
+        area2 = polygon_area2(coords)
+        sign = 1.0 if area2 >= 0.0 else -1.0
+    residuals: List[float] = []
+    count = len(coords)
+    for index in range(count):
+        a = coords[index]
+        b = coords[(index + 1) % count]
+        c = coords[(index + 2) % count]
+        turn = cross2(b - a, c - b)
+        scale = max(distance(a, b) * distance(b, c), 1.0)
+        residuals.append(max(0.0, CONVEX_MIN_TURN_RATIO - sign * turn / scale))
+    return residuals
+
+
+def polygon_point_refs(context: ResidualContext, args: Mapping[str, Any]) -> List[str]:
+    direct = list_value(first_arg(args, "points", "vertices", "items"))
+    if direct:
+        return [point_ref(context, item) for item in direct]
+    target_ref = first_arg(args, "object", "polygon", "target", "quadrilateral")
+    if target_ref:
+        refs = context.object_refs(target_ref)
+        if refs:
+            return [point_ref(context, item) for item in refs]
+    refs = [first_arg(args, key) for key in ("a", "b", "c", "d", "e", "f")]
+    return [point_ref(context, item) for item in refs if item]
+
+
+def polygon_area2(coords: Sequence[np.ndarray]) -> float:
+    total = 0.0
+    for index, coord in enumerate(coords):
+        nxt = coords[(index + 1) % len(coords)]
+        total += cross2(coord, nxt)
+    return float(total)
 
 
 def residual_order(context: ResidualContext, points: Mapping[str, np.ndarray], args: Mapping[str, Any]) -> List[float]:

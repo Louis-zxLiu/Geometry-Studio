@@ -509,7 +509,11 @@ export function usePlotWorkspace() {
     isGeometryProblemDialogOpen.value = false;
   }
 
-  async function startGeometryFromProblem(payload: { imageDataUrl: string; problemText: string }) {
+  async function startGeometryFromProblem(payload: {
+    dynamicConstruction: boolean;
+    imageDataUrl: string;
+    problemText: string;
+  }) {
     const sceneName = scriptWorkspace.currentFile.value.trim();
     if (!sceneName) {
       return;
@@ -518,6 +522,7 @@ export function usePlotWorkspace() {
     isGeometryProblemDialogOpen.value = false;
     await beginGeometryWorkflow({
       sceneName,
+      dynamicConstruction: payload.dynamicConstruction,
       imageDataUrl: payload.imageDataUrl,
       problemText: payload.problemText,
     });
@@ -531,12 +536,14 @@ export function usePlotWorkspace() {
 
     await beginGeometryWorkflow({
       sceneName: targetScene,
+      dynamicConstruction: false,
       imageDataUrl: firstGeometryImage(request.selection),
       problemText: collectGeometryText(request.selection),
     });
   }
 
   async function beginGeometryWorkflow(payload: {
+    dynamicConstruction: boolean;
     sceneName: string;
     imageDataUrl: string;
     problemText: string;
@@ -554,6 +561,7 @@ export function usePlotWorkspace() {
           imageDataUrl: payload.imageDataUrl,
           problemText: payload.problemText,
           currentCode,
+          dynamicConstruction: payload.dynamicConstruction,
           settings: aiSettings.value,
           maxAttempts: 5,
         },

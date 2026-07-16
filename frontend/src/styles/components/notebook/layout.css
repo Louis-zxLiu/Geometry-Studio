@@ -469,6 +469,21 @@
   letter-spacing: 0.01em;
 }
 
+.notebook-markdown-input.source {
+  min-height: 240px;
+  padding: 14px;
+  border-radius: 8px;
+  overflow: auto;
+  resize: vertical;
+  background: transparent;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 12.5px;
+  line-height: 1.72;
+  letter-spacing: 0;
+  white-space: pre-wrap;
+}
+
 .notebook-markdown-input:focus,
 .notebook-markdown-input:focus-visible {
   outline: none;

@@ -1,5 +1,8 @@
 param(
-    [string]$Version = ""
+    [string]$Version = "",
+
+    [ValidateSet("download", "embed", "browser", "error")]
+    [string]$WebView2Strategy = "download"
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,5 +35,6 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 
 $ldflags = "-X plotkitycat/internal/version.appVersion=$Version"
 
-Write-Host "Building PlotKityCat with version $Version"
-wails build -clean -ldflags $ldflags
+Write-Host "Building Geometry Studio with version $Version"
+Write-Host "WebView2 strategy: $WebView2Strategy"
+wails build -clean -webview2 $WebView2Strategy -ldflags $ldflags

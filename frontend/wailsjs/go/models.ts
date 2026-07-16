@@ -930,6 +930,7 @@ export namespace bridge {
 	    imageDataUrl: string;
 	    problemText: string;
 	    currentCode: string;
+	    dynamicConstruction: boolean;
 	    settings: AIProviderSettings;
 	    maxAttempts: number;
 	
@@ -943,6 +944,7 @@ export namespace bridge {
 	        this.imageDataUrl = source["imageDataUrl"];
 	        this.problemText = source["problemText"];
 	        this.currentCode = source["currentCode"];
+	        this.dynamicConstruction = source["dynamicConstruction"];
 	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
 	        this.maxAttempts = source["maxAttempts"];
 	    }

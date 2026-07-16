@@ -8,13 +8,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   cancel: [];
-  confirm: [payload: { imageDataUrl: string; problemText: string }];
+  confirm: [payload: { dynamicConstruction: boolean; imageDataUrl: string; problemText: string }];
 }>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const imageDataUrl = ref("");
 const imageName = ref("");
 const problemText = ref("");
+const dynamicConstruction = ref(false);
 
 watch(
   () => props.open,
@@ -23,6 +24,7 @@ watch(
       imageDataUrl.value = "";
       imageName.value = "";
       problemText.value = "";
+      dynamicConstruction.value = false;
       if (fileInput.value) {
         fileInput.value.value = "";
       }
@@ -71,6 +73,7 @@ function submit() {
     return;
   }
   emit("confirm", {
+    dynamicConstruction: dynamicConstruction.value,
     imageDataUrl: imageDataUrl.value,
     problemText: problemText.value.trim(),
   });
@@ -138,6 +141,18 @@ onBeforeUnmount(() => {
           placeholder="也可以直接输入题干文本；没有配图的几何题会按文字解析"
           @input="problemText = ($event.target as HTMLTextAreaElement).value"
         ></textarea>
+
+        <label class="geometry-dynamic-toggle">
+          <input
+            v-model="dynamicConstruction"
+            type="checkbox"
+            :disabled="pending"
+          />
+          <span>
+            <strong>生成可调构象代码</strong>
+            <small>在生成的 Matplotlib 代码中加入滑块，用来调整角度、比例或自由点位置。</small>
+          </span>
+        </label>
 
         <input
           ref="fileInput"

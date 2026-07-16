@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import traceback
+from pathlib import Path
 from typing import Any, Dict, Optional
+
+AGENT_DIR = Path(__file__).resolve().parent
+if str(AGENT_DIR) not in sys.path:
+    sys.path.insert(0, str(AGENT_DIR))
 
 from langgraph.graph import END, START, StateGraph
 
@@ -501,28 +507,7 @@ def matplotlib_code_generate(state: GeometryState) -> Dict[str, Any]:
     progress(state, "matplotlib_code_generate", "Matplotlib 代码生成")
     spec = state.get("reviewedSpec") or state["spec"]
     construction = state["construction"]
-    user = (
-        "请为 Geometry Studio 生成自包含 Python/Matplotlib 代码。"
-        "输入包含 reviewed GeometrySpec、已验证 GeometryConstruction、以及由该构造派生的 GeometryScene。"
-        "GeometryConstruction 是唯一几何真相层，GeometryScene 是展示层；代码只能负责渲染、标注、中文教学表达和少量交互控件。"
-        "不得重新摆点、不得移动点、不得改几何事实、不得从题干重新猜图、不得生成与 construction/scene 不一致的几何关系。"
-        "允许导入 math、numpy、sympy、matplotlib.pyplot、matplotlib.patches、matplotlib.widgets。"
-        "代码必须调用 plt.show()，图像只作为证明辅助图，保持克制、干净、易读。"
-        "只绘制题目理解必需的核心点、核心线段、命名圆/弧和少量关键辅助线；隐藏非必要辅助对象。"
-        "图中标签只放短标签：点名、圆名、极少量短关系符号。禁止把题设条件、审核事实、证明目标、步骤说明或长句写到图中。"
-        "禁止生成 measure_text、fact_text、proof_text、summary_text 等事实说明框；禁止 ax.text/figtext/textbox 放多行条件清单。"
-        "不要渲染 scene.constraints、scene.measurements、scene.annotations 为文字；这些解释属于右侧笔记，不属于图。"
-        "除非题目要求数值计算，不要在图中显示距离、角度、坐标数值；不要用密集网格或拥挤图例。"
-        "在代码中整理点、线、圆、弧等数据时必须使用 GeometryScene 的唯一 id 作为字典 key；label 只用于显示，不能作为 key。"
-        "所有面向用户的 Matplotlib 文本必须中文；请设置中文字体回退并设置 axes.unicode_minus=False。"
-        "不要读取文件、写入文件、启动进程或访问网络。\n\n"
-        "Reviewed GeometrySpec:\n"
-        + prompt_json(spec)
-        + "\n\nFinal GeometryConstruction facts:\n"
-        + construction_facts_text(construction)
-        + "\n\nCompiled GeometryScene geometry primitives only:\n"
-        + prompt_json(compact_scene_geometry_for_prompt(state["scene"]))
-    )
+    user = build_matplotlib_code_prompt(state, spec, construction)
     code = json_chat(
         state,
         CodeResultModel,
@@ -541,6 +526,66 @@ def matplotlib_code_generate(state: GeometryState) -> Dict[str, Any]:
         {"code": cleaned_code},
     )
     return {"code": cleaned_code}
+
+
+def build_matplotlib_code_prompt(
+    state: GeometryState,
+    spec: Dict[str, Any],
+    construction: Dict[str, Any],
+) -> str:
+    dynamic_policy = dynamic_construction_prompt() if state_wants_dynamic_construction(state) else ""
+    return (
+        "请为 Geometry Studio 生成自包含 Python/Matplotlib 代码。"
+        "输入包含 reviewed GeometrySpec、已验证 GeometryConstruction、以及由该构造派生的 GeometryScene。"
+        "GeometryConstruction 是唯一几何真相层，GeometryScene 是展示层；代码只能负责渲染、标注、中文教学表达和少量交互控件。"
+        "不得重新摆点、不得移动点、不得改几何事实、不得从题干重新猜图、不得生成与 construction/scene 不一致的几何关系。"
+        "允许导入 math、numpy、sympy、matplotlib.pyplot、matplotlib.patches、matplotlib.widgets。"
+        "代码必须调用 plt.show()，图像只作为证明辅助图，保持克制、干净、易读。"
+        "只绘制题目理解必需的核心点、核心线段、命名圆/弧和少量关键辅助线；隐藏非必要辅助对象。"
+        "图中标签只放短标签：点名、圆名、极少量短关系符号。禁止把题设条件、审核事实、证明目标、步骤说明或长句写到图中。"
+        "禁止生成 measure_text、fact_text、proof_text、summary_text 等事实说明框；禁止 ax.text/figtext/textbox 放多行条件清单。"
+        "不要渲染 scene.constraints、scene.measurements、scene.annotations 为文字；这些解释属于右侧笔记，不属于图。"
+        "除非题目要求数值计算，不要在图中显示距离、角度、坐标数值；不要用密集网格或拥挤图例。"
+        "在代码中整理点、线、圆、弧等数据时必须使用 GeometryScene 的唯一 id 作为字典 key；label 只用于显示，不能作为 key。"
+        "所有面向用户的 Matplotlib 文本必须中文；请设置中文字体回退并设置 axes.unicode_minus=False。"
+        "不要读取文件、写入文件、启动进程或访问网络。\n\n"
+        + dynamic_policy
+        + "Reviewed GeometrySpec:\n"
+        + prompt_json(spec)
+        + "\n\nFinal GeometryConstruction facts:\n"
+        + construction_facts_text(construction)
+        + "\n\nCompiled GeometryScene geometry primitives only:\n"
+        + prompt_json(compact_scene_geometry_for_prompt(state["scene"]))
+    )
+
+
+def dynamic_construction_prompt() -> str:
+    return (
+        "动态构象模式已开启：生成的代码必须包含至少一个 matplotlib.widgets.Slider 控件，"
+        "让用户可以调整角度、边长比例或自由点位置并改变图形构象。"
+        "请优先用解析几何公式在 compute_geometry(params) 中重算点、线、圆；"
+        "复杂约束允许导入 scipy.optimize.least_squares，并用上一帧有效解 warm-start。"
+        "代码结构必须包含 compute_geometry(params)、初始绘制对象、update(...) 回调和退化/无解状态提示。"
+        "滑块范围必须避开明显退化构型；参数导致退化或无解时保留上一帧有效构型，只显示简短中文提示，不要让图崩溃。"
+        "静态初始构型必须是当前已验证 GeometryScene 的合理可视化；动态改变只用于演示同一题设关系下的构象变化。"
+        "不要把动态构象简化成固定坐标图；不要删除 Slider。\n\n"
+    )
+
+
+DYNAMIC_CONTROL_PATTERN = re.compile(r"(?i)(\bSlider\s*\(|matplotlib\.widgets\.Slider\b)")
+
+
+def code_has_dynamic_controls(code: str) -> bool:
+    text = code or ""
+    return bool(DYNAMIC_CONTROL_PATTERN.search(text))
+
+
+def state_wants_dynamic_construction(state: GeometryState) -> bool:
+    return (
+        bool(state.get("dynamicConstruction"))
+        or code_has_dynamic_controls(str(state.get("code") or ""))
+        or code_has_dynamic_controls(str(state.get("currentCode") or ""))
+    )
 
 
 def code_has_visual_clutter(code: str) -> bool:
@@ -671,6 +716,7 @@ def runtime_check(state: GeometryState) -> Dict[str, Any]:
             "sceneName": state["sceneName"],
             "code": state.get("code", ""),
             "attempt": int(state.get("attempt") or 1),
+            "dynamicConstruction": state_wants_dynamic_construction(state),
         }
     )
     command = read_command()
@@ -729,7 +775,7 @@ def self_correct(state: GeometryState) -> Dict[str, Any]:
     user = (
         "请修复这段 Python/Matplotlib 代码，使它能在 Geometry Studio 中成功运行，"
         "同时保持同一个 GeometryConstruction、GeometryScene 和中文教学意图。"
-        "修复时不得改变点坐标、线段、圆或任何几何事实；只修复代码错误、布局问题或渲染细节。"
+        "修复时不得改变已审核的几何事实；静态模式不得改固定坐标，动态模式不得删除参数化构造或滑块。"
         "不要读取文件、写入文件、启动进程或访问网络。\n\n"
         "Final GeometryConstruction:\n"
         + construction_facts_text(state.get("construction") or {})
@@ -741,6 +787,7 @@ def self_correct(state: GeometryState) -> Dict[str, Any]:
         + state.get("code", "")
         + "\n\nRendering policy:\n"
         + "修复代码时也必须保持图面简洁；如果现有代码含多行事实说明框、measure_text/fact_text/proof_text/summary_text 或密集文字标注，请删除它们。"
+        + dynamic_self_correct_policy(state)
     )
     repaired = json_chat(
         state,
@@ -761,6 +808,17 @@ def self_correct(state: GeometryState) -> Dict[str, Any]:
         {"code": cleaned_code, "repairNotes": repaired.repairNotes},
     )
     return {"code": cleaned_code, "diagnostics": diagnostics, "workflowStatus": "checking"}
+
+
+def dynamic_self_correct_policy(state: GeometryState) -> str:
+    if not state_wants_dynamic_construction(state):
+        return ""
+    return (
+        "\n\nDynamic construction repair policy:\n"
+        "当前代码属于动态构象模式。修复后必须仍然包含至少一个 Slider，"
+        "并保留 compute_geometry(params)、update(...) 回调、参数化重算和退化/无解短提示。"
+        "不要把动态代码退化成静态固定坐标图；如果 runtime 错误是缺少 Slider，请补回滑块和参数化构造。"
+    )
 
 
 def publish(state: GeometryState) -> Dict[str, Any]:
@@ -890,6 +948,7 @@ def run_session(command: Dict[str, Any]) -> None:
         "imageDataUrl": request.get("imageDataUrl", ""),
         "problemText": request.get("problemText", ""),
         "currentCode": request.get("currentCode", ""),
+        "dynamicConstruction": bool(request.get("dynamicConstruction")),
         "maxAttempts": int(request.get("maxAttempts") or 5),
         "settings": request.get("settings") or {},
         "attempt": 1,
@@ -905,19 +964,21 @@ def run_repair_session(command: Dict[str, Any]) -> None:
     error_text = str(request.get("errorText") or "")
     if error_text:
         diagnostics.append("manual repair requested: " + error_text)
+    current_code = str(request.get("currentCode") or "")
     state: GeometryState = {
         "sessionId": command["sessionId"],
         "sceneName": request["sceneName"],
         "imageDataUrl": request.get("imageDataUrl", ""),
         "problemText": request.get("problemText", ""),
-        "currentCode": request.get("currentCode", ""),
+        "currentCode": current_code,
+        "dynamicConstruction": bool(request.get("dynamicConstruction")) or code_has_dynamic_controls(current_code),
         "maxAttempts": int(request.get("maxAttempts") or 3),
         "settings": request.get("settings") or {},
         "spec": request.get("spec") or {},
         "reviewedSpec": request.get("spec") or {},
         "construction": request.get("construction") or {},
         "scene": request.get("scene") or {},
-        "code": request.get("currentCode", ""),
+        "code": current_code,
         "proofMarkdown": request.get("proofMarkdown", ""),
         "noteMarkdown": request.get("noteMarkdown", ""),
         "attempt": 1,

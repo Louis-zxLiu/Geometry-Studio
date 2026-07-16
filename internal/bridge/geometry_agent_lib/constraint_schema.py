@@ -29,7 +29,7 @@ class ConstructionConstraintModel(BaseModel):
         description=(
             "Composable predicate: on, parallel, perpendicular, distance_equals, ratio, "
             "angle_value, angle_equals, midpoint, intersection, tangent, concyclic, "
-            "collinear, orientation, order, inside, outside."
+            "collinear, orientation, convex_polygon, order, inside, outside."
         )
     )
     args: Dict[str, Any] = Field(default_factory=dict)

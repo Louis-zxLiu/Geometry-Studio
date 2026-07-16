@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -62,19 +63,20 @@ type geometryAgentSettings struct {
 }
 
 type geometryAgentRequest struct {
-	SceneName     string                `json:"sceneName"`
-	ImageDataURL  string                `json:"imageDataUrl"`
-	ProblemText   string                `json:"problemText"`
-	CurrentCode   string                `json:"currentCode"`
-	MaxAttempts   int                   `json:"maxAttempts"`
-	Settings      geometryAgentSettings `json:"settings"`
-	ErrorText     string                `json:"errorText"`
-	Diagnostics   []string              `json:"diagnostics"`
-	Spec          GeometrySpec          `json:"spec"`
-	Construction  GeometryConstruction  `json:"construction"`
-	Scene         GeometryScene         `json:"scene"`
-	NoteMarkdown  string                `json:"noteMarkdown"`
-	ProofMarkdown string                `json:"proofMarkdown"`
+	SceneName           string                `json:"sceneName"`
+	ImageDataURL        string                `json:"imageDataUrl"`
+	ProblemText         string                `json:"problemText"`
+	CurrentCode         string                `json:"currentCode"`
+	DynamicConstruction bool                  `json:"dynamicConstruction"`
+	MaxAttempts         int                   `json:"maxAttempts"`
+	Settings            geometryAgentSettings `json:"settings"`
+	ErrorText           string                `json:"errorText"`
+	Diagnostics         []string              `json:"diagnostics"`
+	Spec                GeometrySpec          `json:"spec"`
+	Construction        GeometryConstruction  `json:"construction"`
+	Scene               GeometryScene         `json:"scene"`
+	NoteMarkdown        string                `json:"noteMarkdown"`
+	ProofMarkdown       string                `json:"proofMarkdown"`
 }
 
 type geometryAgentCommand struct {
@@ -86,33 +88,34 @@ type geometryAgentCommand struct {
 }
 
 type geometryAgentEvent struct {
-	Type              string                 `json:"type"`
-	SessionID         string                 `json:"sessionId"`
-	SceneName         string                 `json:"sceneName"`
-	Stage             string                 `json:"stage"`
-	AgentName         string                 `json:"agentName"`
-	Title             string                 `json:"title"`
-	Description       string                 `json:"description"`
-	Message           string                 `json:"message"`
-	Status            string                 `json:"status"`
-	EventKind         string                 `json:"eventKind"`
-	Attempt           int                    `json:"attempt"`
-	ArtifactTitle     string                 `json:"artifactTitle"`
-	ArtifactSummary   string                 `json:"artifactSummary"`
-	ArtifactDetail    string                 `json:"artifactDetail"`
-	ArtifactData      map[string]any         `json:"artifactData"`
-	Spec              GeometrySpec           `json:"spec"`
-	Construction      GeometryConstruction   `json:"construction"`
-	ConstructionDraft GeometryConstruction   `json:"constructionDraft"`
-	ValidationSummary map[string]any         `json:"validationSummary"`
-	Scene             GeometryScene          `json:"scene"`
-	Code              string                 `json:"code"`
-	NoteMarkdown      string                 `json:"noteMarkdown"`
-	ProofMarkdown     string                 `json:"proofMarkdown"`
-	Result            GeometryWorkflowResult `json:"result"`
-	ErrorText         string                 `json:"errorText"`
-	Diagnostics       []string               `json:"diagnostics"`
-	Repairable        bool                   `json:"repairable"`
+	Type                string                 `json:"type"`
+	SessionID           string                 `json:"sessionId"`
+	SceneName           string                 `json:"sceneName"`
+	Stage               string                 `json:"stage"`
+	AgentName           string                 `json:"agentName"`
+	Title               string                 `json:"title"`
+	Description         string                 `json:"description"`
+	Message             string                 `json:"message"`
+	Status              string                 `json:"status"`
+	EventKind           string                 `json:"eventKind"`
+	Attempt             int                    `json:"attempt"`
+	ArtifactTitle       string                 `json:"artifactTitle"`
+	ArtifactSummary     string                 `json:"artifactSummary"`
+	ArtifactDetail      string                 `json:"artifactDetail"`
+	ArtifactData        map[string]any         `json:"artifactData"`
+	Spec                GeometrySpec           `json:"spec"`
+	Construction        GeometryConstruction   `json:"construction"`
+	ConstructionDraft   GeometryConstruction   `json:"constructionDraft"`
+	ValidationSummary   map[string]any         `json:"validationSummary"`
+	Scene               GeometryScene          `json:"scene"`
+	Code                string                 `json:"code"`
+	NoteMarkdown        string                 `json:"noteMarkdown"`
+	ProofMarkdown       string                 `json:"proofMarkdown"`
+	Result              GeometryWorkflowResult `json:"result"`
+	ErrorText           string                 `json:"errorText"`
+	Diagnostics         []string               `json:"diagnostics"`
+	Repairable          bool                   `json:"repairable"`
+	DynamicConstruction bool                   `json:"dynamicConstruction"`
 }
 
 type geometryProbeResult struct {
@@ -326,12 +329,13 @@ func validateGeometryAgentSettings(settings geometryAgentSettings) (geometryAgen
 
 func (s *geometryWorkflowService) startAgentProcess(ctx context.Context, entry *geometryWorkflowEntry, settings geometryAgentSettings) error {
 	return s.startAgentProcessWithRequest(ctx, entry, "start", &geometryAgentRequest{
-		SceneName:    entry.request.SceneName,
-		ImageDataURL: entry.request.ImageDataURL,
-		ProblemText:  entry.request.ProblemText,
-		CurrentCode:  entry.request.CurrentCode,
-		MaxAttempts:  entry.request.MaxAttempts,
-		Settings:     settings,
+		SceneName:           entry.request.SceneName,
+		ImageDataURL:        entry.request.ImageDataURL,
+		ProblemText:         entry.request.ProblemText,
+		CurrentCode:         entry.request.CurrentCode,
+		DynamicConstruction: entry.request.DynamicConstruction,
+		MaxAttempts:         entry.request.MaxAttempts,
+		Settings:            settings,
 	})
 }
 
@@ -518,7 +522,7 @@ func (s *geometryWorkflowService) handleAgentEvent(ctx context.Context, entry *g
 			Scene:     normalizeGeometryScene(event.Scene),
 		})
 	case "runtime_probe":
-		result := s.probeGeneratedCode(ctx, event.SceneName, event.Code)
+		result := s.probeGeneratedCode(ctx, event.SceneName, event.Code, event.DynamicConstruction)
 		_ = entry.write(geometryAgentCommand{
 			Type:        "probe_result",
 			SessionID:   event.SessionID,
@@ -561,11 +565,18 @@ func (s *geometryWorkflowService) handleAgentEvent(ctx context.Context, entry *g
 	return false
 }
 
-func (s *geometryWorkflowService) probeGeneratedCode(ctx context.Context, sceneName string, code string) geometryProbeResult {
+func (s *geometryWorkflowService) probeGeneratedCode(ctx context.Context, sceneName string, code string, dynamicConstruction bool) geometryProbeResult {
 	if err := scriptsafety.Validate(code); err != nil {
 		return geometryProbeResult{
 			OK:         false,
 			ErrorText:  err.Error(),
+			Repairable: true,
+		}
+	}
+	if dynamicConstruction && !codeHasDynamicGeometryControl(code) {
+		return geometryProbeResult{
+			OK:         false,
+			ErrorText:  "动态构象模式要求生成的 Matplotlib 代码至少包含一个 Slider 控件，请保留参数化构造和滑块交互。",
 			Repairable: true,
 		}
 	}
@@ -585,6 +596,12 @@ func (s *geometryWorkflowService) probeGeneratedCode(ctx context.Context, sceneN
 		ErrorText:  failure.ErrorText,
 		Repairable: failure.Repairable,
 	}
+}
+
+var dynamicGeometryControlPattern = regexp.MustCompile(`(?i)(\bSlider\s*\(|matplotlib\.widgets\.Slider\b)`)
+
+func codeHasDynamicGeometryControl(code string) bool {
+	return dynamicGeometryControlPattern.MatchString(code)
 }
 
 func (s *geometryWorkflowService) hydrateGeometryRepairResult(sceneName string, currentCode string, result GeometryWorkflowResult) GeometryWorkflowResult {

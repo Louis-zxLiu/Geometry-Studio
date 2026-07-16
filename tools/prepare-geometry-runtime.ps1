@@ -2,6 +2,17 @@
 param(
     [string]$PythonExe = "",
 
+    [ValidateSet("portable", "venv")]
+    [string]$RuntimeKind = "portable",
+
+    [string]$PythonVersion = "3.12.8",
+
+    [string]$PythonEmbedUrl = "",
+
+    [string]$PipBootstrapUrl = "https://bootstrap.pypa.io/get-pip.py",
+
+    [string]$DownloadCacheDir = ".tools_py",
+
     [string]$RuntimeDir = "runtime",
 
     [string]$IndexUrl = "",
@@ -36,6 +47,38 @@ function Resolve-InRepositoryPath {
     }
 
     return [System.IO.Path]::GetFullPath((Join-Path $repoRoot $PathValue))
+}
+
+function Save-UriIfMissing {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Uri,
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationPath
+    )
+
+    if (Test-Path -LiteralPath $DestinationPath -PathType Leaf) {
+        Write-Host "Using cached download:" $DestinationPath
+        return
+    }
+
+    $destinationDir = Split-Path -Parent $DestinationPath
+    if (-not (Test-Path -LiteralPath $destinationDir -PathType Container)) {
+        New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+    }
+
+    Write-Host "Downloading:" $Uri
+    Write-Host "       to:" $DestinationPath
+    Invoke-WebRequest -Uri $Uri -OutFile $DestinationPath
+}
+
+function Get-DefaultPythonEmbedUrl {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Version
+    )
+
+    return "https://www.python.org/ftp/python/$Version/python-$Version-embed-amd64.zip"
 }
 
 function Assert-SafeRuntimeDirectory {
@@ -99,8 +142,8 @@ function Resolve-RuntimePython {
     )
 
     $candidates = @(
-        "Scripts/python.exe",
         "python.exe",
+        "Scripts/python.exe",
         "bin/python.exe",
         "bin/python"
     )
@@ -113,6 +156,142 @@ function Resolve-RuntimePython {
     }
 
     throw "Runtime Python was not found under $RuntimeRoot"
+}
+
+function Resolve-EmbeddedPythonPthFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RuntimeRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$Version
+    )
+
+    $versionParts = $Version.Split(".")
+    if ($versionParts.Count -ge 2) {
+        $candidateName = "python{0}{1}._pth" -f $versionParts[0], $versionParts[1]
+        $candidatePath = Join-Path $RuntimeRoot $candidateName
+        if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
+            return $candidatePath
+        }
+    }
+
+    $matches = @(Get-ChildItem -LiteralPath $RuntimeRoot -Filter "python*._pth" -File -ErrorAction SilentlyContinue)
+    if ($matches.Count -gt 0) {
+        return $matches[0].FullName
+    }
+
+    if ($versionParts.Count -ge 2) {
+        return (Join-Path $RuntimeRoot ("python{0}{1}._pth" -f $versionParts[0], $versionParts[1]))
+    }
+
+    return (Join-Path $RuntimeRoot "python._pth")
+}
+
+function Add-UniqueLine {
+    param(
+        [System.Collections.Generic.List[string]]$Lines,
+        [Parameter(Mandatory = $true)]
+        [string]$Line
+    )
+
+    foreach ($existing in $Lines) {
+        if ($existing -eq $Line) {
+            return
+        }
+    }
+    $Lines.Add($Line)
+}
+
+function Enable-PortablePythonSitePackages {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RuntimeRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$Version
+    )
+
+    $sitePackagesDir = Join-Path $RuntimeRoot "Lib/site-packages"
+    if (-not (Test-Path -LiteralPath $sitePackagesDir -PathType Container)) {
+        New-Item -ItemType Directory -Path $sitePackagesDir -Force | Out-Null
+    }
+
+    $pthFile = Resolve-EmbeddedPythonPthFile -RuntimeRoot $RuntimeRoot -Version $Version
+    $lines = [System.Collections.Generic.List[string]]::new()
+    if (Test-Path -LiteralPath $pthFile -PathType Leaf) {
+        foreach ($line in Get-Content -LiteralPath $pthFile) {
+            $trimmed = $line.Trim()
+            if ([string]::IsNullOrWhiteSpace($trimmed)) {
+                continue
+            }
+            if ($trimmed.StartsWith("#")) {
+                continue
+            }
+            if ($trimmed -eq "import site") {
+                continue
+            }
+            Add-UniqueLine -Lines $lines -Line $trimmed
+        }
+    }
+
+    $zipName = "python$($Version.Split('.')[0])$($Version.Split('.')[1]).zip"
+    if (Test-Path -LiteralPath (Join-Path $RuntimeRoot $zipName) -PathType Leaf) {
+        Add-UniqueLine -Lines $lines -Line $zipName
+    }
+    Add-UniqueLine -Lines $lines -Line "."
+    Add-UniqueLine -Lines $lines -Line "Lib/site-packages"
+
+    Set-Content -LiteralPath $pthFile -Value $lines -Encoding ASCII
+    Write-Host "Configured portable Python path file:" $pthFile
+}
+
+function New-PortableRuntime {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RuntimeRoot
+    )
+
+    $effectiveEmbedUrl = $PythonEmbedUrl
+    if ([string]::IsNullOrWhiteSpace($effectiveEmbedUrl)) {
+        $effectiveEmbedUrl = Get-DefaultPythonEmbedUrl -Version $PythonVersion
+    }
+
+    $cacheRoot = Resolve-InRepositoryPath -PathValue $DownloadCacheDir
+    $embedZip = Join-Path $cacheRoot ("python-$PythonVersion-embed-amd64.zip")
+    Save-UriIfMissing -Uri $effectiveEmbedUrl -DestinationPath $embedZip
+
+    if (-not (Test-Path -LiteralPath $RuntimeRoot -PathType Container)) {
+        New-Item -ItemType Directory -Path $RuntimeRoot -Force | Out-Null
+    }
+
+    Expand-Archive -LiteralPath $embedZip -DestinationPath $RuntimeRoot -Force
+    Enable-PortablePythonSitePackages -RuntimeRoot $RuntimeRoot -Version $PythonVersion
+}
+
+function Test-PortableRuntimeLayout {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RuntimeRoot
+    )
+
+    return (Test-Path -LiteralPath (Join-Path $RuntimeRoot "python.exe") -PathType Leaf) -and
+        (-not (Test-Path -LiteralPath (Join-Path $RuntimeRoot "pyvenv.cfg") -PathType Leaf))
+}
+
+function Ensure-Pip {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RuntimePython
+    )
+
+    & $RuntimePython -m pip --version | Out-Host
+    if ($LASTEXITCODE -eq 0) {
+        return
+    }
+
+    $cacheRoot = Resolve-InRepositoryPath -PathValue $DownloadCacheDir
+    $getPipPath = Join-Path $cacheRoot "get-pip.py"
+    Save-UriIfMissing -Uri $PipBootstrapUrl -DestinationPath $getPipPath
+    Invoke-CheckedCommand -FilePath $RuntimePython -Arguments @($getPipPath, "--no-warn-script-location")
 }
 
 function Invoke-CheckedCommand {
@@ -214,9 +393,19 @@ if ($Recreate.IsPresent -and (Test-Path -LiteralPath $runtimePath)) {
 }
 
 if (-not (Test-Path -LiteralPath $runtimePath -PathType Container)) {
-    $hostPython = Resolve-HostPython -RequestedPython $PythonExe
-    Write-Host "Creating runtime venv with:" $hostPython
-    Invoke-CheckedCommand -FilePath $hostPython -Arguments @("-m", "venv", $runtimePath)
+    if ($RuntimeKind -eq "portable") {
+        Write-Host "Creating portable Python runtime:" $runtimePath
+        New-PortableRuntime -RuntimeRoot $runtimePath
+    } else {
+        $hostPython = Resolve-HostPython -RequestedPython $PythonExe
+        Write-Host "Creating runtime venv with:" $hostPython
+        Invoke-CheckedCommand -FilePath $hostPython -Arguments @("-m", "venv", $runtimePath)
+    }
+} elseif ($RuntimeKind -eq "portable") {
+    if (-not (Test-PortableRuntimeLayout -RuntimeRoot $runtimePath)) {
+        throw "Existing runtime is not portable. Re-run with -Recreate to replace it: $runtimePath"
+    }
+    Enable-PortablePythonSitePackages -RuntimeRoot $runtimePath -Version $PythonVersion
 }
 
 $runtimePython = Resolve-RuntimePython -RuntimeRoot $runtimePath
@@ -224,6 +413,7 @@ Write-Host "Runtime Python:" $runtimePython
 Invoke-CheckedCommand -FilePath $runtimePython -Arguments @("--version")
 
 if (-not $SkipInstall.IsPresent) {
+    Ensure-Pip -RuntimePython $runtimePython
     Invoke-Pip -RuntimePython $runtimePython -PipArguments @("install", "--upgrade", "pip", "setuptools", "wheel")
 
     $packages = @(
