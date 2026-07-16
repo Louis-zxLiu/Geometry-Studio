@@ -137,26 +137,27 @@ function Write-PortableReadme {
     )
 
     $content = @"
-Geometry Studio Portable Package
+Geometry Studio 便携版分发包
 
-How to run:
-1. Extract the whole zip to a writable folder.
-2. Run GeometryStudio.exe.
-3. On first startup, the app extracts resources/runtime/runtime.7z to runtime/.
+运行方式：
+1. 先把整个 zip 解压到一个可写目录，例如桌面或 D:\Apps\GeometryStudio。
+2. 双击运行 GeometryStudio.exe。
+3. 首次启动时，程序会自动把 resources/runtime/runtime.7z 解压到 runtime/ 目录。
 
-Required files for portable distribution:
+便携分发必须保留这些文件：
 - GeometryStudio.exe
 - resources/runtime/runtime.7z
 - resources/runtime/7zip/7za.exe
 - resources/runtime/7zip/7za.dll
 
-Notes:
-- Do not run GeometryStudio.exe directly from inside the zip.
-- The app does not need Go, Node.js, Wails, npm, or a system Python install.
-- Windows still needs Microsoft Edge WebView2 Runtime. Build with
-  tools/build-versioned-app.ps1 -WebView2Strategy embed if you want the Wails
-  bootstrapper embedded in the exe.
-- AI features still need network access and an API/subscription configuration.
+注意事项：
+- 不要在 zip 压缩包内部直接运行 GeometryStudio.exe，必须先完整解压。
+- 不要只单独拷贝 GeometryStudio.exe，必须连同 resources/ 目录一起分发。
+- 本包不需要安装 Go、Node.js、Wails、npm，也不依赖系统 Python。
+- Windows 仍然需要 Microsoft Edge WebView2 Runtime；多数 Windows 10/11 已自带。
+- AI 功能需要可访问网络，并正确填写 AI 模型服务商的 URL、KEY、MODEL。
+- 拍照/上传图片解题需要使用支持图片输入的多模态模型；纯文本模型只能处理文字题干。
+- 如果出现 `write |1: The pipe has been ended.`，表示几何解题子进程已经提前退出，常见原因是包没有完整解压、resources/runtime 缺失、AI 配置错误、模型服务返回错误，或当前模型不支持本次输入。
 "@
 
     [System.IO.File]::WriteAllText(
