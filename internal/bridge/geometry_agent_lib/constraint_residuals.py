@@ -106,6 +106,8 @@ def evaluate_constraint(
             components = residual_orientation(context, points, args)
         elif constraint_type in {"convex", "convex_polygon", "convex_quadrilateral"}:
             components = residual_convex_polygon(context, points, args)
+        elif constraint_type in {"nondegenerate", "non_collinear", "noncollinear"}:
+            components = residual_nondegenerate(context, points, args)
         elif constraint_type == "order":
             components = residual_order(context, points, args)
         elif constraint_type == "inside":
@@ -572,6 +574,16 @@ def residual_convex_polygon(context: ResidualContext, points: Mapping[str, np.nd
         scale = max(distance(a, b) * distance(b, c), 1.0)
         residuals.append(max(0.0, CONVEX_MIN_TURN_RATIO - sign * turn / scale))
     return residuals
+
+
+def residual_nondegenerate(context: ResidualContext, points: Mapping[str, np.ndarray], args: Mapping[str, Any]) -> List[float]:
+    refs = polygon_point_refs(context, args)[:3]
+    if len(refs) < 3:
+        raise ValueError("nondegenerate needs three points")
+    a, b, c = (points[refs[0]], points[refs[1]], points[refs[2]])
+    area = abs(cross2(b - a, c - a))
+    scale = max(distance(a, b) * distance(a, c), 1.0)
+    return [max(0.0, ORIENTATION_MIN_AREA_RATIO - area / scale)]
 
 
 def polygon_point_refs(context: ResidualContext, args: Mapping[str, Any]) -> List[str]:

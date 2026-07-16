@@ -29,7 +29,8 @@ class ConstructionConstraintModel(BaseModel):
         description=(
             "Composable predicate: on, parallel, perpendicular, distance_equals, ratio, "
             "angle_value, angle_equals, midpoint, intersection, tangent, concyclic, "
-            "collinear, orientation, convex_polygon, order, inside, outside. "
+            "collinear, orientation, convex_polygon, nondegenerate, order, inside, outside. "
+            "Use invariant_point/fixed_point with required=false and weight=0 for fixed-point proof goals. "
             "Do not use distinct_points/not_equal as required constraints."
         )
     )

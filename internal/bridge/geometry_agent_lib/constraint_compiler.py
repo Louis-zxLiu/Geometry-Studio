@@ -31,6 +31,7 @@ def normalize_construction(
     normalize_shape_metadata(data, spec)
     relax_implicit_orientation_constraints(data, spec)
     demote_point_distinct_constraints(data)
+    demote_semantic_goal_constraints(data)
     data["diagnostics"].extend(branch_hardcoding_issues(data, spec))
     if not data.get("dslCode"):
         data["dslCode"] = construction_debug_summary(data)
@@ -104,6 +105,15 @@ POINT_DISTINCT_CONSTRAINT_TYPES = {
 }
 
 
+SEMANTIC_GOAL_CONSTRAINT_TYPES = {
+    "fixed_point",
+    "fixed_target",
+    "invariant",
+    "invariant_point",
+    "constant_point",
+}
+
+
 def demote_point_distinct_constraints(data: Dict[str, Any]) -> None:
     changed: List[str] = []
     for constraint in data.get("constraints") or []:
@@ -120,6 +130,25 @@ def demote_point_distinct_constraints(data: Dict[str, Any]) -> None:
             "已将点不等/端点排除约束从 required 数值约束降级为语义提示："
             + ", ".join(changed)
             + "。请改用 on+order、same_side/opposite_sides、orientation:auto 或其它已支持谓词表达真实分支。"
+        )
+
+
+def demote_semantic_goal_constraints(data: Dict[str, Any]) -> None:
+    changed: List[str] = []
+    for constraint in data.get("constraints") or []:
+        if not isinstance(constraint, dict):
+            continue
+        ctype = normalized_constraint_type(str(constraint.get("type") or ""))
+        if ctype not in SEMANTIC_GOAL_CONSTRAINT_TYPES:
+            continue
+        constraint["required"] = False
+        constraint["weight"] = 0.0
+        changed.append(str(constraint.get("id") or ctype))
+    if changed:
+        data.setdefault("diagnostics", []).append(
+            "已将定点/不变量目标约束标记为语义目标，不参与数值求解："
+            + ", ".join(changed)
+            + "。证明文本仍需证明这些目标。"
         )
 
 

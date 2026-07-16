@@ -219,6 +219,37 @@ class ConstraintKernelTest(unittest.TestCase):
         self.assertTrue(construction["validation"]["solverOk"])
         self.assertTrue(any("distinct" in item or "点不等" in item for item in construction["diagnostics"]))
 
+    def test_invariant_point_goal_is_semantic_and_nondegenerate_is_numeric(self):
+        construction = solve(
+            {
+                "objects": [
+                    {"id": "C", "kind": "point", "label": "C", "attributes": {"x": 0, "y": 0, "fixed": True}},
+                    {"id": "D", "kind": "point", "label": "D", "attributes": {"x": 1, "y": 0, "fixed": True}},
+                    {"id": "P", "kind": "point", "label": "P", "attributes": {"x": 0, "y": 1, "fixed": True}},
+                    {"id": "K", "kind": "point", "label": "K"},
+                    {"id": "arc_TB", "kind": "arc", "refs": ["O", "T", "B"], "label": "arc TB"},
+                ],
+                "constraints": [
+                    {"id": "tri_CDP", "type": "nondegenerate", "args": {"points": ["C", "D", "P"]}},
+                    {"id": "k_center", "type": "circumcenter", "args": {"center": "K", "points": ["C", "D", "P"]}},
+                    {
+                        "id": "goal_K_fixed",
+                        "type": "invariant_point",
+                        "args": {"point": "K", "varying": "P", "path": "arc_TB"},
+                        "required": True,
+                    },
+                ],
+                "constructionIntent": [],
+            }
+        )
+
+        goal = next(item for item in construction["constraints"] if item["id"] == "goal_K_fixed")
+        self.assertFalse(goal["required"])
+        self.assertEqual(goal["weight"], 0.0)
+        self.assertTrue(construction["validation"]["solverOk"])
+        self.assertLess(construction["solution"]["maxResidual"], 1e-5)
+        self.assertTrue(any("不变量目标" in item or "invariant" in item for item in construction["diagnostics"]))
+
     def test_implicit_orientation_branch_is_relaxed_to_auto(self):
         construction = normalize_construction(
             {

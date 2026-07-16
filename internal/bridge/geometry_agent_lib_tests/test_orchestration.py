@@ -94,6 +94,22 @@ class OrchestrationTest(unittest.TestCase):
         self.assertIn("not_equal", prompt)
         self.assertIn("required constraints", prompt)
 
+    def test_constraint_prompt_requires_structured_fixed_point_goal(self):
+        prompt = build_constraint_construction_prompt(
+            {
+                "problemText": "当点 P 在弧 TB 上运动时，证明 K 为定点。",
+                "goalText": "K 为定点。",
+                "entities": [],
+                "constraints": [],
+            },
+            mode="draft",
+        )
+
+        self.assertIn("invariant_point", prompt)
+        self.assertIn("fixed_point", prompt)
+        self.assertIn("required:false", prompt)
+        self.assertIn("nondegenerate", prompt)
+
     def test_sanitizes_indented_display_math_delimiters(self):
         markdown = sanitize_mathjax_markdown(
             "由平行关系得到\n\n"

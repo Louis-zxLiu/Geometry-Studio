@@ -112,8 +112,10 @@ constraints:
 - opposite_sides/same_side: {first: C, second: D, line: AB}.
 - orientation: {a, b, c, value: ccw/cw/auto}; use ccw/cw only when the problem explicitly states clockwise/counterclockwise.
 - convex_polygon / convex_quadrilateral: {points: [A,B,C,D]} or {object: quad_ABCD}; accepts either clockwise or counterclockwise order and enforces convexity without choosing a fixed branch.
+- nondegenerate: {points: [C,D,P]} or {a: C, b: D, c: P}; enforces three points are not collinear, useful when a triangle or three-point circumcircle must exist.
 - order: {point, a, b}; point lies between a and b.
 - inside/outside: {point, object}; currently object is usually a circle.
+- invariant_point / fixed_point: semantic-only proof goal such as {point: K, varying: P, path: arc_TB}; set required:false and weight:0. This records "K is fixed as P moves" without forcing a coordinate in numeric solving.
 
 Rules:
 1. Do not create problem-type commands. Model the diagram with objects plus the predicates above.
@@ -127,6 +129,7 @@ Rules:
 9. Preserve shape words exactly: 凸四边形 means convex and must not be rewritten as 凹四边形/concave. Use convex_polygon/convex_quadrilateral for convex quadrilaterals; do not encode convexity as a single hard-coded orientation: ccw/cw.
 10. If a branch constraint is only meant to avoid degeneracy, use orientation value auto. Use same_side/opposite_sides for actual side-of-line facts from the problem.
 11. Do not use unsupported point-inequality predicates such as distinct_points, not_equal, or not_same_point as required constraints. Endpoint exclusions like "P is on arc TB, not including endpoints" should be expressed by supported branch predicates when mathematically needed, or described in constructionIntent if they are only a non-degeneracy note.
+12. Proof targets must be represented structurally. For "prove K is fixed/a fixed point", add a semantic goal constraint invariant_point or fixed_point with required:false and weight:0, and reference the moving point/path in args. Do not put this only in constructionIntent.
 """.strip()
 
 
@@ -167,6 +170,9 @@ def build_constraint_validation_prompt(spec: Dict[str, Any], construction: Dict[
         "数值残差已经由 runtime 给出，你负责语义覆盖审查：对象是否齐全、约束是否真实表达题目条件、"
         "构造意图是否合理、有没有从题干遗漏关键关系。"
         "如果数值解通过但语义漏掉了题目条件，必须判为未通过。"
+        "如果目标是证明某点为定点/不变量，GeometryConstruction 必须包含 invariant_point 或 fixed_point 这类 required:false、weight:0 的语义目标约束；"
+        "如果已包含这种目标约束，不要因为它不参与数值求解而判失败。"
+        "如果题目依赖三点外接圆或三角形存在，优先要求显式 nondegenerate 约束或等价的三点圆/外心对象。"
         "如果失败，请给出下一轮只能修改 objects / constraints / constructionIntent 的修复指令。"
         "\n\nGeometrySpec:\n"
         + prompt_json(spec)
