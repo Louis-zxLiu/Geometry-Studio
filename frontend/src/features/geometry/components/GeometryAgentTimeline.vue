@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
   GeometryAgentLogItem,
   GeometryAgentStep,
@@ -20,6 +20,8 @@ const collapsed = ref(loadCollapsedState());
 const copied = ref(false);
 const selectedStage = ref("");
 const viewMode = ref<"artifacts" | "logs" | "json">("artifacts");
+const timerNow = ref(Date.now());
+let timerHandle: ReturnType<typeof window.setInterval> | undefined;
 
 const visibleSteps = computed(() => props.steps.filter((step) => step.status !== "pending" || step.artifacts.length));
 const activeStep = computed(
@@ -77,6 +79,27 @@ watch(
     }
   },
 );
+
+watch(
+  () => props.steps.map((step) => `${step.stage}:${step.status}:${step.startedAt ?? ""}:${step.endedAt ?? ""}`).join("|"),
+  () => {
+    timerNow.value = Date.now();
+  },
+);
+
+onMounted(() => {
+  timerHandle = window.setInterval(() => {
+    if (props.steps.some((step) => (step.status === "running" || step.status === "waiting") && step.startedAt && !step.endedAt)) {
+      timerNow.value = Date.now();
+    }
+  }, 1000);
+});
+
+onBeforeUnmount(() => {
+  if (timerHandle !== undefined) {
+    window.clearInterval(timerHandle);
+  }
+});
 
 function toggleCollapsed() {
   collapsed.value = !collapsed.value;
@@ -136,7 +159,7 @@ function durationLabel(step: GeometryAgentStep) {
   if (!step.startedAt) {
     return "";
   }
-  const endedAt = step.endedAt ?? Date.now();
+  const endedAt = step.endedAt ?? timerNow.value;
   const seconds = Math.max(0, Math.round((endedAt - step.startedAt) / 1000));
   if (seconds < 1) {
     return "<1s";

@@ -158,10 +158,6 @@ export function RebuildRuntime() {
   return window['go']['bridge']['App']['RebuildRuntime']();
 }
 
-export function RepairGeometryWorkflow(arg1) {
-  return window['go']['bridge']['App']['RepairGeometryWorkflow'](arg1);
-}
-
 export function RefreshWorkspace(arg1) {
   return window['go']['bridge']['App']['RefreshWorkspace'](arg1);
 }
@@ -180,6 +176,10 @@ export function RenameWorkspace(arg1, arg2) {
 
 export function ReorderScripts(arg1, arg2) {
   return window['go']['bridge']['App']['ReorderScripts'](arg1, arg2);
+}
+
+export function RepairGeometryWorkflow(arg1) {
+  return window['go']['bridge']['App']['RepairGeometryWorkflow'](arg1);
 }
 
 export function ResumeGeometryWorkflow(arg1, arg2) {

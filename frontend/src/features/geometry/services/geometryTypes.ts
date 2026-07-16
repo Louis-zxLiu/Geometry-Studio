@@ -48,6 +48,16 @@ export type GeometryCircle = {
   style: string;
 };
 
+export type GeometryArc = {
+  id: string;
+  center: string;
+  start: string;
+  end: string;
+  radius: number;
+  label: string;
+  style: string;
+};
+
 export type GeometryPolygon = {
   id: string;
   points: string[];
@@ -96,12 +106,43 @@ export type GeometryScene = {
   points: GeometryPoint[];
   segments: GeometrySegment[];
   circles: GeometryCircle[];
+  arcs: GeometryArc[];
   polygons: GeometryPolygon[];
   controls: GeometryControl[];
   measurements: GeometryMeasurement[];
   constraints: GeometryConstraint[];
   annotations: GeometryAnnotation[];
   proofSteps: GeometryProofStep[];
+};
+
+export type GeometryValidationIssue = {
+  severity: string;
+  target: string;
+  message: string;
+  suggestedRepair: string;
+};
+
+export type GeometryValidationSummary = {
+  isValid: boolean;
+  objectCoverage: number;
+  conditionCoverage: number;
+  summary: string;
+  failedItems: GeometryValidationIssue[];
+  repairInstructions: string[];
+  residualSummary?: Record<string, unknown>;
+};
+
+export type GeometryConstruction = {
+  version: number;
+  dslCode: string;
+  objects: Array<Record<string, unknown>>;
+  constraints: Array<Record<string, unknown>>;
+  constructionIntent: Array<Record<string, unknown>>;
+  solution: Record<string, unknown>;
+  validation: Record<string, unknown>;
+  reviewStatus: string;
+  specFingerprint: string;
+  diagnostics: string[];
 };
 
 export type GeometryWorkflowRequest = {
@@ -133,6 +174,7 @@ export type GeometryWorkflowResult = {
   noteMarkdown: string;
   proofMarkdown: string;
   spec: GeometrySpec;
+  construction: GeometryConstruction;
   scene: GeometryScene;
   diagnostics: string[];
 };
@@ -158,6 +200,9 @@ export type GeometryReviewRequiredEvent = {
   sessionId: string;
   sceneName: string;
   spec: GeometrySpec;
+  constructionDraft?: GeometryConstruction;
+  previewScene?: GeometryScene;
+  validationSummary?: GeometryValidationSummary;
 };
 
 export type GeometryCodeAppliedEvent = {

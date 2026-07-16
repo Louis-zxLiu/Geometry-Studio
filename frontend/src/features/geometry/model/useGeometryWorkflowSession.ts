@@ -8,11 +8,14 @@ import {
 } from "../services/geometryBridgeCompat";
 import type {
   GeometryCodeAppliedEvent,
+  GeometryConstruction,
   GeometryFailedEvent,
   GeometryInterruptedEvent,
   GeometryProgressEvent,
   GeometryReviewRequiredEvent,
+  GeometryScene,
   GeometrySpec,
+  GeometryValidationSummary,
   GeometrySucceededEvent,
   GeometryWorkflowRepairRequest,
   GeometryWorkflowRequest,
@@ -85,34 +88,40 @@ type GeometryTerminalResult =
 
 const STAGE_DEFINITIONS: Array<Pick<GeometryAgentStep, "agentName" | "description" | "stage" | "title">> = [
   {
-    stage: "problem_vision_parse",
-    title: "题目图文解析",
-    agentName: "题目图文解析 agent",
-    description: "识别图片和文本中的题干、标注、几何对象、已知条件和求证目标。",
+    stage: "parse_spec",
+    title: "几何规格解析",
+    agentName: "几何规格解析 agent",
+    description: "从图片和文本中解析题干、对象、条件、求证目标和构造提示，整理成稳定规格。",
   },
   {
-    stage: "geometry_spec_organize",
-    title: "几何规格整理",
-    agentName: "几何规格整理 agent",
-    description: "把题目信息整理成稳定 ID、对象、约束、结论和构造提示。",
+    stage: "build_constraint_construction",
+    title: "约束构造建模",
+    agentName: "约束构造建模 agent",
+    description: "让 MLLM 生成对象、基础谓词约束和构造意图，作为几何真相层草图。",
+  },
+  {
+    stage: "solve_constraint_graph",
+    title: "约束求解与预览",
+    agentName: "约束求解 agent",
+    description: "用数值残差求解对象坐标，生成预览场景和残差反馈，供教师审核。",
   },
   {
     stage: "teacher_review",
     title: "教师复核",
     agentName: "教师复核 agent",
-    description: "暂停工作流，把结构化题目交给用户确认或修正。",
+    description: "暂停工作流，把题目规格、构造预览和验证反馈交给用户确认或修正。",
   },
   {
-    stage: "construction_plan",
-    title: "构造规划",
-    agentName: "构造规划 agent",
-    description: "规划课堂构图策略、辅助构造和需要突出展示的关系。",
+    stage: "final_repair_constraints",
+    title: "最终约束修复",
+    agentName: "最终约束修复 agent",
+    description: "根据教师是否修改规格决定复用或重建构造，并只通过 MLLM 修改对象、约束和构造意图来修复失败。",
   },
   {
-    stage: "dual_scene_generate",
-    title: "双端场景生成",
-    agentName: "双端场景生成 agent",
-    description: "生成可供预览和 Matplotlib 代码共用的几何场景。",
+    stage: "scene_compile",
+    title: "构造场景编译",
+    agentName: "场景编译 agent",
+    description: "从已验证 GeometryConstruction 派生 GeometryScene 展示模型。",
   },
   {
     stage: "matplotlib_code_generate",
@@ -155,6 +164,9 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
   const lastFailure = ref<GeometryFailedEvent | null>(null);
   const progressLabel = ref("");
   const reviewSpec = ref<GeometrySpec | null>(null);
+  const reviewConstructionDraft = ref<GeometryConstruction | null>(null);
+  const reviewPreviewScene = ref<GeometryScene | null>(null);
+  const reviewValidationSummary = ref<GeometryValidationSummary | null>(null);
   const cleanupEvents = bindGeometryEvents();
 
   let pendingResolver: ((result: GeometryTerminalResult) => void) | null = null;
@@ -238,6 +250,9 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     }
 
     reviewSpec.value = null;
+    reviewConstructionDraft.value = null;
+    reviewPreviewScene.value = null;
+    reviewValidationSummary.value = null;
     await resumeGeometryWorkflow(activeSessionId.value, nextSpec);
     aiActivity.startWorking();
   }
@@ -285,6 +300,9 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     lastFailure.value = null;
     progressLabel.value = label;
     reviewSpec.value = null;
+    reviewConstructionDraft.value = null;
+    reviewPreviewScene.value = null;
+    reviewValidationSummary.value = null;
     pendingResolver = null;
   }
 
@@ -319,11 +337,14 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     }
 
     reviewSpec.value = event?.spec ?? null;
+    reviewConstructionDraft.value = event?.constructionDraft ?? null;
+    reviewPreviewScene.value = event?.previewScene ?? null;
+    reviewValidationSummary.value = event?.validationSummary ?? null;
     markStage("teacher_review", "waiting", {
-      message: "等待用户确认几何规格",
+      message: "等待用户确认几何规格与构造预览",
       title: "教师复核",
       agentName: "教师复核 agent",
-      description: "暂停工作流，把结构化题目交给用户确认或修正。",
+      description: "暂停工作流，把题目规格、构造预览和验证反馈交给用户确认或修正。",
     });
     aiActivity.stop();
     safeInvoke(() => activeOptions?.onReviewRequired?.(event));
@@ -554,6 +575,9 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     activeSceneName.value = "";
     progressLabel.value = "";
     reviewSpec.value = null;
+    reviewConstructionDraft.value = null;
+    reviewPreviewScene.value = null;
+    reviewValidationSummary.value = null;
     aiActivity.stop();
     resolve?.(result);
   }
@@ -566,6 +590,9 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     activeStage.value = "";
     progressLabel.value = "";
     reviewSpec.value = null;
+    reviewConstructionDraft.value = null;
+    reviewPreviewScene.value = null;
+    reviewValidationSummary.value = null;
     aiActivity.stop();
   }
 
@@ -604,7 +631,10 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     progressLabel,
     repairWorkflow,
     resumeReview,
+    reviewConstructionDraft,
+    reviewPreviewScene,
     reviewSpec,
+    reviewValidationSummary,
     startWorkflow,
     stopActiveWorkflow,
   };

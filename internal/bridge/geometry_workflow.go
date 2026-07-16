@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	_ "embed"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"mime"
 	"net/http"
 	"os"
@@ -27,8 +28,13 @@ import (
 	"plotkitycat/internal/scriptsafety"
 )
 
-//go:embed geometry_agent.py
-var geometryAgentSource string
+//go:embed geometry_agent.py geometry_agent_lib/*.py
+var geometryAgentFiles embed.FS
+
+type geometryAgentRuntime struct {
+	dir       string
+	agentPath string
+}
 
 type geometryWorkflowService struct {
 	app     *App
@@ -65,6 +71,7 @@ type geometryAgentRequest struct {
 	ErrorText     string                `json:"errorText"`
 	Diagnostics   []string              `json:"diagnostics"`
 	Spec          GeometrySpec          `json:"spec"`
+	Construction  GeometryConstruction  `json:"construction"`
 	Scene         GeometryScene         `json:"scene"`
 	NoteMarkdown  string                `json:"noteMarkdown"`
 	ProofMarkdown string                `json:"proofMarkdown"`
@@ -79,30 +86,34 @@ type geometryAgentCommand struct {
 }
 
 type geometryAgentEvent struct {
-	Type            string                 `json:"type"`
-	SessionID       string                 `json:"sessionId"`
-	SceneName       string                 `json:"sceneName"`
-	Stage           string                 `json:"stage"`
-	AgentName       string                 `json:"agentName"`
-	Title           string                 `json:"title"`
-	Description     string                 `json:"description"`
-	Message         string                 `json:"message"`
-	Status          string                 `json:"status"`
-	EventKind       string                 `json:"eventKind"`
-	Attempt         int                    `json:"attempt"`
-	ArtifactTitle   string                 `json:"artifactTitle"`
-	ArtifactSummary string                 `json:"artifactSummary"`
-	ArtifactDetail  string                 `json:"artifactDetail"`
-	ArtifactData    map[string]any         `json:"artifactData"`
-	Spec            GeometrySpec           `json:"spec"`
-	Scene           GeometryScene          `json:"scene"`
-	Code            string                 `json:"code"`
-	NoteMarkdown    string                 `json:"noteMarkdown"`
-	ProofMarkdown   string                 `json:"proofMarkdown"`
-	Result          GeometryWorkflowResult `json:"result"`
-	ErrorText       string                 `json:"errorText"`
-	Diagnostics     []string               `json:"diagnostics"`
-	Repairable      bool                   `json:"repairable"`
+	Type              string                 `json:"type"`
+	SessionID         string                 `json:"sessionId"`
+	SceneName         string                 `json:"sceneName"`
+	Stage             string                 `json:"stage"`
+	AgentName         string                 `json:"agentName"`
+	Title             string                 `json:"title"`
+	Description       string                 `json:"description"`
+	Message           string                 `json:"message"`
+	Status            string                 `json:"status"`
+	EventKind         string                 `json:"eventKind"`
+	Attempt           int                    `json:"attempt"`
+	ArtifactTitle     string                 `json:"artifactTitle"`
+	ArtifactSummary   string                 `json:"artifactSummary"`
+	ArtifactDetail    string                 `json:"artifactDetail"`
+	ArtifactData      map[string]any         `json:"artifactData"`
+	Spec              GeometrySpec           `json:"spec"`
+	Construction      GeometryConstruction   `json:"construction"`
+	ConstructionDraft GeometryConstruction   `json:"constructionDraft"`
+	PreviewScene      GeometryScene          `json:"previewScene"`
+	ValidationSummary map[string]any         `json:"validationSummary"`
+	Scene             GeometryScene          `json:"scene"`
+	Code              string                 `json:"code"`
+	NoteMarkdown      string                 `json:"noteMarkdown"`
+	ProofMarkdown     string                 `json:"proofMarkdown"`
+	Result            GeometryWorkflowResult `json:"result"`
+	ErrorText         string                 `json:"errorText"`
+	Diagnostics       []string               `json:"diagnostics"`
+	Repairable        bool                   `json:"repairable"`
 }
 
 type geometryProbeResult struct {
@@ -335,6 +346,7 @@ func (s *geometryWorkflowService) startRepairAgentProcess(ctx context.Context, e
 		ErrorText:     request.ErrorText,
 		Diagnostics:   request.Diagnostics,
 		Spec:          normalizeGeometrySpec(result.Spec),
+		Construction:  normalizeGeometryConstruction(result.Construction),
 		Scene:         normalizeGeometryScene(result.Scene),
 		NoteMarkdown:  result.NoteMarkdown,
 		ProofMarkdown: result.ProofMarkdown,
@@ -347,13 +359,13 @@ func (s *geometryWorkflowService) startAgentProcessWithRequest(ctx context.Conte
 		return err
 	}
 
-	agentPath, err := writeEmbeddedGeometryAgent()
+	agentRuntime, err := writeEmbeddedGeometryAgent()
 	if err != nil {
 		return err
 	}
 
 	cmdArgs := append([]string{}, args...)
-	cmdArgs = append(cmdArgs, "-u", agentPath)
+	cmdArgs = append(cmdArgs, "-u", agentRuntime.agentPath)
 	cmd := exec.CommandContext(ctx, python, cmdArgs...)
 	cmd.SysProcAttr = processutil.WithoutConsoleWindow()
 
@@ -381,7 +393,7 @@ func (s *geometryWorkflowService) startAgentProcessWithRequest(ctx context.Conte
 		return err
 	}
 
-	go s.readAgentEvents(ctx, entry, stdout, &stderr, agentPath)
+	go s.readAgentEvents(ctx, entry, stdout, &stderr, agentRuntime)
 
 	return entry.write(geometryAgentCommand{
 		Type:      commandType,
@@ -390,26 +402,36 @@ func (s *geometryWorkflowService) startAgentProcessWithRequest(ctx context.Conte
 	})
 }
 
-func writeEmbeddedGeometryAgent() (string, error) {
-	file, err := os.CreateTemp("", "geometry-studio-agent-*.py")
+func writeEmbeddedGeometryAgent() (geometryAgentRuntime, error) {
+	dir, err := os.MkdirTemp("", "geometry-studio-agent-*")
 	if err != nil {
-		return "", err
+		return geometryAgentRuntime{}, err
 	}
-	path := file.Name()
-	if _, err := file.WriteString(geometryAgentSource); err != nil {
-		_ = file.Close()
-		_ = os.Remove(path)
-		return "", err
+	if err := fs.WalkDir(geometryAgentFiles, ".", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		target := filepath.Join(dir, filepath.FromSlash(path))
+		if entry.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		content, err := geometryAgentFiles.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, content, 0o644)
+	}); err != nil {
+		_ = os.RemoveAll(dir)
+		return geometryAgentRuntime{}, err
 	}
-	if err := file.Close(); err != nil {
-		_ = os.Remove(path)
-		return "", err
-	}
-	return path, nil
+	return geometryAgentRuntime{
+		dir:       dir,
+		agentPath: filepath.Join(dir, "geometry_agent.py"),
+	}, nil
 }
 
-func (s *geometryWorkflowService) readAgentEvents(ctx context.Context, entry *geometryWorkflowEntry, stdout io.Reader, stderr *bytes.Buffer, agentPath string) {
-	defer os.Remove(agentPath)
+func (s *geometryWorkflowService) readAgentEvents(ctx context.Context, entry *geometryWorkflowEntry, stdout io.Reader, stderr *bytes.Buffer, agentRuntime geometryAgentRuntime) {
+	defer os.RemoveAll(agentRuntime.dir)
 
 	scanner := bufio.NewScanner(stdout)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
@@ -484,9 +506,12 @@ func (s *geometryWorkflowService) handleAgentEvent(ctx context.Context, entry *g
 		})
 	case "review_required":
 		s.app.emit(EventGeometryReview, GeometryWorkflowReviewRequiredEvent{
-			SessionID: event.SessionID,
-			SceneName: event.SceneName,
-			Spec:      normalizeGeometrySpec(event.Spec),
+			SessionID:         event.SessionID,
+			SceneName:         event.SceneName,
+			Spec:              normalizeGeometrySpec(event.Spec),
+			ConstructionDraft: normalizeGeometryConstruction(event.ConstructionDraft),
+			PreviewScene:      normalizeGeometryScene(event.PreviewScene),
+			ValidationSummary: normalizeGeometryMap(event.ValidationSummary),
 		})
 	case "preview_updated":
 		s.app.emit(EventGeometryPreview, GeometryWorkflowPreviewUpdatedEvent{
@@ -514,6 +539,9 @@ func (s *geometryWorkflowService) handleAgentEvent(ctx context.Context, entry *g
 		}
 		if isEmptyGeometrySpec(result.Spec) {
 			result.Spec = event.Spec
+		}
+		if isEmptyGeometryConstruction(result.Construction) {
+			result.Construction = event.Construction
 		}
 		if isEmptyGeometryScene(result.Scene) {
 			result.Scene = event.Scene
@@ -575,6 +603,11 @@ func (s *geometryWorkflowService) hydrateGeometryRepairResult(sceneName string, 
 			result.Scene = scene
 		}
 	}
+	if isEmptyGeometryConstruction(result.Construction) {
+		if construction, err := s.readGeometryConstruction(sceneName); err == nil {
+			result.Construction = construction
+		}
+	}
 	if strings.TrimSpace(result.NoteMarkdown) == "" && s.app.fileStore != nil {
 		if note, err := s.app.fileStore.ReadNote(sceneName); err == nil {
 			result.NoteMarkdown = note.Markdown
@@ -621,6 +654,25 @@ func (s *geometryWorkflowService) readGeometryScene(sceneName string) (GeometryS
 	return normalizeGeometryScene(scene), nil
 }
 
+func (s *geometryWorkflowService) readGeometryConstruction(sceneName string) (GeometryConstruction, error) {
+	if s.app.fileStore == nil {
+		return GeometryConstruction{}, errors.New("file store is not ready")
+	}
+	sceneDir, err := s.app.fileStore.SceneDir(sceneName)
+	if err != nil {
+		return GeometryConstruction{}, err
+	}
+	content, err := os.ReadFile(filepath.Join(sceneDir, "geometry-construction.json"))
+	if err != nil {
+		return GeometryConstruction{}, err
+	}
+	var construction GeometryConstruction
+	if err := json.Unmarshal(content, &construction); err != nil {
+		return GeometryConstruction{}, err
+	}
+	return normalizeGeometryConstruction(construction), nil
+}
+
 func (s *geometryWorkflowService) persistGeometryResult(sceneName string, imageDataURL string, result GeometryWorkflowResult) (GeometryWorkflowResult, error) {
 	if strings.TrimSpace(result.Code) == "" {
 		return result, errors.New("geometry agent returned empty code")
@@ -637,6 +689,7 @@ func (s *geometryWorkflowService) persistGeometryResult(sceneName string, imageD
 	if err != nil {
 		return result, err
 	}
+	result.Construction = normalizeGeometryConstruction(result.Construction)
 	result.Scene = normalizeGeometryScene(result.Scene)
 	if imageRel != "" {
 		result.Scene.SourceImage = imageRel
@@ -667,6 +720,13 @@ func (s *geometryWorkflowService) persistGeometryResult(sceneName string, imageD
 		return result, err
 	}
 	if err := os.WriteFile(filepath.Join(sceneDir, "geometry-spec.json"), specBytes, 0o644); err != nil {
+		return result, err
+	}
+	constructionBytes, err := json.MarshalIndent(result.Construction, "", "  ")
+	if err != nil {
+		return result, err
+	}
+	if err := os.WriteFile(filepath.Join(sceneDir, "geometry-construction.json"), constructionBytes, 0o644); err != nil {
 		return result, err
 	}
 	sceneBytes, err := json.MarshalIndent(result.Scene, "", "  ")
@@ -797,6 +857,8 @@ func (s *geometryWorkflowService) finishSucceeded(sessionID string, sceneName st
 		return
 	}
 	result.Spec = normalizeGeometrySpec(result.Spec)
+	result.Construction = normalizeGeometryConstruction(result.Construction)
+	result.Scene = normalizeGeometryScene(result.Scene)
 	s.app.emit(EventGeometryApplied, GeometryWorkflowCodeAppliedEvent{
 		SessionID: sessionID,
 		SceneName: sceneName,
@@ -817,6 +879,9 @@ func (s *geometryWorkflowService) finishFailed(sessionID string, sceneName strin
 	if result.Diagnostics == nil {
 		result.Diagnostics = diagnostics
 	}
+	result.Spec = normalizeGeometrySpec(result.Spec)
+	result.Construction = normalizeGeometryConstruction(result.Construction)
+	result.Scene = normalizeGeometryScene(result.Scene)
 	s.app.emit(EventGeometryFailed, GeometryWorkflowFailedEvent{
 		SessionID:   sessionID,
 		SceneName:   sceneName,
@@ -861,6 +926,38 @@ func normalizeGeometrySpec(spec GeometrySpec) GeometrySpec {
 	return spec
 }
 
+func normalizeGeometryConstruction(construction GeometryConstruction) GeometryConstruction {
+	if construction.Version <= 0 {
+		construction.Version = 1
+	}
+	if construction.Objects == nil {
+		construction.Objects = []map[string]any{}
+	}
+	if construction.Constraints == nil {
+		construction.Constraints = []map[string]any{}
+	}
+	if construction.ConstructionIntent == nil {
+		construction.ConstructionIntent = []map[string]any{}
+	}
+	if construction.Solution == nil {
+		construction.Solution = map[string]any{}
+	}
+	if construction.Validation == nil {
+		construction.Validation = map[string]any{}
+	}
+	if construction.Diagnostics == nil {
+		construction.Diagnostics = []string{}
+	}
+	return construction
+}
+
+func normalizeGeometryMap(value map[string]any) map[string]any {
+	if value == nil {
+		return map[string]any{}
+	}
+	return value
+}
+
 func isEmptyGeometrySpec(spec GeometrySpec) bool {
 	return spec.ProblemText == "" &&
 		spec.GoalText == "" &&
@@ -868,6 +965,18 @@ func isEmptyGeometrySpec(spec GeometrySpec) bool {
 		len(spec.Constraints) == 0 &&
 		len(spec.ConstructionHints) == 0 &&
 		spec.Confidence == 0
+}
+
+func isEmptyGeometryConstruction(construction GeometryConstruction) bool {
+	return construction.DSLCode == "" &&
+		len(construction.Objects) == 0 &&
+		len(construction.Constraints) == 0 &&
+		len(construction.ConstructionIntent) == 0 &&
+		len(construction.Solution) == 0 &&
+		len(construction.Validation) == 0 &&
+		construction.ReviewStatus == "" &&
+		construction.SpecFingerprint == "" &&
+		len(construction.Diagnostics) == 0
 }
 
 func normalizeGeometryScene(scene GeometryScene) GeometryScene {
@@ -882,6 +991,9 @@ func normalizeGeometryScene(scene GeometryScene) GeometryScene {
 	}
 	if scene.Circles == nil {
 		scene.Circles = []GeometryCircle{}
+	}
+	if scene.Arcs == nil {
+		scene.Arcs = []GeometryArc{}
 	}
 	if scene.Polygons == nil {
 		scene.Polygons = []GeometryPolygon{}
@@ -930,6 +1042,7 @@ func isEmptyGeometryScene(scene GeometryScene) bool {
 		len(scene.Points) == 0 &&
 		len(scene.Segments) == 0 &&
 		len(scene.Circles) == 0 &&
+		len(scene.Arcs) == 0 &&
 		len(scene.Polygons) == 0 &&
 		len(scene.Controls) == 0 &&
 		len(scene.Measurements) == 0 &&

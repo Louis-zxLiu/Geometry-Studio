@@ -258,6 +258,16 @@ type GeometryCircle struct {
 	Style   string  `json:"style"`
 }
 
+type GeometryArc struct {
+	ID     string  `json:"id"`
+	Center string  `json:"center"`
+	Start  string  `json:"start"`
+	End    string  `json:"end"`
+	Radius float64 `json:"radius"`
+	Label  string  `json:"label"`
+	Style  string  `json:"style"`
+}
+
 type GeometryPolygon struct {
 	ID     string   `json:"id"`
 	Points []string `json:"points"`
@@ -306,6 +316,7 @@ type GeometryScene struct {
 	Points       []GeometryPoint       `json:"points"`
 	Segments     []GeometrySegment     `json:"segments"`
 	Circles      []GeometryCircle      `json:"circles"`
+	Arcs         []GeometryArc         `json:"arcs"`
 	Polygons     []GeometryPolygon     `json:"polygons"`
 	Controls     []GeometryControl     `json:"controls"`
 	Measurements []GeometryMeasurement `json:"measurements"`
@@ -314,18 +325,32 @@ type GeometryScene struct {
 	ProofSteps   []GeometryProofStep   `json:"proofSteps"`
 }
 
+type GeometryConstruction struct {
+	Version            int              `json:"version"`
+	DSLCode            string           `json:"dslCode"`
+	Objects            []map[string]any `json:"objects"`
+	Constraints        []map[string]any `json:"constraints"`
+	ConstructionIntent []map[string]any `json:"constructionIntent"`
+	Solution           map[string]any   `json:"solution"`
+	Validation         map[string]any   `json:"validation"`
+	ReviewStatus       string           `json:"reviewStatus"`
+	SpecFingerprint    string           `json:"specFingerprint"`
+	Diagnostics        []string         `json:"diagnostics"`
+}
+
 type GeometrySceneDocument struct {
 	Scene              GeometryScene `json:"scene"`
 	SourceImageDataURL string        `json:"sourceImageDataUrl"`
 }
 
 type GeometryWorkflowResult struct {
-	Code          string        `json:"code"`
-	NoteMarkdown  string        `json:"noteMarkdown"`
-	ProofMarkdown string        `json:"proofMarkdown"`
-	Spec          GeometrySpec  `json:"spec"`
-	Scene         GeometryScene `json:"scene"`
-	Diagnostics   []string      `json:"diagnostics"`
+	Code          string               `json:"code"`
+	NoteMarkdown  string               `json:"noteMarkdown"`
+	ProofMarkdown string               `json:"proofMarkdown"`
+	Spec          GeometrySpec         `json:"spec"`
+	Construction  GeometryConstruction `json:"construction"`
+	Scene         GeometryScene        `json:"scene"`
+	Diagnostics   []string             `json:"diagnostics"`
 }
 
 type GeometryWorkflowProgressEvent struct {
@@ -346,9 +371,12 @@ type GeometryWorkflowProgressEvent struct {
 }
 
 type GeometryWorkflowReviewRequiredEvent struct {
-	SessionID string       `json:"sessionId"`
-	SceneName string       `json:"sceneName"`
-	Spec      GeometrySpec `json:"spec"`
+	SessionID         string               `json:"sessionId"`
+	SceneName         string               `json:"sceneName"`
+	Spec              GeometrySpec         `json:"spec"`
+	ConstructionDraft GeometryConstruction `json:"constructionDraft"`
+	PreviewScene      GeometryScene        `json:"previewScene"`
+	ValidationSummary map[string]any       `json:"validationSummary"`
 }
 
 type GeometryWorkflowPreviewUpdatedEvent struct {
