@@ -89,3 +89,11 @@ class GeometryConstructionModel(BaseModel):
     reviewStatus: str = "draft"
     specFingerprint: str = ""
     diagnostics: List[str] = Field(default_factory=list)
+
+
+class GeometryConstructionDraftModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    objects: List[ConstructionObjectModel] = Field(default_factory=list)
+    constraints: List[ConstructionConstraintModel] = Field(default_factory=list)
+    constructionIntent: List[ConstructionIntentModel] = Field(default_factory=list)

@@ -119,14 +119,36 @@ def is_valid_json_unicode_escape(value: str) -> bool:
     return len(value) == 4 and all(char in "0123456789abcdefABCDEF" for char in value)
 
 
+def compact_json_schema(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: compact_json_schema(item)
+            for key, item in value.items()
+            if key not in {"default", "description", "examples", "title"}
+        }
+    if isinstance(value, list):
+        return [compact_json_schema(item) for item in value]
+    return value
+
+
 def json_chat(
     state: Dict[str, Any],
     schema_model: type[BaseModel],
     system_prompt: str,
     user_prompt: str,
     image_data_url: str = "",
+    *,
+    compact_schema: bool = False,
 ) -> BaseModel:
-    schema = json.dumps(schema_model.model_json_schema(), ensure_ascii=False, indent=2)
+    schema_payload = schema_model.model_json_schema()
+    if compact_schema:
+        schema_payload = compact_json_schema(schema_payload)
+    schema = json.dumps(
+        schema_payload,
+        ensure_ascii=False,
+        indent=None if compact_schema else 2,
+        separators=(",", ":") if compact_schema else None,
+    )
     base_user_prompt = (
         user_prompt
         + "\n\nReturn JSON only. Escape every backslash inside JSON strings as \\\\, "

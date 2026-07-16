@@ -28,7 +28,7 @@ from geometry_agent_lib.prompts import (
 from geometry_agent_lib.schemas import (
     CodeResultModel,
     ConstructionValidationResultModel,
-    GeometryConstructionModel,
+    GeometryConstructionDraftModel,
     GeometrySpecModel,
     GeometryState,
     NoteResultModel,
@@ -178,10 +178,11 @@ def build_constraint_construction(state: GeometryState) -> Dict[str, Any]:
     spec = state["spec"]
     model = json_chat(
         state,
-        GeometryConstructionModel,
+        GeometryConstructionDraftModel,
         "你是约束优先几何构造 agent。你的任务是生成对象、基础谓词约束和中文构造意图。",
         build_constraint_construction_prompt(spec, mode="draft"),
-        state.get("imageDataUrl", ""),
+        "",
+        compact_schema=True,
     )
     construction = normalize_construction(
         model.model_dump(),
@@ -220,7 +221,8 @@ def solve_validate_construction(
             ConstructionValidationResultModel,
             "你是约束构造语义审查 agent，负责检查对象和约束是否真正覆盖题意。",
             build_constraint_validation_prompt(spec, construction, preview_scene),
-            state.get("imageDataUrl", ""),
+            "",
+            compact_schema=True,
         ).model_dump()
     except Exception as exc:
         semantic = {
@@ -352,10 +354,11 @@ def generate_final_construction(state: GeometryState, spec: Dict[str, Any], spec
 
     model = json_chat(
         state,
-        GeometryConstructionModel,
+        GeometryConstructionDraftModel,
         "你是教师确认后的约束优先几何构造 agent。规格如有修改，必须丢弃旧草图并重新建模。",
         build_constraint_construction_prompt(spec, mode="final"),
-        state.get("imageDataUrl", ""),
+        "",
+        compact_schema=True,
     )
     construction = normalize_construction(
         model.model_dump(),
@@ -433,10 +436,11 @@ def final_repair_constraints(state: GeometryState) -> Dict[str, Any]:
 
         repaired = json_chat(
             state,
-            GeometryConstructionModel,
+            GeometryConstructionDraftModel,
             "你是约束图修复 agent，只能修改对象、基础谓词约束和构造意图。",
             build_constraint_repair_prompt(spec, construction, feedback),
-            state.get("imageDataUrl", ""),
+            "",
+            compact_schema=True,
         )
         construction = normalize_construction(
             repaired.model_dump(),

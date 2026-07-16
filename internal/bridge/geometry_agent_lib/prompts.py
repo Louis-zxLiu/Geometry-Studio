@@ -131,6 +131,10 @@ MATHJAX_MARKDOWN_RULES = r"""
 """.strip()
 
 
+def prompt_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
 def build_constraint_construction_prompt(spec: Dict[str, Any], *, mode: str) -> str:
     mode_instruction = (
         "这是审核前草图：需要尽量覆盖题意，并让教师能看到可理解的约束预览。"
@@ -147,7 +151,7 @@ def build_constraint_construction_prompt(spec: Dict[str, Any], *, mode: str) -> 
         "\n\nConstraint reference:\n"
         + CONSTRAINT_REFERENCE
         + "\n\nGeometrySpec:\n"
-        + json.dumps(spec, ensure_ascii=False, indent=2)
+        + prompt_json(spec)
     )
 
 
@@ -159,11 +163,11 @@ def build_constraint_validation_prompt(spec: Dict[str, Any], construction: Dict[
         "如果数值解通过但语义漏掉了题目条件，必须判为未通过。"
         "如果失败，请给出下一轮只能修改 objects / constraints / constructionIntent 的修复指令。"
         "\n\nGeometrySpec:\n"
-        + json.dumps(spec, ensure_ascii=False, indent=2)
+        + prompt_json(spec)
         + "\n\nGeometryConstruction with solver result:\n"
-        + json.dumps(construction, ensure_ascii=False, indent=2)
+        + prompt_json(construction)
         + "\n\nPreview GeometryScene derived from construction:\n"
-        + json.dumps(preview_scene, ensure_ascii=False, indent=2)
+        + prompt_json(preview_scene)
     )
 
 
@@ -181,9 +185,9 @@ def build_constraint_repair_prompt(
         "\n\nConstraint reference:\n"
         + CONSTRAINT_REFERENCE
         + "\n\nGeometrySpec:\n"
-        + json.dumps(spec, ensure_ascii=False, indent=2)
+        + prompt_json(spec)
         + "\n\nPrevious GeometryConstruction:\n"
-        + json.dumps(construction, ensure_ascii=False, indent=2)
+        + prompt_json(construction)
         + "\n\nFeedback:\n"
-        + json.dumps(feedback, ensure_ascii=False, indent=2)
+        + prompt_json(feedback)
     )

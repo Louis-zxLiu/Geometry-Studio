@@ -4,7 +4,7 @@ from typing import Any, Dict, List, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .constraint_schema import GeometryConstructionModel
+from .constraint_schema import GeometryConstructionDraftModel, GeometryConstructionModel
 
 
 class GeometryEntityModel(BaseModel):
