@@ -148,10 +148,6 @@
   transform: none;
 }
 
-.ai-mode-card.subscription {
-  padding-bottom: 0;
-}
-
 .ai-mode-card.active .ai-mode-check::after {
   opacity: 1;
 }

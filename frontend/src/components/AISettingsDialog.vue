@@ -1,20 +1,16 @@
 <script setup lang="ts">
 import type {
   AIProviderSettings,
-  AISubscriptionStatus,
   AIServiceMode,
 } from "../features/ai/services/aiTypes";
 
 const props = defineProps<{
   open: boolean;
   settings: AIProviderSettings;
-  subscriptionStatus: AISubscriptionStatus;
 }>();
 
 const emit = defineEmits<{
   close: [];
-  "purchase-subscription": [];
-  "refresh-subscription": [];
   "update:settings": [settings: AIProviderSettings];
 }>();
 
@@ -97,38 +93,6 @@ function updateField(field: "url" | "key" | "model", value: string) {
             保存位置：<code>config/ai-settings.json</code>。现场演示请使用支持图片输入的多模态模型。
           </p>
 
-          <button
-            class="ai-mode-card subscription"
-            :class="{ active: settings.mode === 'subscription' }"
-            type="button"
-            @click="updateMode('subscription')"
-          >
-            <span class="ai-mode-check" aria-hidden="true"></span>
-            <span class="ai-mode-copy">
-              <strong>
-                使用订阅 AI
-                <span class="ai-inline-divider" aria-hidden="true">|</span>
-                <button
-                  class="ai-inline-action"
-                  type="button"
-                  @click.stop="emit('purchase-subscription')"
-                >
-                  {{ subscriptionStatus.activated ? '再次购买' : '购买' }}
-                </button>
-                <span class="ai-inline-divider" aria-hidden="true">|</span>
-                <button
-                  v-if="!subscriptionStatus.activated"
-                  class="ai-inline-action"
-                  type="button"
-                  @click.stop="emit('refresh-subscription')"
-                >
-                  刷新
-                </button>
-                <span v-else class="ai-inline-status">已订阅</span>
-              </strong>
-              <small>订阅模式会自动使用账号里的模型服务，适合不想手动维护 API 的演示环境。</small>
-            </span>
-          </button>
         </div>
 
         <div class="create-dialog-actions">

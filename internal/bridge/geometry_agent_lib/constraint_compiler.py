@@ -30,6 +30,7 @@ def normalize_construction(
     data["diagnostics"] = list(diagnostics or data.get("diagnostics") or [])
     normalize_shape_metadata(data, spec)
     relax_implicit_orientation_constraints(data, spec)
+    demote_point_distinct_constraints(data)
     data["diagnostics"].extend(branch_hardcoding_issues(data, spec))
     if not data.get("dslCode"):
         data["dslCode"] = construction_debug_summary(data)
@@ -92,6 +93,36 @@ def relax_implicit_orientation_constraints(data: Dict[str, Any], spec: Mapping[s
         )
 
 
+POINT_DISTINCT_CONSTRAINT_TYPES = {
+    "distinct_points",
+    "distinct_point",
+    "different_points",
+    "not_equal",
+    "not_equals",
+    "not_same_point",
+    "points_distinct",
+}
+
+
+def demote_point_distinct_constraints(data: Dict[str, Any]) -> None:
+    changed: List[str] = []
+    for constraint in data.get("constraints") or []:
+        if not isinstance(constraint, dict):
+            continue
+        ctype = normalized_constraint_type(str(constraint.get("type") or ""))
+        if ctype not in POINT_DISTINCT_CONSTRAINT_TYPES:
+            continue
+        constraint["required"] = False
+        constraint["weight"] = 0.0
+        changed.append(str(constraint.get("id") or ctype))
+    if changed:
+        data.setdefault("diagnostics", []).append(
+            "已将点不等/端点排除约束从 required 数值约束降级为语义提示："
+            + ", ".join(changed)
+            + "。请改用 on+order、same_side/opposite_sides、orientation:auto 或其它已支持谓词表达真实分支。"
+        )
+
+
 def branch_hardcoding_issues(data: Mapping[str, Any], spec: Mapping[str, Any]) -> List[str]:
     issues: List[str] = []
     expected_shape = quadrilateral_shape_from_spec(spec)
@@ -149,6 +180,10 @@ def quadrilateral_shape_from_spec(spec: Mapping[str, Any]) -> str:
 def contains_any(text: str, markers: tuple[str, ...]) -> bool:
     lowered = text.lower()
     return any(marker.lower() in lowered for marker in markers)
+
+
+def normalized_constraint_type(value: str) -> str:
+    return "".join(char if char.isalnum() else "_" for char in value.strip().lower()).strip("_")
 
 
 def spec_mentions_directed_orientation(spec: Mapping[str, Any]) -> bool:

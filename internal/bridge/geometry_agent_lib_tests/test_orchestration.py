@@ -79,6 +79,21 @@ class OrchestrationTest(unittest.TestCase):
         self.assertIn("凸四边形", prompt)
         self.assertIn("orientation: ccw/cw", prompt)
 
+    def test_constraint_prompt_warns_against_required_distinct_points(self):
+        prompt = build_constraint_construction_prompt(
+            {
+                "problemText": "点 P 在弧 TB 上且不含端点。",
+                "goalText": "证明 K 为定点。",
+                "entities": [],
+                "constraints": [],
+            },
+            mode="draft",
+        )
+
+        self.assertIn("distinct_points", prompt)
+        self.assertIn("not_equal", prompt)
+        self.assertIn("required constraints", prompt)
+
     def test_sanitizes_indented_display_math_delimiters(self):
         markdown = sanitize_mathjax_markdown(
             "由平行关系得到\n\n"

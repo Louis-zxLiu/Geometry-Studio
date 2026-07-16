@@ -37,7 +37,7 @@ class GeometryQualityCheck:
 
 def solve_constraint_construction(construction: Mapping[str, Any], *, max_nfev: int = 5000) -> Dict[str, Any]:
     objects = [obj for obj in construction.get("objects") or [] if isinstance(obj, dict)]
-    constraints = [item for item in construction.get("constraints") or [] if isinstance(item, dict)]
+    constraints = active_numeric_constraints([item for item in construction.get("constraints") or [] if isinstance(item, dict)])
     point_ids = ordered_point_ids(objects)
     if not point_ids:
         return empty_solution("failed", "construction has no point objects")
@@ -121,6 +121,14 @@ def prepare_constraints(constraints: Sequence[Mapping[str, Any]]) -> List[Prepar
             weight=math.sqrt(max(WEIGHT_FLOOR, float(constraint.get("weight") or 1.0))),
         )
         for constraint in constraints
+    ]
+
+
+def active_numeric_constraints(constraints: Sequence[Mapping[str, Any]]) -> List[Mapping[str, Any]]:
+    return [
+        constraint
+        for constraint in constraints
+        if bool(constraint.get("required", True)) or float(constraint.get("weight") or 0.0) > 0.0
     ]
 
 

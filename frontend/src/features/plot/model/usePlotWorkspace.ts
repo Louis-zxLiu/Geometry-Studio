@@ -293,7 +293,6 @@ export function usePlotWorkspace() {
 
   function openAISettings() {
     isAISettingsDialogOpen.value = true;
-    void refreshSubscriptionStatus(true);
   }
 
   function openGeometryProblemDialog() {

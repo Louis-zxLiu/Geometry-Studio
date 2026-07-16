@@ -198,6 +198,27 @@ class ConstraintKernelTest(unittest.TestCase):
         )
         self.assertLess(construction["solution"]["maxResidual"], 1e-5)
 
+    def test_distinct_points_constraints_are_demoted_from_numeric_solver(self):
+        construction = solve(
+            {
+                "objects": [
+                    {"id": "A", "kind": "point", "label": "A", "attributes": {"x": 0, "y": 0, "fixed": True}},
+                    {"id": "B", "kind": "point", "label": "B", "attributes": {"x": 1, "y": 0, "fixed": True}},
+                ],
+                "constraints": [
+                    {"id": "not_endpoint", "type": "distinct_points", "args": {"points": ["A", "B"]}, "required": True},
+                ],
+                "constructionIntent": [],
+            }
+        )
+
+        constraint = construction["constraints"][0]
+        self.assertFalse(constraint["required"])
+        self.assertEqual(constraint["weight"], 0.0)
+        self.assertNotIn("unsupported constraint type", construction["validation"]["summary"])
+        self.assertTrue(construction["validation"]["solverOk"])
+        self.assertTrue(any("distinct" in item or "点不等" in item for item in construction["diagnostics"]))
+
     def test_implicit_orientation_branch_is_relaxed_to_auto(self):
         construction = normalize_construction(
             {

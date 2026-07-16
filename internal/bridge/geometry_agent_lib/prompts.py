@@ -126,6 +126,7 @@ Rules:
 8. Point attributes x/y are initializer hints only unless attributes.fixed is true. Use fixed:true only for genuinely fixed givens or explicit gauge anchors, never for movable points such as P, C, D.
 9. Preserve shape words exactly: 凸四边形 means convex and must not be rewritten as 凹四边形/concave. Use convex_polygon/convex_quadrilateral for convex quadrilaterals; do not encode convexity as a single hard-coded orientation: ccw/cw.
 10. If a branch constraint is only meant to avoid degeneracy, use orientation value auto. Use same_side/opposite_sides for actual side-of-line facts from the problem.
+11. Do not use unsupported point-inequality predicates such as distinct_points, not_equal, or not_same_point as required constraints. Endpoint exclusions like "P is on arc TB, not including endpoints" should be expressed by supported branch predicates when mathematically needed, or described in constructionIntent if they are only a non-degeneracy note.
 """.strip()
 
 
@@ -186,6 +187,7 @@ def build_constraint_repair_prompt(
         "尽量保留已经正确的对象和约束，只修复失败项、遗漏项或引用错误。"
         "如果反馈指出 orientation 分支冲突，应优先改为 orientation:auto、convex_polygon/convex_quadrilateral 或真实的 same_side/opposite_sides；"
         "不要把动态可行分支硬改成固定 ccw/cw，也不要把凸四边形修成凹四边形。"
+        "如果反馈指出 unsupported constraint type，必须删除或改写为 Constraint reference 中列出的支持谓词；尤其不要保留 required 的 distinct_points/not_equal。"
         "返回完整 GeometryConstruction JSON。solution 与 validation 可以留空，runtime 会重新求解。"
         "\n\nConstraint reference:\n"
         + CONSTRAINT_REFERENCE
