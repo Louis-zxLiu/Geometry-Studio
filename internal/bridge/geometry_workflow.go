@@ -104,7 +104,6 @@ type geometryAgentEvent struct {
 	Spec              GeometrySpec           `json:"spec"`
 	Construction      GeometryConstruction   `json:"construction"`
 	ConstructionDraft GeometryConstruction   `json:"constructionDraft"`
-	PreviewScene      GeometryScene          `json:"previewScene"`
 	ValidationSummary map[string]any         `json:"validationSummary"`
 	Scene             GeometryScene          `json:"scene"`
 	Code              string                 `json:"code"`
@@ -510,7 +509,6 @@ func (s *geometryWorkflowService) handleAgentEvent(ctx context.Context, entry *g
 			SceneName:         event.SceneName,
 			Spec:              normalizeGeometrySpec(event.Spec),
 			ConstructionDraft: normalizeGeometryConstruction(event.ConstructionDraft),
-			PreviewScene:      normalizeGeometryScene(event.PreviewScene),
 			ValidationSummary: normalizeGeometryMap(event.ValidationSummary),
 		})
 	case "preview_updated":

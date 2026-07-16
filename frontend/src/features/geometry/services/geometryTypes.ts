@@ -201,7 +201,6 @@ export type GeometryReviewRequiredEvent = {
   sceneName: string;
   spec: GeometrySpec;
   constructionDraft?: GeometryConstruction;
-  previewScene?: GeometryScene;
   validationSummary?: GeometryValidationSummary;
 };
 

@@ -29,11 +29,17 @@ class ResidualContext:
     def __init__(self, objects: Sequence[Mapping[str, Any]]):
         self.objects: Dict[str, Mapping[str, Any]] = {}
         self.aliases: Dict[str, str] = {}
+        self.kinds: Dict[str, str] = {}
+        self.refs: Dict[str, List[Any]] = {}
+        self.attrs: Dict[str, Mapping[str, Any]] = {}
         for obj in objects:
             obj_id = str(obj.get("id") or "").strip()
             if not obj_id:
                 continue
             self.objects[obj_id] = obj
+            self.kinds[obj_id] = normalize_type(str(obj.get("kind") or ""))
+            self.refs[obj_id] = list_value(obj.get("refs"))
+            self.attrs[obj_id] = obj.get("attributes") if isinstance(obj.get("attributes"), dict) else {}
             label = str(obj.get("label") or "").strip()
             if label:
                 self.aliases[label] = obj_id
@@ -44,6 +50,15 @@ class ResidualContext:
 
     def object(self, ref: Any) -> Mapping[str, Any] | None:
         return self.objects.get(self.resolve(ref))
+
+    def kind(self, ref: Any) -> str:
+        return self.kinds.get(self.resolve(ref), "")
+
+    def object_refs(self, ref: Any) -> List[Any]:
+        return self.refs.get(self.resolve(ref), [])
+
+    def object_attrs(self, ref: Any) -> Mapping[str, Any]:
+        return self.attrs.get(self.resolve(ref), {})
 
 
 def evaluate_constraint(
@@ -163,10 +178,10 @@ def point_pair_from_ref(context: ResidualContext, ref: Any) -> tuple[str, str]:
         return point_ref(context, ref[0]), point_ref(context, ref[1])
     obj = context.object(ref)
     if obj:
-        refs = list_value(obj.get("refs"))
+        refs = context.object_refs(ref)
         if len(refs) >= 2:
             return point_ref(context, refs[0]), point_ref(context, refs[1])
-        attrs = obj.get("attributes") if isinstance(obj.get("attributes"), dict) else {}
+        attrs = context.object_attrs(ref)
         if attrs:
             a = first_arg(attrs, "a", "from", "p1", "start")
             b = first_arg(attrs, "b", "to", "p2", "end")
@@ -232,8 +247,8 @@ def circle_data(context: ResidualContext, points: Mapping[str, np.ndarray], ref:
     obj = context.object(ref)
     if not obj:
         raise ValueError(f"unknown circle: {ref}")
-    attrs = obj.get("attributes") if isinstance(obj.get("attributes"), dict) else {}
-    refs = list_value(obj.get("refs"))
+    attrs = context.object_attrs(ref)
+    refs = context.object_refs(ref)
     center_ref = first_arg(attrs, "center", "o") or (refs[0] if refs else "")
     center_id = point_ref(context, center_ref)
     center = point(context, points, center_id)
@@ -250,7 +265,7 @@ def circle_geometry(context: ResidualContext, points: Mapping[str, np.ndarray], 
     obj = context.object(ref)
     if not obj:
         raise ValueError(f"unknown circle: {ref}")
-    refs = [context.resolve(item) for item in list_value(obj.get("refs"))]
+    refs = [context.resolve(item) for item in context.object_refs(ref)]
     if len(refs) >= 3 and all(item in points for item in refs[:3]):
         center = circumcenter(points[refs[0]], points[refs[1]], points[refs[2]])
         radius = distance(center, points[refs[0]])
@@ -262,8 +277,7 @@ def circle_geometry(context: ResidualContext, points: Mapping[str, np.ndarray], 
 
 
 def target_kind(context: ResidualContext, ref: Any) -> str:
-    obj = context.object(ref)
-    return normalize_type(str((obj or {}).get("kind") or ""))
+    return context.kind(ref)
 
 
 def residual_on(context: ResidualContext, points: Mapping[str, np.ndarray], args: Mapping[str, Any]) -> List[float]:

@@ -1,7 +1,12 @@
 from __future__ import annotations
 
-import json
 from typing import Any, Dict
+
+from .prompt_payloads import (
+    compact_construction_for_prompt,
+    compact_feedback_for_prompt,
+    prompt_json,
+)
 
 
 GRAPH_NODES = [
@@ -28,7 +33,7 @@ STAGE_DETAILS = {
     "build_constraint_construction": {
         "agentName": "约束构造建模 agent",
         "title": "约束构造建模",
-        "description": "让 MLLM 生成对象、基础谓词约束和构造意图，作为几何真相层草图。",
+        "description": "让 MLLM 生成对象、基础谓词约束和构造意图，作为几何真相层初稿。",
     },
     "solve_constraint_graph": {
         "agentName": "约束求解 agent",
@@ -38,7 +43,7 @@ STAGE_DETAILS = {
     "teacher_review": {
         "agentName": "教师复核 agent",
         "title": "教师复核",
-        "description": "暂停工作流，把题目规格、约束构造、求解预览和验证反馈交给用户确认或修正。",
+        "description": "暂停工作流，把题目规格、约束构造和验证反馈交给用户确认或修正。",
     },
     "final_repair_constraints": {
         "agentName": "最终约束修复 agent",
@@ -131,13 +136,9 @@ MATHJAX_MARKDOWN_RULES = r"""
 """.strip()
 
 
-def prompt_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
-
-
 def build_constraint_construction_prompt(spec: Dict[str, Any], *, mode: str) -> str:
     mode_instruction = (
-        "这是审核前草图：需要尽量覆盖题意，并让教师能看到可理解的约束预览。"
+        "这是审核前构造初稿：需要尽量覆盖题意，并给教师提供可理解的约束和验证反馈。"
         if mode == "draft"
         else "这是教师确认后的最终构造：必须以 reviewed spec 为唯一题意来源。"
     )
@@ -155,7 +156,7 @@ def build_constraint_construction_prompt(spec: Dict[str, Any], *, mode: str) -> 
     )
 
 
-def build_constraint_validation_prompt(spec: Dict[str, Any], construction: Dict[str, Any], preview_scene: Dict[str, Any]) -> str:
+def build_constraint_validation_prompt(spec: Dict[str, Any], construction: Dict[str, Any]) -> str:
     return (
         "请严格审查下面的 GeometryConstruction 是否满足 GeometrySpec。"
         "数值残差已经由 runtime 给出，你负责语义覆盖审查：对象是否齐全、约束是否真实表达题目条件、"
@@ -165,9 +166,7 @@ def build_constraint_validation_prompt(spec: Dict[str, Any], construction: Dict[
         "\n\nGeometrySpec:\n"
         + prompt_json(spec)
         + "\n\nGeometryConstruction with solver result:\n"
-        + prompt_json(construction)
-        + "\n\nPreview GeometryScene derived from construction:\n"
-        + prompt_json(preview_scene)
+        + prompt_json(compact_construction_for_prompt(construction))
     )
 
 
@@ -187,7 +186,7 @@ def build_constraint_repair_prompt(
         + "\n\nGeometrySpec:\n"
         + prompt_json(spec)
         + "\n\nPrevious GeometryConstruction:\n"
-        + prompt_json(construction)
+        + prompt_json(compact_construction_for_prompt(construction))
         + "\n\nFeedback:\n"
-        + prompt_json(feedback)
+        + prompt_json(compact_feedback_for_prompt(feedback))
     )

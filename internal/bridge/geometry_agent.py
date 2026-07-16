@@ -25,6 +25,7 @@ from geometry_agent_lib.prompts import (
     build_constraint_repair_prompt,
     build_constraint_validation_prompt,
 )
+from geometry_agent_lib.prompt_payloads import compact_scene_for_prompt, prompt_json
 from geometry_agent_lib.schemas import (
     CodeResultModel,
     ConstructionValidationResultModel,
@@ -138,7 +139,7 @@ def result_from_state(state: GeometryState) -> Dict[str, Any]:
         "proofMarkdown": state.get("proofMarkdown", ""),
         "spec": state.get("reviewedSpec") or state.get("spec") or {},
         "construction": state.get("construction") or state.get("constructionDraft") or {},
-        "scene": state.get("scene") or state.get("previewScene") or {},
+        "scene": state.get("scene") or {},
         "diagnostics": list(state.get("diagnostics") or []),
     }
 
@@ -160,6 +161,7 @@ def parse_spec(state: GeometryState) -> Dict[str, Any]:
         "你是几何拍照解题的 MLLM 规格解析 agent，负责把图片/文本输入转成中文结构化几何题规格。",
         user,
         state.get("imageDataUrl", ""),
+        compact_schema=True,
     )
     cleaned = sanitize_geometry_spec_markdown(spec.model_dump())
     artifact(
@@ -174,7 +176,7 @@ def parse_spec(state: GeometryState) -> Dict[str, Any]:
 
 
 def build_constraint_construction(state: GeometryState) -> Dict[str, Any]:
-    progress(state, "build_constraint_construction", "生成审核前约束构造草图")
+    progress(state, "build_constraint_construction", "生成审核前约束构造")
     spec = state["spec"]
     model = json_chat(
         state,
@@ -193,7 +195,7 @@ def build_constraint_construction(state: GeometryState) -> Dict[str, Any]:
     artifact(
         state,
         "build_constraint_construction",
-        "约束构造草图",
+        "约束构造",
         summarize_construction(construction),
         construction_detail(construction),
         {"constructionDraft": construction},
@@ -209,18 +211,17 @@ def solve_validate_construction(
     stage: str,
     attempt: int,
     review_status: str,
-) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     construction = dict(construction)
     construction["reviewStatus"] = review_status
     construction = solve_and_summarize(construction)
-    preview_scene = construction_to_scene(construction, spec)
 
     try:
         semantic = json_chat(
             state,
             ConstructionValidationResultModel,
             "你是约束构造语义审查 agent，负责检查对象和约束是否真正覆盖题意。",
-            build_constraint_validation_prompt(spec, construction, preview_scene),
+            build_constraint_validation_prompt(spec, construction),
             "",
             compact_schema=True,
         ).model_dump()
@@ -250,14 +251,14 @@ def solve_validate_construction(
         "failedItems": summary.get("failedItems") or [],
         "repairInstructions": summary.get("repairInstructions") or [],
     }
-    return construction, preview_scene, summary, feedback
+    return construction, summary, feedback
 
 
 def solve_constraint_graph(state: GeometryState) -> Dict[str, Any]:
-    progress(state, "solve_constraint_graph", "求解约束草图并生成审核预览")
+    progress(state, "solve_constraint_graph", "求解约束图并生成审核反馈")
     spec = state["spec"]
     draft = state.get("constructionDraft") or {}
-    construction, preview_scene, summary, feedback = solve_validate_construction(
+    construction, summary, feedback = solve_validate_construction(
         state,
         construction=draft,
         spec=spec,
@@ -265,39 +266,30 @@ def solve_constraint_graph(state: GeometryState) -> Dict[str, Any]:
         attempt=1,
         review_status="draft_review_pending",
     )
-    emit(
-        {
-            "type": "preview_updated",
-            "sessionId": state["sessionId"],
-            "sceneName": state["sceneName"],
-            "scene": preview_scene,
-        }
-    )
     artifact(
         state,
         "solve_constraint_graph",
         "约束求解与验证",
         summarize_constraint_validation(summary),
         summary.get("summary") or construction_detail(construction),
-        {"constructionDraft": construction, "previewScene": preview_scene, "validationSummary": summary, "feedback": feedback},
+        {"constructionDraft": construction, "validationSummary": summary, "feedback": feedback},
     )
-    return {"constructionDraft": construction, "previewScene": preview_scene, "validationSummary": summary}
+    return {"constructionDraft": construction, "validationSummary": summary}
 
 
 def teacher_review(state: GeometryState) -> Dict[str, Any]:
     progress(
         state,
         "teacher_review",
-        "等待用户确认几何规格、约束构造和求解预览",
+        "等待用户确认几何规格、约束构造和验证反馈",
         status="waiting",
         event_kind="review",
-        artifact_title="待确认规格与约束预览",
+        artifact_title="待确认规格与约束反馈",
         artifact_summary=summarize_spec(state["spec"]),
         artifact_detail=spec_detail(state["spec"]),
         artifact_data={
             "spec": state["spec"],
             "constructionDraft": state.get("constructionDraft") or {},
-            "previewScene": state.get("previewScene") or {},
             "validationSummary": state.get("validationSummary") or {},
         },
     )
@@ -308,7 +300,6 @@ def teacher_review(state: GeometryState) -> Dict[str, Any]:
             "sceneName": state["sceneName"],
             "spec": state["spec"],
             "constructionDraft": state.get("constructionDraft") or {},
-            "previewScene": state.get("previewScene") or {},
             "validationSummary": state.get("validationSummary") or {},
         }
     )
@@ -345,8 +336,8 @@ def generate_final_construction(state: GeometryState, spec: Dict[str, Any], spec
         artifact(
             state,
             "final_repair_constraints",
-            "复用约束草图",
-            "教师未修改规格，复用审核前 construction 作为最终构造初稿。",
+            "复用约束构造",
+            "教师未修改规格，复用审核前 construction 作为最终构造。",
             construction_detail(draft),
             {"construction": draft},
         )
@@ -355,7 +346,7 @@ def generate_final_construction(state: GeometryState, spec: Dict[str, Any], spec
     model = json_chat(
         state,
         GeometryConstructionDraftModel,
-        "你是教师确认后的约束优先几何构造 agent。规格如有修改，必须丢弃旧草图并重新建模。",
+        "你是教师确认后的约束优先几何构造 agent。规格如有修改，必须丢弃旧构造并重新建模。",
         build_constraint_construction_prompt(spec, mode="final"),
         "",
         compact_schema=True,
@@ -384,11 +375,23 @@ def final_repair_constraints(state: GeometryState) -> Dict[str, Any]:
     max_attempts = int(state.get("maxAttempts") or 5)
     diagnostics = list(state.get("diagnostics") or [])
     last_summary: Dict[str, Any] = {}
-    last_scene: Dict[str, Any] = {}
+
+    if spec_unchanged and construction_is_semantically_valid(construction):
+        construction["reviewStatus"] = "validated"
+        summary = validation_summary(construction.get("validation") or {})
+        artifact(
+            state,
+            "final_repair_constraints",
+            "复用已验证约束构造",
+            summarize_constraint_validation(summary),
+            summary.get("summary") or construction_detail(construction),
+            {"construction": construction, "validationSummary": summary},
+        )
+        return {"construction": construction, "validationSummary": summary, "diagnostics": diagnostics}
 
     for attempt in range(1, max_attempts + 1):
         progress(state, "final_repair_constraints", f"求解并验证最终约束图（第 {attempt} 轮）", attempt=attempt)
-        construction, preview_scene, summary, feedback = solve_validate_construction(
+        construction, summary, feedback = solve_validate_construction(
             state,
             construction=construction,
             spec=spec,
@@ -397,7 +400,6 @@ def final_repair_constraints(state: GeometryState) -> Dict[str, Any]:
             review_status="final_validating",
         )
         last_summary = summary
-        last_scene = preview_scene
 
         if construction_is_semantically_valid(construction):
             construction["reviewStatus"] = "validated"
@@ -407,10 +409,10 @@ def final_repair_constraints(state: GeometryState) -> Dict[str, Any]:
                 "最终约束构造验证通过",
                 summarize_constraint_validation(summary),
                 summary.get("summary") or construction_detail(construction),
-                {"construction": construction, "previewScene": preview_scene, "validationSummary": summary},
+                {"construction": construction, "validationSummary": summary},
                 attempt=attempt,
             )
-            return {"construction": construction, "previewScene": preview_scene, "validationSummary": summary, "diagnostics": diagnostics}
+            return {"construction": construction, "validationSummary": summary, "diagnostics": diagnostics}
 
         can_repair = attempt < max_attempts
         artifact(
@@ -427,7 +429,6 @@ def final_repair_constraints(state: GeometryState) -> Dict[str, Any]:
             construction["reviewStatus"] = "failed"
             return {
                 "construction": construction,
-                "previewScene": last_scene,
                 "validationSummary": last_summary,
                 "diagnostics": diagnostics,
                 "workflowStatus": "failed",
@@ -460,7 +461,6 @@ def final_repair_constraints(state: GeometryState) -> Dict[str, Any]:
 
     return {
         "construction": construction,
-        "previewScene": last_scene,
         "validationSummary": last_summary,
         "diagnostics": diagnostics,
         "workflowStatus": "failed",
@@ -511,17 +511,18 @@ def matplotlib_code_generate(state: GeometryState) -> Dict[str, Any]:
         "所有面向用户的 Matplotlib 文本必须中文；请设置中文字体回退并设置 axes.unicode_minus=False。"
         "不要读取文件、写入文件、启动进程或访问网络。\n\n"
         "Reviewed GeometrySpec:\n"
-        + json.dumps(spec, ensure_ascii=False, indent=2)
+        + prompt_json(spec)
         + "\n\nFinal GeometryConstruction facts:\n"
         + construction_facts_text(construction)
         + "\n\nCompiled GeometryScene:\n"
-        + json.dumps(state["scene"], ensure_ascii=False, indent=2)
+        + prompt_json(compact_scene_for_prompt(state["scene"]))
     )
     code = json_chat(
         state,
         CodeResultModel,
         "你是中文几何解题的 Matplotlib 代码生成 agent，只渲染已审核、已验证的几何构造事实。",
         user,
+        compact_schema=True,
     )
     cleaned_code = sanitize_matplotlib_text_symbols(code.pythonCode.strip())
     artifact(
@@ -548,17 +549,18 @@ def teaching_proof_generate(state: GeometryState) -> Dict[str, Any]:
         "右侧笔记渲染规则：\n"
         + MATHJAX_MARKDOWN_RULES
         + "\n\nReviewed GeometrySpec:\n"
-        + json.dumps(spec, ensure_ascii=False, indent=2)
+        + prompt_json(spec)
         + "\n\nFinal GeometryConstruction:\n"
         + construction_facts_text(state.get("construction") or {})
         + "\n\nCompiled GeometryScene:\n"
-        + json.dumps(state["scene"], ensure_ascii=False, indent=2)
+        + prompt_json(compact_scene_for_prompt(state["scene"]))
     )
     proof = json_chat(
         state,
         ProofResultModel,
         "你是 Geometry Studio 的中文几何教学证明 agent，只生成中文 Markdown+MathJax 证明与解答。",
         proof_user,
+        compact_schema=True,
     )
     proof_markdown = sanitize_mathjax_markdown(proof.proofMarkdown, "教学证明")
     proof_steps = sanitize_proof_steps(proof.proofSteps)
@@ -574,21 +576,22 @@ def teaching_proof_generate(state: GeometryState) -> Dict[str, Any]:
         "\n\n右侧笔记渲染规则：\n"
         + MATHJAX_MARKDOWN_RULES
         + "\n\nReviewed GeometrySpec:\n"
-        + json.dumps(spec, ensure_ascii=False, indent=2)
+        + prompt_json(spec)
         + "\n\nFinal GeometryConstruction:\n"
         + construction_facts_text(state.get("construction") or {})
         + "\n\nCompiled GeometryScene:\n"
-        + json.dumps(scene, ensure_ascii=False, indent=2)
+        + prompt_json(compact_scene_for_prompt(scene))
         + "\n\nProof Markdown:\n"
         + proof_markdown
         + "\n\nClassroom questions:\n"
-        + json.dumps(classroom_questions, ensure_ascii=False, indent=2)
+        + prompt_json(classroom_questions)
     )
     note = json_chat(
         state,
         NoteResultModel,
         "你负责撰写 Geometry Studio 右侧笔记区可直接渲染的中文几何解题笔记。",
         note_user,
+        compact_schema=True,
     )
     note_markdown = sanitize_mathjax_markdown(note.noteMarkdown, "几何解题笔记")
     artifact(
@@ -683,7 +686,7 @@ def self_correct(state: GeometryState) -> Dict[str, Any]:
         "Final GeometryConstruction:\n"
         + construction_facts_text(state.get("construction") or {})
         + "\n\nGeometryScene:\n"
-        + json.dumps(state.get("scene") or {}, ensure_ascii=False, indent=2)
+        + prompt_json(compact_scene_for_prompt(state.get("scene") or {}))
         + "\n\nRuntime or validation error:\n"
         + str((state.get("probeResult") or {}).get("errorText", ""))
         + "\n\nCurrent code:\n"
@@ -694,6 +697,7 @@ def self_correct(state: GeometryState) -> Dict[str, Any]:
         RepairResultModel,
         "你是安全 Matplotlib 几何程序的自我修正 agent，并负责保持中文界面文本。",
         user,
+        compact_schema=True,
     )
     diagnostics = list(state.get("diagnostics") or [])
     diagnostics.extend(repaired.repairNotes)

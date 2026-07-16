@@ -129,12 +129,11 @@
 
 .geometry-review-construction {
   display: grid;
-  grid-template-columns: minmax(280px, 0.95fr) minmax(260px, 1fr);
+  grid-template-columns: 1fr;
   gap: 14px;
   margin-top: 18px;
 }
 
-.geometry-review-preview-panel,
 .geometry-review-validation-panel {
   display: grid;
   align-content: start;
@@ -144,59 +143,6 @@
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--dialog-input-bg), var(--surface-soft) 28%);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text), transparent 92%);
-}
-
-.geometry-review-svg {
-  width: 100%;
-  aspect-ratio: 18 / 11;
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface), white 4%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text), transparent 94%);
-}
-
-.geometry-review-svg-circle {
-  fill: none;
-  stroke: #6d8b7d;
-  stroke-width: 1.6;
-}
-
-.geometry-review-svg-arc {
-  fill: none;
-  stroke: #3f7f72;
-  stroke-linecap: round;
-  stroke-width: 2.4;
-}
-
-.geometry-review-svg-segment {
-  stroke: #d08b45;
-  stroke-linecap: round;
-  stroke-width: 2;
-}
-
-.geometry-review-svg-point {
-  fill: #2f5f6f;
-  stroke: color-mix(in srgb, var(--surface), white 18%);
-  stroke-width: 1.5;
-}
-
-.geometry-review-svg-label {
-  fill: var(--text);
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0;
-  paint-order: stroke;
-  stroke: color-mix(in srgb, var(--surface), white 10%);
-  stroke-width: 3px;
-}
-
-.geometry-review-empty-preview {
-  display: grid;
-  min-height: 180px;
-  place-items: center;
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface), white 3%);
-  color: var(--muted);
-  font-size: 0.82rem;
 }
 
 .geometry-review-validation-summary {

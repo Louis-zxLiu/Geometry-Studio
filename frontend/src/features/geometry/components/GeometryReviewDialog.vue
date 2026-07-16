@@ -3,7 +3,6 @@ import { computed, ref, watch } from "vue";
 import { renderMarkdownToHtml } from "../../notebook/rendering/markdownRenderer";
 import type {
   GeometryConstruction,
-  GeometryScene,
   GeometrySpec,
   GeometryValidationSummary,
 } from "../services/geometryTypes";
@@ -12,7 +11,6 @@ const props = defineProps<{
   open: boolean;
   pending?: boolean;
   constructionDraft?: GeometryConstruction | null;
-  previewScene?: GeometryScene | null;
   spec: GeometrySpec | null;
   validationSummary?: GeometryValidationSummary | null;
 }>();
@@ -23,16 +21,6 @@ const emit = defineEmits<{
 }>();
 
 const editableSpec = ref<GeometrySpec>(createEmptySpec());
-const previewDrawing = computed(() => buildPreviewDrawing(props.previewScene));
-const previewStats = computed(() => {
-  const scene = props.previewScene;
-  return {
-    points: scene?.points?.filter((point) => point.label?.trim()).length ?? 0,
-    segments: scene?.segments?.length ?? 0,
-    circles: scene?.circles?.length ?? 0,
-    arcs: scene?.arcs?.length ?? 0,
-  };
-});
 const constructionIntentPreview = computed(() =>
   (props.constructionDraft?.constructionIntent ?? [])
     .map((item) => String(item.summary ?? item.source ?? ""))
@@ -67,7 +55,7 @@ const validationStatusText = computed(() => {
   if (!props.validationSummary) {
     return "暂无校验反馈";
   }
-  return props.validationSummary.isValid ? "草图校验通过" : "草图校验未通过";
+  return props.validationSummary.isValid ? "约束校验通过" : "约束校验未通过";
 });
 
 watch(
@@ -146,109 +134,6 @@ function cloneSpec(spec: GeometrySpec): GeometrySpec {
   return JSON.parse(JSON.stringify(spec)) as GeometrySpec;
 }
 
-type PreviewDrawing = {
-  arcs: Array<{ id: string; label: string; path: string }>;
-  circles: Array<{ id: string; label: string; radius: number; x: number; y: number }>;
-  points: Array<{ id: string; label: string; x: number; y: number }>;
-  segments: Array<{ id: string; label: string; x1: number; x2: number; y1: number; y2: number }>;
-};
-
-function buildPreviewDrawing(scene?: GeometryScene | null): PreviewDrawing | null {
-  const sourcePoints = scene?.points ?? [];
-  if (!sourcePoints.length) {
-    return null;
-  }
-  const pointMap = new Map(sourcePoints.map((point) => [point.id, point]));
-  let minX = Math.min(...sourcePoints.map((point) => point.x));
-  let maxX = Math.max(...sourcePoints.map((point) => point.x));
-  let minY = Math.min(...sourcePoints.map((point) => point.y));
-  let maxY = Math.max(...sourcePoints.map((point) => point.y));
-  for (const circle of scene?.circles ?? []) {
-    const center = pointMap.get(circle.center);
-    if (!center) {
-      continue;
-    }
-    minX = Math.min(minX, center.x - circle.radius);
-    maxX = Math.max(maxX, center.x + circle.radius);
-    minY = Math.min(minY, center.y - circle.radius);
-    maxY = Math.max(maxY, center.y + circle.radius);
-  }
-  const canvasWidth = 360;
-  const canvasHeight = 220;
-  const padding = 22;
-  const rangeX = Math.max(1, maxX - minX);
-  const rangeY = Math.max(1, maxY - minY);
-  const scale = Math.min((canvasWidth - padding * 2) / rangeX, (canvasHeight - padding * 2) / rangeY);
-  const offsetX = (canvasWidth - rangeX * scale) / 2;
-  const offsetY = (canvasHeight - rangeY * scale) / 2;
-  const project = (point: { x: number; y: number }) => ({
-    x: offsetX + (point.x - minX) * scale,
-    y: canvasHeight - (offsetY + (point.y - minY) * scale),
-  });
-  const points = sourcePoints.map((point) => ({ ...project(point), id: point.id, label: point.label }));
-  const segments = (scene?.segments ?? [])
-    .map((segment) => {
-      const from = pointMap.get(segment.from);
-      const to = pointMap.get(segment.to);
-      if (!from || !to) {
-        return null;
-      }
-      const start = project(from);
-      const end = project(to);
-      return {
-        id: segment.id,
-        label: segment.label,
-        x1: start.x,
-        y1: start.y,
-        x2: end.x,
-        y2: end.y,
-      };
-    })
-    .filter((segment): segment is PreviewDrawing["segments"][number] => !!segment);
-  const circles = (scene?.circles ?? [])
-    .map((circle) => {
-      const center = pointMap.get(circle.center);
-      if (!center) {
-        return null;
-      }
-      const projected = project(center);
-      return {
-        id: circle.id,
-        label: circle.label,
-        radius: circle.radius * scale,
-        x: projected.x,
-        y: projected.y,
-      };
-    })
-    .filter((circle): circle is PreviewDrawing["circles"][number] => !!circle);
-  const arcs = (scene?.arcs ?? [])
-    .map((arc) => {
-      const center = pointMap.get(arc.center);
-      const start = pointMap.get(arc.start);
-      const end = pointMap.get(arc.end);
-      if (!center || !start || !end) {
-        return null;
-      }
-      const c = project(center);
-      const s = project(start);
-      const e = project(end);
-      const radius = Math.max(1, Math.hypot(s.x - c.x, s.y - c.y));
-      const startAngle = Math.atan2(s.y - c.y, s.x - c.x);
-      const endAngle = Math.atan2(e.y - c.y, e.x - c.x);
-      let delta = endAngle - startAngle;
-      if (delta < 0) {
-        delta += Math.PI * 2;
-      }
-      const largeArc = delta > Math.PI ? 1 : 0;
-      return {
-        id: arc.id,
-        label: arc.label,
-        path: `M ${s.x.toFixed(3)} ${s.y.toFixed(3)} A ${radius.toFixed(3)} ${radius.toFixed(3)} 0 ${largeArc} 1 ${e.x.toFixed(3)} ${e.y.toFixed(3)}`,
-      };
-    })
-    .filter((arc): arc is PreviewDrawing["arcs"][number] => !!arc);
-  return { arcs, circles, points, segments };
-}
 </script>
 
 <template>
@@ -258,56 +143,6 @@ function buildPreviewDrawing(scene?: GeometryScene | null): PreviewDrawing | nul
         <h2>几何规格复核</h2>
 
         <div class="geometry-review-construction">
-          <div class="geometry-review-preview-panel">
-            <div class="geometry-review-heading compact">
-              <strong>构造预览</strong>
-              <span>{{ previewStats.points }} 点 · {{ previewStats.segments }} 线 · {{ previewStats.circles }} 圆</span>
-            </div>
-            <svg
-              v-if="previewDrawing"
-              class="geometry-review-svg"
-              viewBox="0 0 360 220"
-              role="img"
-              aria-label="约束构造预览"
-            >
-              <circle
-                v-for="circle in previewDrawing.circles"
-                :key="circle.id"
-                class="geometry-review-svg-circle"
-                :cx="circle.x"
-                :cy="circle.y"
-                :r="circle.radius"
-              />
-              <path
-                v-for="arc in previewDrawing.arcs"
-                :key="arc.id"
-                class="geometry-review-svg-arc"
-                :d="arc.path"
-              />
-              <line
-                v-for="segment in previewDrawing.segments"
-                :key="segment.id"
-                class="geometry-review-svg-segment"
-                :x1="segment.x1"
-                :x2="segment.x2"
-                :y1="segment.y1"
-                :y2="segment.y2"
-              />
-              <g v-for="point in previewDrawing.points" :key="point.id">
-                <circle class="geometry-review-svg-point" :cx="point.x" :cy="point.y" r="3.6" />
-                <text
-                  v-if="point.label"
-                  class="geometry-review-svg-label"
-                  :x="point.x + 6"
-                  :y="point.y - 6"
-                >
-                  {{ point.label }}
-                </text>
-              </g>
-            </svg>
-            <div v-else class="geometry-review-empty-preview">暂无构造预览</div>
-          </div>
-
           <div class="geometry-review-validation-panel">
             <div class="geometry-review-heading compact">
               <strong>{{ validationStatusText }}</strong>

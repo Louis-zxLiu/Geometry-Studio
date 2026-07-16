@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Sequence
 
 import numpy as np
@@ -15,6 +16,13 @@ SOLVED_TOLERANCE = 1e-5
 WEIGHT_FLOOR = 1e-6
 
 
+@dataclass(frozen=True)
+class PreparedConstraint:
+    raw: Mapping[str, Any]
+    width: int
+    weight: float
+
+
 def solve_constraint_construction(construction: Mapping[str, Any], *, max_nfev: int = 5000) -> Dict[str, Any]:
     objects = [obj for obj in construction.get("objects") or [] if isinstance(obj, dict)]
     constraints = [item for item in construction.get("constraints") or [] if isinstance(item, dict)]
@@ -23,18 +31,21 @@ def solve_constraint_construction(construction: Mapping[str, Any], *, max_nfev: 
         return empty_solution("failed", "construction has no point objects")
 
     context = ResidualContext(objects)
-    starts = deterministic_initializers(objects, point_ids)
+    prepared_constraints = prepare_constraints(constraints)
+    fixed_anchors = fixed_point_anchors(context, point_ids)
+    starts = deterministic_initializers(objects, point_ids, max_starts=solver_start_count(point_ids, constraints))
+    per_start_nfev = solver_iteration_budget(point_ids, constraints, max_nfev)
     best: Dict[str, Any] | None = None
     best_score = float("inf")
 
     for index, x0 in enumerate(starts):
         result = least_squares(
-            lambda vector: residual_vector(context, point_ids, vector, constraints),
+            lambda vector: residual_vector(context, point_ids, vector, prepared_constraints, fixed_anchors),
             x0,
             method="trf",
             loss="soft_l1",
             f_scale=1.0,
-            max_nfev=max_nfev,
+            max_nfev=per_start_nfev,
         )
         points = vector_to_points(point_ids, result.x)
         evaluations = evaluate_all(context, points, constraints)
@@ -78,6 +89,36 @@ def solve_constraint_construction(construction: Mapping[str, Any], *, max_nfev: 
     return best or empty_solution("failed", "least_squares did not return a solution")
 
 
+def prepare_constraints(constraints: Sequence[Mapping[str, Any]]) -> List[PreparedConstraint]:
+    return [
+        PreparedConstraint(
+            raw=constraint,
+            width=expected_component_count(constraint),
+            weight=math.sqrt(max(WEIGHT_FLOOR, float(constraint.get("weight") or 1.0))),
+        )
+        for constraint in constraints
+    ]
+
+
+def solver_start_count(point_ids: Sequence[str], constraints: Sequence[Mapping[str, Any]]) -> int:
+    point_count = len(point_ids)
+    constraint_count = len(constraints)
+    if point_count <= 6 and constraint_count <= 12:
+        return 8
+    if point_count <= 12 and constraint_count <= 24:
+        return 6
+    return 4
+
+
+def solver_iteration_budget(
+    point_ids: Sequence[str],
+    constraints: Sequence[Mapping[str, Any]],
+    max_nfev: int,
+) -> int:
+    scaled_budget = 140 * max(1, len(point_ids)) + 90 * max(1, len(constraints))
+    return max(900, min(max_nfev, scaled_budget))
+
+
 def ordered_point_ids(objects: Sequence[Mapping[str, Any]]) -> List[str]:
     point_ids: List[str] = []
     for obj in objects:
@@ -89,7 +130,12 @@ def ordered_point_ids(objects: Sequence[Mapping[str, Any]]) -> List[str]:
     return point_ids
 
 
-def deterministic_initializers(objects: Sequence[Mapping[str, Any]], point_ids: Sequence[str]) -> List[np.ndarray]:
+def deterministic_initializers(
+    objects: Sequence[Mapping[str, Any]],
+    point_ids: Sequence[str],
+    *,
+    max_starts: int,
+) -> List[np.ndarray]:
     attrs_by_id = {
         str(obj.get("id")): obj.get("attributes")
         for obj in objects
@@ -119,7 +165,7 @@ def deterministic_initializers(objects: Sequence[Mapping[str, Any]], point_ids: 
             jitter[2 * index] = dx
             jitter[2 * index + 1] = dy
         starts.append(base + jitter)
-    return starts
+    return starts[:max(1, max_starts)]
 
 
 def vector_to_points(point_ids: Sequence[str], vector: np.ndarray) -> Dict[str, np.ndarray]:
@@ -133,16 +179,16 @@ def residual_vector(
     context: ResidualContext,
     point_ids: Sequence[str],
     vector: np.ndarray,
-    constraints: Sequence[Mapping[str, Any]],
+    constraints: Sequence[PreparedConstraint],
+    fixed_anchors: Sequence[tuple[str, float, float]],
 ) -> np.ndarray:
     points = vector_to_points(point_ids, vector)
     values: List[float] = []
     for constraint in constraints:
-        evaluation = evaluate_constraint(context, points, constraint)
-        weight = math.sqrt(max(WEIGHT_FLOOR, float(constraint.get("weight") or 1.0)))
-        components = fixed_width_components(evaluation.components, expected_component_count(constraint))
-        values.extend([component * weight for component in components])
-    values.extend(fixed_point_residuals(context, points))
+        evaluation = evaluate_constraint(context, points, constraint.raw)
+        components = fixed_width_components(evaluation.components, constraint.width)
+        values.extend([component * constraint.weight for component in components])
+    values.extend(fixed_point_residuals(points, fixed_anchors))
     if not values:
         values.extend(normalization_residuals(points))
     return np.asarray(values, dtype=float)
@@ -175,14 +221,26 @@ def expected_component_count(constraint: Mapping[str, Any]) -> int:
     return 1
 
 
-def fixed_point_residuals(context: ResidualContext, points: Mapping[str, np.ndarray]) -> List[float]:
-    residuals: List[float] = []
-    for point_id, coords in points.items():
-        obj = context.object(point_id) or {}
-        attrs = obj.get("attributes") if isinstance(obj.get("attributes"), dict) else {}
+def fixed_point_anchors(context: ResidualContext, point_ids: Sequence[str]) -> List[tuple[str, float, float]]:
+    anchors: List[tuple[str, float, float]] = []
+    for point_id in point_ids:
+        attrs = context.object_attrs(point_id)
         if attrs.get("fixed") and "x" in attrs and "y" in attrs:
-            residuals.append((float(coords[0]) - number(attrs.get("x"))) * 10.0)
-            residuals.append((float(coords[1]) - number(attrs.get("y"))) * 10.0)
+            anchors.append((point_id, number(attrs.get("x")), number(attrs.get("y"))))
+    return anchors
+
+
+def fixed_point_residuals(
+    points: Mapping[str, np.ndarray],
+    anchors: Sequence[tuple[str, float, float]],
+) -> List[float]:
+    residuals: List[float] = []
+    for point_id, x, y in anchors:
+        coords = points.get(point_id)
+        if coords is None:
+            continue
+        residuals.append((float(coords[0]) - x) * 10.0)
+        residuals.append((float(coords[1]) - y) * 10.0)
     return residuals
 
 

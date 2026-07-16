@@ -375,7 +375,6 @@ type GeometryWorkflowReviewRequiredEvent struct {
 	SceneName         string               `json:"sceneName"`
 	Spec              GeometrySpec         `json:"spec"`
 	ConstructionDraft GeometryConstruction `json:"constructionDraft"`
-	PreviewScene      GeometryScene        `json:"previewScene"`
 	ValidationSummary map[string]any       `json:"validationSummary"`
 }
 

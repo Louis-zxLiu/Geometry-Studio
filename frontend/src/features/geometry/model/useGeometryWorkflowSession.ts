@@ -13,7 +13,6 @@ import type {
   GeometryInterruptedEvent,
   GeometryProgressEvent,
   GeometryReviewRequiredEvent,
-  GeometryScene,
   GeometrySpec,
   GeometryValidationSummary,
   GeometrySucceededEvent,
@@ -97,19 +96,19 @@ const STAGE_DEFINITIONS: Array<Pick<GeometryAgentStep, "agentName" | "descriptio
     stage: "build_constraint_construction",
     title: "约束构造建模",
     agentName: "约束构造建模 agent",
-    description: "让 MLLM 生成对象、基础谓词约束和构造意图，作为几何真相层草图。",
+    description: "让 MLLM 生成对象、基础谓词约束和构造意图，作为几何真相层初稿。",
   },
   {
     stage: "solve_constraint_graph",
-    title: "约束求解与预览",
+    title: "约束求解与验证",
     agentName: "约束求解 agent",
-    description: "用数值残差求解对象坐标，生成预览场景和残差反馈，供教师审核。",
+    description: "用数值残差求解对象坐标，生成残差和语义反馈，供教师审核。",
   },
   {
     stage: "teacher_review",
     title: "教师复核",
     agentName: "教师复核 agent",
-    description: "暂停工作流，把题目规格、构造预览和验证反馈交给用户确认或修正。",
+    description: "暂停工作流，把题目规格、约束构造和验证反馈交给用户确认或修正。",
   },
   {
     stage: "final_repair_constraints",
@@ -165,7 +164,6 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
   const progressLabel = ref("");
   const reviewSpec = ref<GeometrySpec | null>(null);
   const reviewConstructionDraft = ref<GeometryConstruction | null>(null);
-  const reviewPreviewScene = ref<GeometryScene | null>(null);
   const reviewValidationSummary = ref<GeometryValidationSummary | null>(null);
   const cleanupEvents = bindGeometryEvents();
 
@@ -251,7 +249,6 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
 
     reviewSpec.value = null;
     reviewConstructionDraft.value = null;
-    reviewPreviewScene.value = null;
     reviewValidationSummary.value = null;
     await resumeGeometryWorkflow(activeSessionId.value, nextSpec);
     aiActivity.startWorking();
@@ -301,7 +298,6 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     progressLabel.value = label;
     reviewSpec.value = null;
     reviewConstructionDraft.value = null;
-    reviewPreviewScene.value = null;
     reviewValidationSummary.value = null;
     pendingResolver = null;
   }
@@ -338,13 +334,12 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
 
     reviewSpec.value = event?.spec ?? null;
     reviewConstructionDraft.value = event?.constructionDraft ?? null;
-    reviewPreviewScene.value = event?.previewScene ?? null;
     reviewValidationSummary.value = event?.validationSummary ?? null;
     markStage("teacher_review", "waiting", {
-      message: "等待用户确认几何规格与构造预览",
+      message: "等待用户确认几何规格与约束反馈",
       title: "教师复核",
       agentName: "教师复核 agent",
-      description: "暂停工作流，把题目规格、构造预览和验证反馈交给用户确认或修正。",
+      description: "暂停工作流，把题目规格、约束构造和验证反馈交给用户确认或修正。",
     });
     aiActivity.stop();
     safeInvoke(() => activeOptions?.onReviewRequired?.(event));
@@ -576,7 +571,6 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     progressLabel.value = "";
     reviewSpec.value = null;
     reviewConstructionDraft.value = null;
-    reviewPreviewScene.value = null;
     reviewValidationSummary.value = null;
     aiActivity.stop();
     resolve?.(result);
@@ -591,7 +585,6 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     progressLabel.value = "";
     reviewSpec.value = null;
     reviewConstructionDraft.value = null;
-    reviewPreviewScene.value = null;
     reviewValidationSummary.value = null;
     aiActivity.stop();
   }
@@ -632,7 +625,6 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     repairWorkflow,
     resumeReview,
     reviewConstructionDraft,
-    reviewPreviewScene,
     reviewSpec,
     reviewValidationSummary,
     startWorkflow,

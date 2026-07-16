@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import json
 import math
 from typing import Any, Dict, List, Mapping
 
+from .prompt_payloads import prompt_json
 from .schemas import GeometrySceneModel
 from .text_utils import preview_text
 
@@ -156,7 +156,7 @@ def construction_to_scene(construction: Mapping[str, Any], spec: Mapping[str, An
     return GeometrySceneModel.model_validate(scene).model_dump(by_alias=True)
 
 
-def construction_facts_text(construction: Mapping[str, Any], limit: int = 9000) -> str:
+def construction_facts_text(construction: Mapping[str, Any], limit: int = 6500) -> str:
     objects = construction.get("objects") or []
     constraints = construction.get("constraints") or []
     solution = construction.get("solution") or {}
@@ -174,7 +174,7 @@ def construction_facts_text(construction: Mapping[str, Any], limit: int = 9000) 
             "rmsResidual": solution.get("rmsResidual"),
         },
     }
-    text = json.dumps(facts, ensure_ascii=False, indent=2)
+    text = prompt_json(facts)
     return text if len(text) <= limit else text[:limit] + "\n..."
 
 

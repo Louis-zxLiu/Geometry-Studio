@@ -933,7 +933,6 @@ export function usePlotWorkspace() {
     geometryHasAgentTimeline: geometryWorkflowSession.hasAgentTimeline,
     geometryProgressLabel: geometryWorkflowSession.progressLabel,
     geometryReviewConstructionDraft: geometryWorkflowSession.reviewConstructionDraft,
-    geometryReviewPreviewScene: geometryWorkflowSession.reviewPreviewScene,
     geometryReviewSpec: geometryWorkflowSession.reviewSpec,
     geometryReviewValidationSummary: geometryWorkflowSession.reviewValidationSummary,
     goToNextScreeningPage: screeningWorkspace.goToNextScreeningPage,

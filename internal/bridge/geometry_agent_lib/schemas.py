@@ -209,7 +209,6 @@ class GeometryState(TypedDict, total=False):
     reviewedSpecFingerprint: str
     constructionDraft: Dict[str, Any]
     construction: Dict[str, Any]
-    previewScene: Dict[str, Any]
     validationSummary: Dict[str, Any]
     scene: Dict[str, Any]
     code: str

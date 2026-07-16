@@ -406,7 +406,6 @@ onBeforeUnmount(() => {
       :open="workspace.isGeometryReviewDialogOpen"
       :pending="workspace.isAIGenerating"
       :construction-draft="workspace.geometryReviewConstructionDraft"
-      :preview-scene="workspace.geometryReviewPreviewScene"
       :spec="workspace.geometryReviewSpec"
       :validation-summary="workspace.geometryReviewValidationSummary"
       @cancel="workspace.cancelGeometryReview"
