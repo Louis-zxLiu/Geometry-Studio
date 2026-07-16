@@ -62,7 +62,8 @@ def solver_validation(construction: Mapping[str, Any]) -> Dict[str, Any]:
     constraints = [item for item in construction.get("constraints") or [] if isinstance(item, dict)]
     objects = [item for item in construction.get("objects") or [] if isinstance(item, dict)]
     solver_ok = solution.get("status") in {"solved", "underconstrained"} and not failed
-    condition_coverage = 1.0 if not constraints else max(0.0, 1.0 - len(failed) / len(constraints))
+    check_count = len(residuals) or len(constraints)
+    condition_coverage = 1.0 if not check_count else max(0.0, 1.0 - len(failed) / check_count)
     object_coverage = 1.0 if objects else 0.0
     summary = (
         f"约束求解{'通过' if solver_ok else '未通过'}；"

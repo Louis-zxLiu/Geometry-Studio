@@ -14,6 +14,10 @@ from .constraint_residuals import circumcenter
 
 SOLVED_TOLERANCE = 1e-5
 WEIGHT_FLOOR = 1e-6
+GEOMETRY_MIN_SINE = 0.04
+GEOMETRY_MAX_CIRCUMRADIUS_RATIO = 40.0
+GEOMETRY_MAX_RADIUS_RESIDUAL = 0.25
+GEOMETRY_QUALITY_WEIGHT = 4.0
 
 
 @dataclass(frozen=True)
@@ -21,6 +25,14 @@ class PreparedConstraint:
     raw: Mapping[str, Any]
     width: int
     weight: float
+
+
+@dataclass(frozen=True)
+class GeometryQualityCheck:
+    id: str
+    type: str
+    points: tuple[str, str, str]
+    source: str
 
 
 def solve_constraint_construction(construction: Mapping[str, Any], *, max_nfev: int = 5000) -> Dict[str, Any]:
@@ -32,6 +44,7 @@ def solve_constraint_construction(construction: Mapping[str, Any], *, max_nfev: 
 
     context = ResidualContext(objects)
     prepared_constraints = prepare_constraints(constraints)
+    quality_checks = prepare_quality_checks(context, objects, constraints)
     fixed_anchors = fixed_point_anchors(context, point_ids)
     starts = deterministic_initializers(objects, point_ids, max_starts=solver_start_count(point_ids, constraints))
     per_start_nfev = solver_iteration_budget(point_ids, constraints, max_nfev)
@@ -40,7 +53,14 @@ def solve_constraint_construction(construction: Mapping[str, Any], *, max_nfev: 
 
     for index, x0 in enumerate(starts):
         result = least_squares(
-            lambda vector: residual_vector(context, point_ids, vector, prepared_constraints, fixed_anchors),
+            lambda vector: residual_vector(
+                context,
+                point_ids,
+                vector,
+                prepared_constraints,
+                fixed_anchors,
+                quality_checks,
+            ),
             x0,
             method="trf",
             loss="soft_l1",
@@ -48,7 +68,11 @@ def solve_constraint_construction(construction: Mapping[str, Any], *, max_nfev: 
             max_nfev=per_start_nfev,
         )
         points = vector_to_points(point_ids, result.x)
-        evaluations = evaluate_all(context, points, constraints)
+        evaluations = [
+            *evaluate_all(context, points, constraints),
+            *evaluate_fixed_anchor_checks(points, fixed_anchors),
+            *evaluate_quality_checks(points, quality_checks),
+        ]
         residuals = [
             {
                 "constraintId": evaluation.constraint_id,
@@ -181,6 +205,7 @@ def residual_vector(
     vector: np.ndarray,
     constraints: Sequence[PreparedConstraint],
     fixed_anchors: Sequence[tuple[str, float, float]],
+    quality_checks: Sequence[GeometryQualityCheck],
 ) -> np.ndarray:
     points = vector_to_points(point_ids, vector)
     values: List[float] = []
@@ -191,6 +216,8 @@ def residual_vector(
     values.extend(fixed_point_residuals(points, fixed_anchors))
     if not values:
         values.extend(normalization_residuals(points))
+    for check in quality_checks:
+        values.extend([component * GEOMETRY_QUALITY_WEIGHT for component in residual_quality_check(points, check)])
     return np.asarray(values, dtype=float)
 
 
@@ -261,6 +288,144 @@ def evaluate_all(
     constraints: Sequence[Mapping[str, Any]],
 ) -> List[ConstraintEvaluation]:
     return [evaluate_constraint(context, points, constraint) for constraint in constraints]
+
+
+def evaluate_fixed_anchor_checks(
+    points: Mapping[str, np.ndarray],
+    anchors: Sequence[tuple[str, float, float]],
+) -> List[ConstraintEvaluation]:
+    evaluations: List[ConstraintEvaluation] = []
+    for point_id, x, y in anchors:
+        coords = points.get(point_id)
+        if coords is None:
+            continue
+        components = [(float(coords[0]) - x) * 10.0, (float(coords[1]) - y) * 10.0]
+        value = float(np.linalg.norm(np.asarray(components, dtype=float)) / math.sqrt(len(components)))
+        message = f"fixed point {point_id} drifted from its anchor." if value > 1e-4 else ""
+        evaluations.append(ConstraintEvaluation(f"fixed_{point_id}", "fixed", components, message))
+    return evaluations
+
+
+def prepare_quality_checks(
+    context: ResidualContext,
+    objects: Sequence[Mapping[str, Any]],
+    constraints: Sequence[Mapping[str, Any]],
+) -> List[GeometryQualityCheck]:
+    checks: List[GeometryQualityCheck] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    def add_check(source: str, refs: Sequence[Any]) -> None:
+        resolved = tuple(context.resolve(ref) for ref in refs[:3])
+        if len(resolved) != 3 or len(set(resolved)) != 3:
+            return
+        key = tuple(sorted(resolved))
+        if key in seen:
+            return
+        seen.add(key)
+        checks.append(
+            GeometryQualityCheck(
+                id=f"quality_{source}_nondegenerate",
+                type="nondegenerate",
+                points=(resolved[0], resolved[1], resolved[2]),
+                source=source,
+            )
+        )
+
+    for obj in objects:
+        kind = str(obj.get("kind") or "").lower()
+        refs = obj.get("refs") or []
+        obj_id = str(obj.get("id") or kind or "object")
+        if kind == "circle" and len(refs) >= 3:
+            add_check(obj_id, refs)
+        elif kind == "polygon" and len(refs) >= 3:
+            add_check(obj_id, refs)
+
+    for constraint in constraints:
+        ctype = str(constraint.get("type") or "").strip().lower()
+        args = constraint.get("args") if isinstance(constraint.get("args"), dict) else {}
+        source = str(constraint.get("id") or ctype or "constraint")
+        if ctype in {"concyclic", "circumcenter"}:
+            refs = list_from_args(args, "points", "triangle", "items")
+            if len(refs) < 3:
+                refs = [args.get(key) for key in ("a", "b", "c") if args.get(key)]
+            add_check(source, refs)
+
+    return checks
+
+
+def list_from_args(args: Mapping[str, Any], *keys: str) -> List[Any]:
+    for key in keys:
+        value = args.get(key)
+        if isinstance(value, (list, tuple)):
+            return list(value)
+        if isinstance(value, str) and value.strip():
+            return [item.strip() for item in value.split(",") if item.strip()]
+    return []
+
+
+def evaluate_quality_checks(
+    points: Mapping[str, np.ndarray],
+    checks: Sequence[GeometryQualityCheck],
+) -> List[ConstraintEvaluation]:
+    evaluations: List[ConstraintEvaluation] = []
+    for check in checks:
+        try:
+            components = residual_quality_check(points, check)
+            value = float(np.linalg.norm(np.asarray(components, dtype=float)) / math.sqrt(max(1, len(components))))
+            message = ""
+            if value > SOLVED_TOLERANCE:
+                message = quality_failure_message(points, check)
+            evaluations.append(ConstraintEvaluation(check.id, check.type, components, message))
+        except Exception as exc:
+            evaluations.append(ConstraintEvaluation(check.id, check.type, [10.0], str(exc)))
+    return evaluations
+
+
+def residual_quality_check(points: Mapping[str, np.ndarray], check: GeometryQualityCheck) -> List[float]:
+    a, b, c = [points[ref] for ref in check.points]
+    min_sine = triangle_min_sine(a, b, c)
+    try:
+        radius_ratio = circumradius_ratio(a, b, c)
+    except Exception:
+        radius_ratio = GEOMETRY_MAX_CIRCUMRADIUS_RATIO * 2.0
+    radius_residual = max(0.0, (radius_ratio - GEOMETRY_MAX_CIRCUMRADIUS_RATIO) / GEOMETRY_MAX_CIRCUMRADIUS_RATIO)
+    return [
+        max(0.0, GEOMETRY_MIN_SINE - min_sine),
+        min(GEOMETRY_MAX_RADIUS_RESIDUAL, radius_residual),
+    ]
+
+
+def triangle_min_sine(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:
+    ab = float(np.linalg.norm(b - a))
+    ac = float(np.linalg.norm(c - a))
+    bc = float(np.linalg.norm(c - b))
+    if min(ab, ac, bc) < 1e-9:
+        return 0.0
+    area2 = abs(float((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])))
+    return min(area2 / (ab * ac), area2 / (ab * bc), area2 / (ac * bc))
+
+
+def circumradius_ratio(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:
+    max_side = max(float(np.linalg.norm(b - a)), float(np.linalg.norm(c - a)), float(np.linalg.norm(c - b)), 1.0)
+    center = circumcenter(a, b, c)
+    radius = float(np.linalg.norm(a - center))
+    return radius / max_side
+
+
+def quality_failure_message(points: Mapping[str, np.ndarray], check: GeometryQualityCheck) -> str:
+    a, b, c = [points[ref] for ref in check.points]
+    min_sine = triangle_min_sine(a, b, c)
+    labels = ", ".join(check.points)
+    if min_sine < GEOMETRY_MIN_SINE:
+        return (
+            f"{check.source} uses nearly collinear points ({labels}); "
+            "a triangle or three-point circle needs a non-degenerate configuration."
+        )
+    radius_ratio = circumradius_ratio(a, b, c)
+    return (
+        f"{check.source} has an unstable circumcircle from points ({labels}); "
+        f"circumradius/side ratio {radius_ratio:.2f} is too large."
+    )
 
 
 def solution_status(

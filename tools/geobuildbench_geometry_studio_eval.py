@@ -377,6 +377,7 @@ def run_agent(
     settings: dict[str, str],
     timeout_seconds: int,
     spawn_retries: int,
+    agent_max_attempts: int,
 ) -> tuple[str, dict[str, Any], list[dict[str, Any]], float]:
     session_id = f"geobuildbench-{problem['id']}-{uuid.uuid4().hex[:8]}"
     start_time = time.time()
@@ -432,7 +433,7 @@ def run_agent(
                 "imageDataUrl": "",
                 "problemText": problem.get("subject") or problem.get("cleaned_text") or problem.get("original_text") or "",
                 "currentCode": "",
-                "maxAttempts": 1,
+                "maxAttempts": max(1, agent_max_attempts),
                 "settings": settings,
             },
         },
@@ -749,6 +750,7 @@ def evaluate_problem(
     settings: dict[str, str],
     timeout_seconds: int,
     spawn_retries: int,
+    agent_max_attempts: int,
     rate_limit_retries: int,
     rate_limit_base_delay: float,
     rate_limit_max_delay: float,
@@ -777,6 +779,7 @@ def evaluate_problem(
             settings,
             timeout_seconds,
             spawn_retries,
+            agent_max_attempts,
         )
         total_duration += duration
         rate_limited = is_retryable_rate_limit(final_event)
@@ -876,6 +879,7 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--workers", type=int, default=1, help="Number of problems to evaluate in parallel; 0 means one worker per problem")
     parser.add_argument("--spawn-retries", type=int, default=8, help="Retries for launching each geometry agent subprocess")
+    parser.add_argument("--agent-max-attempts", type=int, default=3, help="Geometry agent constraint/code repair attempts per problem")
     parser.add_argument("--rate-limit-retries", type=int, default=8, help="Retries for a problem when the provider returns a retryable rate/concurrency limit")
     parser.add_argument("--rate-limit-base-delay", type=float, default=15.0)
     parser.add_argument("--rate-limit-max-delay", type=float, default=300.0)
@@ -934,6 +938,7 @@ def main() -> int:
                 settings,
                 args.timeout_seconds,
                 args.spawn_retries,
+                args.agent_max_attempts,
                 args.rate_limit_retries,
                 args.rate_limit_base_delay,
                 args.rate_limit_max_delay,
@@ -958,6 +963,7 @@ def main() -> int:
                     settings,
                     args.timeout_seconds,
                     args.spawn_retries,
+                    args.agent_max_attempts,
                     args.rate_limit_retries,
                     args.rate_limit_base_delay,
                     args.rate_limit_max_delay,
@@ -1005,6 +1011,7 @@ def main() -> int:
         "limit": args.limit,
         "workers": workers,
         "spawn_retries": args.spawn_retries,
+        "agent_max_attempts": args.agent_max_attempts,
         "rate_limit_retries": args.rate_limit_retries,
         "rate_limit_base_delay": args.rate_limit_base_delay,
         "rate_limit_max_delay": args.rate_limit_max_delay,

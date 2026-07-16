@@ -117,6 +117,27 @@ class ConstraintKernelTest(unittest.TestCase):
         self.assertTrue(circumcircle["center"].startswith("__center_"))
         self.assertGreater(circumcircle["radius"], 0)
 
+    def test_near_collinear_three_point_circumcircle_is_rejected(self):
+        construction = solve(
+            {
+                "objects": [
+                    {"id": "A", "kind": "point", "label": "A", "attributes": {"x": 6.13453968, "y": 6.70531487, "fixed": True}},
+                    {"id": "B", "kind": "point", "label": "B", "attributes": {"x": -2.74151453, "y": -3.68009342, "fixed": True}},
+                    {"id": "C", "kind": "point", "label": "C", "attributes": {"x": 3.06065011, "y": 3.10849151, "fixed": True}},
+                    {"id": "circ_ABC", "kind": "circle", "refs": ["A", "B", "C"], "label": "circ(ABC)"},
+                ],
+                "constraints": [],
+                "constructionIntent": [],
+            }
+        )
+        self.assertFalse(construction["validation"]["solverOk"])
+        failed = construction["validation"]["failedItems"]
+        self.assertTrue(
+            any(item["target"] == "quality_circ_ABC_nondegenerate" for item in failed),
+            failed,
+        )
+        self.assertTrue(any("nearly collinear" in item["message"] for item in failed), failed)
+
     def test_xy_without_fixed_is_initializer_only(self):
         construction = solve(
             {

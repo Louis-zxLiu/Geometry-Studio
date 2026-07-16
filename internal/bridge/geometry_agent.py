@@ -513,6 +513,7 @@ def matplotlib_code_generate(state: GeometryState) -> Dict[str, Any]:
         "禁止生成 measure_text、fact_text、proof_text、summary_text 等事实说明框；禁止 ax.text/figtext/textbox 放多行条件清单。"
         "不要渲染 scene.constraints、scene.measurements、scene.annotations 为文字；这些解释属于右侧笔记，不属于图。"
         "除非题目要求数值计算，不要在图中显示距离、角度、坐标数值；不要用密集网格或拥挤图例。"
+        "在代码中整理点、线、圆、弧等数据时必须使用 GeometryScene 的唯一 id 作为字典 key；label 只用于显示，不能作为 key。"
         "所有面向用户的 Matplotlib 文本必须中文；请设置中文字体回退并设置 axes.unicode_minus=False。"
         "不要读取文件、写入文件、启动进程或访问网络。\n\n"
         "Reviewed GeometrySpec:\n"
