@@ -6,6 +6,13 @@ import geometry_agent
 
 
 class OrchestrationTest(unittest.TestCase):
+    def test_detects_cluttered_matplotlib_fact_box(self):
+        cluttered = "measure_text = '已渲染的审核事实:\\n1. AB 为直径\\n2. 证明目标'\nax.text(0, 0, measure_text)"
+        simple = "ax.text(x, y, 'A')\nax.plot([0, 1], [0, 1])"
+
+        self.assertTrue(geometry_agent.code_has_visual_clutter(cluttered))
+        self.assertFalse(geometry_agent.code_has_visual_clutter(simple))
+
     def test_reuses_valid_reviewed_draft_without_resolving(self):
         spec = {
             "problemText": "test",

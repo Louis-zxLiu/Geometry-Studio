@@ -25,7 +25,7 @@ from geometry_agent_lib.prompts import (
     build_constraint_repair_prompt,
     build_constraint_validation_prompt,
 )
-from geometry_agent_lib.prompt_payloads import compact_scene_for_prompt, prompt_json
+from geometry_agent_lib.prompt_payloads import compact_scene_for_prompt, compact_scene_geometry_for_prompt, prompt_json
 from geometry_agent_lib.schemas import (
     CodeResultModel,
     ConstructionValidationResultModel,
@@ -507,15 +507,20 @@ def matplotlib_code_generate(state: GeometryState) -> Dict[str, Any]:
         "GeometryConstruction 是唯一几何真相层，GeometryScene 是展示层；代码只能负责渲染、标注、中文教学表达和少量交互控件。"
         "不得重新摆点、不得移动点、不得改几何事实、不得从题干重新猜图、不得生成与 construction/scene 不一致的几何关系。"
         "允许导入 math、numpy、sympy、matplotlib.pyplot、matplotlib.patches、matplotlib.widgets。"
-        "代码必须调用 plt.show()，清晰渲染证明所需的点名、关键线段、关键角度和必要测量。"
+        "代码必须调用 plt.show()，图像只作为证明辅助图，保持克制、干净、易读。"
+        "只绘制题目理解必需的核心点、核心线段、命名圆/弧和少量关键辅助线；隐藏非必要辅助对象。"
+        "图中标签只放短标签：点名、圆名、极少量短关系符号。禁止把题设条件、审核事实、证明目标、步骤说明或长句写到图中。"
+        "禁止生成 measure_text、fact_text、proof_text、summary_text 等事实说明框；禁止 ax.text/figtext/textbox 放多行条件清单。"
+        "不要渲染 scene.constraints、scene.measurements、scene.annotations 为文字；这些解释属于右侧笔记，不属于图。"
+        "除非题目要求数值计算，不要在图中显示距离、角度、坐标数值；不要用密集网格或拥挤图例。"
         "所有面向用户的 Matplotlib 文本必须中文；请设置中文字体回退并设置 axes.unicode_minus=False。"
         "不要读取文件、写入文件、启动进程或访问网络。\n\n"
         "Reviewed GeometrySpec:\n"
         + prompt_json(spec)
         + "\n\nFinal GeometryConstruction facts:\n"
         + construction_facts_text(construction)
-        + "\n\nCompiled GeometryScene:\n"
-        + prompt_json(compact_scene_for_prompt(state["scene"]))
+        + "\n\nCompiled GeometryScene geometry primitives only:\n"
+        + prompt_json(compact_scene_geometry_for_prompt(state["scene"]))
     )
     code = json_chat(
         state,
@@ -525,6 +530,7 @@ def matplotlib_code_generate(state: GeometryState) -> Dict[str, Any]:
         compact_schema=True,
     )
     cleaned_code = sanitize_matplotlib_text_symbols(code.pythonCode.strip())
+    cleaned_code = declutter_matplotlib_code(state, cleaned_code)
     artifact(
         state,
         "matplotlib_code_generate",
@@ -536,6 +542,42 @@ def matplotlib_code_generate(state: GeometryState) -> Dict[str, Any]:
     return {"code": cleaned_code}
 
 
+def code_has_visual_clutter(code: str) -> bool:
+    text = code or ""
+    lowered = text.lower()
+    clutter_names = ("measure_text", "fact_text", "facts_text", "proof_text", "summary_text", "condition_text")
+    clutter_phrases = ("已渲染的审核事实", "审核事实", "证明目标", "条件清单", "事实清单")
+    if any(name in lowered for name in clutter_names):
+        return True
+    if any(phrase in text for phrase in clutter_phrases):
+        return True
+    if ("figtext" in lowered or ".text(" in lowered or "text_box" in lowered) and text.count("\\n") >= 4:
+        return True
+    return False
+
+
+def declutter_matplotlib_code(state: GeometryState, code: str) -> str:
+    if not code_has_visual_clutter(code):
+        return code
+    repaired = json_chat(
+        state,
+        RepairResultModel,
+        "你是 Matplotlib 几何图清爽化 agent，只删除图面上的长文字说明和事实框，不改变几何对象。",
+        (
+            "请清理下面的 Python/Matplotlib 代码。必须保持所有点坐标、线段、圆、弧和几何事实不变。"
+            "删除图中的多行事实说明框、审核事实清单、证明目标清单、measure_text/fact_text/proof_text/summary_text 等长文字。"
+            "图中只保留点名、圆名和极少量短标签；题设条件与证明说明应留给右侧 Markdown 笔记，不要画在图里。"
+            "不要读取文件、写入文件、启动进程或访问网络。\n\n"
+            "GeometryScene geometry primitives:\n"
+            + prompt_json(compact_scene_geometry_for_prompt(state.get("scene") or {}))
+            + "\n\nCurrent code:\n"
+            + code
+        ),
+        compact_schema=True,
+    )
+    return sanitize_matplotlib_text_symbols(repaired.pythonCode.strip())
+
+
 def teaching_proof_generate(state: GeometryState) -> Dict[str, Any]:
     progress(state, "teaching_proof_generate", "教学证明生成")
     spec = state.get("reviewedSpec") or state["spec"]
@@ -543,6 +585,9 @@ def teaching_proof_generate(state: GeometryState) -> Dict[str, Any]:
         "请为这道几何题生成面向中文课堂的证明与解答。"
         "请以 reviewed GeometrySpec、最终 GeometryConstruction 和 GeometryScene 为事实来源。"
         "如果条件不足或图形存在歧义，只能用中文明确写出必要假设，不能编造题目没有给出的条件。"
+        "证明应优先使用综合几何方法：圆周角、切线弦定理、相似、共圆、垂直/平行、幂、外心/中垂线、角追等。"
+        "只有当你确认综合几何路线无法完成或会明显不可靠时，才允许使用解析法/坐标法；若使用解析法，必须先说明为什么几何法无法闭合。"
+        "不要把解析坐标计算作为默认解法，不要用数值测量代替证明。"
         "proofMarkdown、proofSteps、classroomQuestions 都必须使用中文。\n\n"
         "proofMarkdown 建议包含 `## 解题思路`、`## 教学证明`、`## 解答` 三个部分。"
         "每一步证明都要说清依据。最终答案或结论必须单独明确写出。\n\n"
@@ -573,6 +618,8 @@ def teaching_proof_generate(state: GeometryState) -> Dict[str, Any]:
         "标题必须按下面顺序输出：\n"
         "## 题目\n## 已识别条件\n## 解题思路\n## 构造模型说明\n## 教学证明\n## 解答\n## 课堂提问\n\n"
         "`构造模型说明` 请说明对象-约束构造和 GeometryScene 如何帮助理解证明，不要说成题型命令或自由画图。"
+        "整理笔记时保持证明的综合几何取向；不要把证明改写成默认坐标法或数值验证。"
+        "只有 proofMarkdown 已明确采用解析法且说明几何路线无法闭合时，才保留解析法。"
         "\n\n右侧笔记渲染规则：\n"
         + MATHJAX_MARKDOWN_RULES
         + "\n\nReviewed GeometrySpec:\n"
@@ -686,11 +733,13 @@ def self_correct(state: GeometryState) -> Dict[str, Any]:
         "Final GeometryConstruction:\n"
         + construction_facts_text(state.get("construction") or {})
         + "\n\nGeometryScene:\n"
-        + prompt_json(compact_scene_for_prompt(state.get("scene") or {}))
+        + prompt_json(compact_scene_geometry_for_prompt(state.get("scene") or {}))
         + "\n\nRuntime or validation error:\n"
         + str((state.get("probeResult") or {}).get("errorText", ""))
         + "\n\nCurrent code:\n"
         + state.get("code", "")
+        + "\n\nRendering policy:\n"
+        + "修复代码时也必须保持图面简洁；如果现有代码含多行事实说明框、measure_text/fact_text/proof_text/summary_text 或密集文字标注，请删除它们。"
     )
     repaired = json_chat(
         state,

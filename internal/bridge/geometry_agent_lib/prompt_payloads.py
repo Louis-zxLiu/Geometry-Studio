@@ -22,6 +22,17 @@ def compact_scene_for_prompt(scene: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
+def compact_scene_geometry_for_prompt(scene: Mapping[str, Any]) -> Dict[str, Any]:
+    return {
+        "title": scene.get("title", ""),
+        "points": scene.get("points") or [],
+        "segments": scene.get("segments") or [],
+        "circles": scene.get("circles") or [],
+        "arcs": scene.get("arcs") or [],
+        "polygons": scene.get("polygons") or [],
+    }
+
+
 def compact_construction_for_prompt(
     construction: Mapping[str, Any],
     *,
