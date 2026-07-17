@@ -23,13 +23,14 @@ def model_from_settings(settings: Dict[str, str]) -> ChatOpenAI:
     base_url = normalize_openai_base_url(settings.get("baseUrl", ""))
     api_key = (settings.get("apiKey") or "").strip()
     model = (settings.get("model") or "").strip()
+    temperature = float(settings.get("temperature", 0.2))
     if not base_url or not api_key or not model:
         raise RuntimeError("Geometry workflow needs baseUrl, apiKey, and model")
     return ChatOpenAI(
         base_url=base_url,
         api_key=api_key,
         model=model,
-        temperature=0.2,
+        temperature=temperature,
         timeout=300,
     )
 
@@ -49,6 +50,26 @@ def response_text(value: Any) -> str:
                 parts.append(str(item))
         return "\n".join(parts).strip()
     return str(content).strip()
+
+
+def normalize_image_data_urls(image_data_urls: Any) -> List[str]:
+    if not image_data_urls:
+        return []
+    if isinstance(image_data_urls, str):
+        return [image_data_urls] if image_data_urls.strip() else []
+    if isinstance(image_data_urls, (list, tuple)):
+        return [str(item) for item in image_data_urls if str(item or "").strip()]
+    return [str(image_data_urls)]
+
+
+def multimodal_human_content(text: str, image_data_urls: Any) -> Any:
+    urls = normalize_image_data_urls(image_data_urls)
+    if not urls:
+        return text
+    content: List[Dict[str, Any]] = [{"type": "text", "text": text}]
+    for url in urls:
+        content.append({"type": "image_url", "image_url": {"url": url, "detail": "high"}})
+    return content
 
 
 def extract_json_object(text: str) -> Dict[str, Any]:
@@ -136,7 +157,7 @@ def json_chat(
     schema_model: type[BaseModel],
     system_prompt: str,
     user_prompt: str,
-    image_data_url: str = "",
+    image_data_url: Any = "",
     *,
     compact_schema: bool = False,
 ) -> BaseModel:
@@ -166,12 +187,7 @@ def json_chat(
                 "\n\nYour previous response did not validate. Fix only the JSON structure and keep the intended content.\n"
                 f"Validation error:\n{last_error}\n\nPrevious response excerpt:\n{preview_text(last_text, 900)}"
             )
-        human_content: Any = full_user_prompt
-        if image_data_url:
-            human_content = [
-                {"type": "text", "text": full_user_prompt},
-                {"type": "image_url", "image_url": {"url": image_data_url}},
-            ]
+        human_content: Any = multimodal_human_content(full_user_prompt, image_data_url)
         raw = llm.invoke(
             [
                 SystemMessage(content=system_prompt),
@@ -187,3 +203,20 @@ def json_chat(
             if attempt_index >= 2:
                 raise
     raise RuntimeError("JSON generation failed unexpectedly")
+
+
+def text_chat(
+    state: Dict[str, Any],
+    system_prompt: str,
+    user_prompt: str,
+    image_data_url: Any = "",
+) -> str:
+    llm = model_from_settings(state["settings"])
+    human_content: Any = multimodal_human_content(user_prompt, image_data_url)
+    raw = llm.invoke(
+        [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=human_content),
+        ]
+    )
+    return response_text(raw)

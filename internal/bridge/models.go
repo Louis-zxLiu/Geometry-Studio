@@ -194,6 +194,10 @@ type GeometryWorkflowRequest struct {
 	DynamicConstruction bool               `json:"dynamicConstruction"`
 	Settings            AIProviderSettings `json:"settings"`
 	MaxAttempts         int                `json:"maxAttempts"`
+	RunMode             string             `json:"runMode"`
+	QualityMode         string             `json:"qualityMode"`
+	BenchmarkProblem    map[string]any     `json:"benchmarkProblem"`
+	RenderImageDir      string             `json:"renderImageDir"`
 }
 
 type GeometryWorkflowRepairRequest struct {
@@ -327,16 +331,27 @@ type GeometryScene struct {
 }
 
 type GeometryConstruction struct {
-	Version            int              `json:"version"`
-	DSLCode            string           `json:"dslCode"`
-	Objects            []map[string]any `json:"objects"`
-	Constraints        []map[string]any `json:"constraints"`
-	ConstructionIntent []map[string]any `json:"constructionIntent"`
-	Solution           map[string]any   `json:"solution"`
-	Validation         map[string]any   `json:"validation"`
-	ReviewStatus       string           `json:"reviewStatus"`
-	SpecFingerprint    string           `json:"specFingerprint"`
-	Diagnostics        []string         `json:"diagnostics"`
+	Version              int              `json:"version"`
+	DSLCode              string           `json:"dslCode"`
+	Objects              []map[string]any `json:"objects"`
+	Constraints          []map[string]any `json:"constraints"`
+	ConstructionIntent   []map[string]any `json:"constructionIntent"`
+	Solution             map[string]any   `json:"solution"`
+	Validation           map[string]any   `json:"validation"`
+	ReviewStatus         string           `json:"reviewStatus"`
+	SpecFingerprint      string           `json:"specFingerprint"`
+	Diagnostics          []string         `json:"diagnostics"`
+	ObjectScore          float64          `json:"objectScore"`
+	ConditionScore       float64          `json:"conditionScore"`
+	TotalScore           float64          `json:"totalScore"`
+	MissingObjects       map[string]any   `json:"missingObjects"`
+	FailedConditions     []any            `json:"failedConditions"`
+	Iterations           int              `json:"iterations"`
+	AttemptHistory       []map[string]any `json:"attemptHistory"`
+	RenderSuccess        bool             `json:"renderSuccess"`
+	RenderedImagePath    string           `json:"renderedImagePath"`
+	RenderedImageDataURL string           `json:"renderedImageDataUrl"`
+	RenderError          string           `json:"renderError"`
 }
 
 type GeometrySceneDocument struct {
@@ -345,13 +360,20 @@ type GeometrySceneDocument struct {
 }
 
 type GeometryWorkflowResult struct {
-	Code          string               `json:"code"`
-	NoteMarkdown  string               `json:"noteMarkdown"`
-	ProofMarkdown string               `json:"proofMarkdown"`
-	Spec          GeometrySpec         `json:"spec"`
-	Construction  GeometryConstruction `json:"construction"`
-	Scene         GeometryScene        `json:"scene"`
-	Diagnostics   []string             `json:"diagnostics"`
+	Code              string               `json:"code"`
+	NoteMarkdown      string               `json:"noteMarkdown"`
+	ProofMarkdown     string               `json:"proofMarkdown"`
+	Spec              GeometrySpec         `json:"spec"`
+	Construction      GeometryConstruction `json:"construction"`
+	Scene             GeometryScene        `json:"scene"`
+	Diagnostics       []string             `json:"diagnostics"`
+	ValidationSummary map[string]any       `json:"validationSummary"`
+	ObjectScore       float64              `json:"objectScore"`
+	ConditionScore    float64              `json:"conditionScore"`
+	TotalScore        float64              `json:"totalScore"`
+	MissingObjects    map[string]any       `json:"missingObjects"`
+	FailedConditions  []any                `json:"failedConditions"`
+	Iterations        int                  `json:"iterations"`
 }
 
 type GeometryWorkflowProgressEvent struct {
@@ -372,11 +394,14 @@ type GeometryWorkflowProgressEvent struct {
 }
 
 type GeometryWorkflowReviewRequiredEvent struct {
-	SessionID         string               `json:"sessionId"`
-	SceneName         string               `json:"sceneName"`
-	Spec              GeometrySpec         `json:"spec"`
-	ConstructionDraft GeometryConstruction `json:"constructionDraft"`
-	ValidationSummary map[string]any       `json:"validationSummary"`
+	SessionID          string               `json:"sessionId"`
+	SceneName          string               `json:"sceneName"`
+	Spec               GeometrySpec         `json:"spec"`
+	ConstructionDraft  GeometryConstruction `json:"constructionDraft"`
+	ValidationSummary  map[string]any       `json:"validationSummary"`
+	Scene              GeometryScene        `json:"scene"`
+	AttemptHistory     []map[string]any     `json:"attemptHistory"`
+	SourceImageDataURL string               `json:"sourceImageDataUrl"`
 }
 
 type GeometryWorkflowPreviewUpdatedEvent struct {

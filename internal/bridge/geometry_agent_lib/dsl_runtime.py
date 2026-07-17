@@ -141,6 +141,7 @@ def execute_geometry_dsl(code: str) -> Dict[str, Any]:
         "lines": {},
         "rays": {},
         "circles": {},
+        "polygons": {},
         "values": {},
         "angles": {},
         "steps": [],
@@ -172,6 +173,7 @@ def execute_geometry_dsl(code: str) -> Dict[str, Any]:
             "lines": list(env["lines"].values()),
             "rays": list(env["rays"].values()),
             "circles": list(env["circles"].values()),
+            "polygons": list(env["polygons"].values()),
             "values": env["values"],
             "angles": env["angles"],
         },
@@ -233,9 +235,35 @@ def execute_dsl_command(env: Dict[str, Any], command: str, inputs: List[str], ou
             env["rays"][outputs[0]] = line
         return
 
+    if command == "polygon":
+        if len(inputs) < 3:
+            raise DSLExecutionError("polygon requires at least three point labels")
+        if len(outputs) != len(inputs) + 1:
+            raise DSLExecutionError("polygon outputs must be one polygon label followed by one side segment label per edge")
+        for point_label in inputs:
+            require_point(env, point_label)
+        env["polygons"][outputs[0]] = {"id": outputs[0], "points": inputs[:], "label": outputs[0], "fill": ""}
+        side_labels = outputs[1:]
+        for side_label, start, end in zip(side_labels, inputs, [*inputs[1:], inputs[0]]):
+            env["segments"][side_label] = {"id": side_label, "from": start, "to": end, "label": side_label, "style": ""}
+        return
+
     if command == "circle":
+        if len(inputs) == 3:
+            center = circumcenter_point(env, inputs[0], inputs[1], inputs[2])
+            center_label = f"__center_{outputs[0]}"
+            add_point(env, center_label, center["x"], center["y"], generated=True)
+            env["circles"][outputs[0]] = {
+                "id": outputs[0],
+                "center": center_label,
+                "radius": distance_between(env["points"][center_label], require_point(env, inputs[0])),
+                "through": inputs[0],
+                "label": outputs[0],
+                "style": "",
+            }
+            return
         if len(inputs) != 2:
-            raise DSLExecutionError("circle requires center and radius/through point")
+            raise DSLExecutionError("circle requires center and radius/through point, or three points")
         center_label = inputs[0]
         center = require_point(env, center_label)
         through = ""

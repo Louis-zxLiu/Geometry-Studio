@@ -277,6 +277,10 @@
   font-size: 0.76rem;
 }
 
+.ai-settings-clear {
+  justify-self: start;
+}
+
 .ai-inline-divider,
 .ai-inline-status,
 .ai-inline-action {

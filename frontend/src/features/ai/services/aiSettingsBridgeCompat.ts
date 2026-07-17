@@ -1,6 +1,7 @@
 import type { AIProviderSettings } from "./aiTypes";
 
 type BridgeAppCompat = {
+  ClearAISettings?: () => Promise<AIProviderSettings>;
   GetAISettings?: () => Promise<AIProviderSettings>;
   SaveAISettings?: (settings: AIProviderSettings) => Promise<AIProviderSettings>;
 };
@@ -20,7 +21,16 @@ export async function saveAISettings(settings: AIProviderSettings): Promise<AIPr
     return normalizeAISettings(await bridgeApp.SaveAISettings(settings));
   }
 
-  throw new Error("当前运行中的后端版本还不支持保存 AI 设置，请重启应用后再试");
+  throw new Error("当前后端版本不支持保存 AI 设置，请重启应用后再试。");
+}
+
+export async function clearAISettings(): Promise<AIProviderSettings> {
+  const bridgeApp = getBridgeApp();
+  if (typeof bridgeApp.ClearAISettings === "function") {
+    return normalizeAISettings(await bridgeApp.ClearAISettings());
+  }
+
+  return createDefaultAISettings();
 }
 
 export function createDefaultAISettings(): AIProviderSettings {

@@ -10,6 +10,8 @@ export function BootstrapWorkspace():Promise<bridge.WorkspaceSnapshot>;
 
 export function CheckForUpdates(arg1:boolean):Promise<bridge.UpdateStatus>;
 
+export function ClearAISettings():Promise<bridge.AIProviderSettings>;
+
 export function CreateCodeAIVersion(arg1:bridge.CreateCodeAIVersionRequest):Promise<bridge.CodeAIVersion>;
 
 export function CreateScript(arg1:string):Promise<bridge.ScriptDocument>;

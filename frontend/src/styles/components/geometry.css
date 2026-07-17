@@ -16,6 +16,13 @@
   padding-bottom: 28px;
 }
 
+.geometry-image-meta {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
 .geometry-image-picker {
   display: grid;
   place-items: center;
@@ -60,6 +67,38 @@
   box-shadow: var(--ring-focus);
 }
 
+.geometry-cost-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--dialog-input-bg);
+}
+
+.geometry-cost-mode button {
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+
+.geometry-cost-mode button.active,
+.geometry-cost-mode button:hover {
+  background: var(--fill-soft);
+  color: var(--text);
+}
+
+.geometry-cost-note {
+  margin: 8px 2px 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .geometry-dynamic-toggle {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -101,9 +140,202 @@
 }
 
 .geometry-review-dialog {
-  width: min(78vw, 920px);
-  max-height: min(86vh, 760px);
+  width: min(94vw, 1320px);
+  max-height: min(90vh, 860px);
   overflow: auto;
+}
+
+.geometry-review-titlebar {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.geometry-review-titlebar h2 {
+  margin: 0;
+}
+
+.geometry-review-titlebar p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.geometry-review-score-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(68px, 1fr));
+  gap: 8px;
+  min-width: 240px;
+}
+
+.geometry-review-score-strip span {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--dialog-input-bg);
+  color: var(--text);
+  text-align: center;
+}
+
+.geometry-review-score-strip strong {
+  font-size: 1rem;
+}
+
+.geometry-review-score-strip small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.geometry-review-workbench {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(360px, 1.35fr) minmax(260px, 0.95fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.geometry-review-pane {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.geometry-review-pane section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--dialog-input-bg), var(--surface-soft) 28%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text), transparent 92%);
+}
+
+.geometry-review-pane h3,
+.geometry-review-heading h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.geometry-review-image-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.geometry-review-image-grid figure {
+  display: grid;
+  gap: 6px;
+  min-height: 150px;
+  margin: 0;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text), transparent 90%);
+  overflow: hidden;
+}
+
+.geometry-review-image-grid img {
+  width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+}
+
+.geometry-review-image-grid figcaption {
+  width: 100%;
+  padding: 0 8px 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.geometry-review-report,
+.geometry-review-attempts,
+.geometry-review-suggestion-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.geometry-review-report li,
+.geometry-review-attempts li,
+.geometry-review-suggestion-list li {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-soft), transparent 18%);
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.geometry-review-attempts li {
+  display: grid;
+  gap: 4px;
+}
+
+.geometry-review-attempts strong {
+  color: var(--text);
+}
+
+.geometry-review-code {
+  max-height: 220px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface), black 4%);
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.geometry-review-details {
+  display: grid;
+  gap: 8px;
+}
+
+.geometry-review-details summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.geometry-review-details ul {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.geometry-review-details li {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-soft), transparent 20%);
+  color: var(--text-soft);
+  font-size: 0.75rem;
+}
+
+.geometry-review-details pre {
+  max-height: 120px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.geometry-review-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .geometry-review-grid,
@@ -207,6 +439,25 @@
   line-height: 1.45;
 }
 
+.geometry-review-validation-list button,
+.geometry-review-suggestion-list button {
+  justify-self: start;
+  height: 28px;
+  margin-top: 4px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background: var(--fill-soft);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 0.74rem;
+}
+
+.geometry-review-validation-list button:hover,
+.geometry-review-suggestion-list button:hover {
+  background: var(--fill-strong);
+  color: var(--text);
+}
+
 .geometry-review-validation-list strong {
   color: var(--text);
 }
@@ -226,6 +477,23 @@
 .geometry-review-mini-section strong {
   color: var(--text);
   font-size: 0.76rem;
+}
+
+.geometry-review-rendered-image {
+  display: block;
+  width: min(100%, 360px);
+  max-height: 260px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text), transparent 88%);
+}
+
+.geometry-review-rendered-caption {
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-style: normal;
+  overflow-wrap: anywhere;
 }
 
 .geometry-review-mini-section ul {
@@ -709,6 +977,19 @@
   .geometry-problem-dialog,
   .geometry-review-dialog {
     width: min(92vw, 640px);
+  }
+
+  .geometry-review-titlebar,
+  .geometry-review-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .geometry-review-titlebar {
+    display: grid;
+  }
+
+  .geometry-review-score-strip {
+    min-width: 0;
   }
 
   .geometry-review-row.entity-row,

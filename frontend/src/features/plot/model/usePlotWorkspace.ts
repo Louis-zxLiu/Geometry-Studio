@@ -4,6 +4,7 @@ import {
   OpenSubscriptionPurchase,
 } from "../../../../wailsjs/go/bridge/App";
 import {
+  clearAISettings,
   createDefaultAISettings,
   getAISettings,
   saveAISettings,
@@ -512,6 +513,7 @@ export function usePlotWorkspace() {
     dynamicConstruction: boolean;
     imageDataUrl: string;
     problemText: string;
+    qualityMode: "fast" | "quality";
   }) {
     const sceneName = scriptWorkspace.currentFile.value.trim();
     if (!sceneName) {
@@ -524,6 +526,7 @@ export function usePlotWorkspace() {
       dynamicConstruction: payload.dynamicConstruction,
       imageDataUrl: payload.imageDataUrl,
       problemText: payload.problemText,
+      qualityMode: payload.qualityMode,
     });
   }
 
@@ -538,6 +541,7 @@ export function usePlotWorkspace() {
       dynamicConstruction: false,
       imageDataUrl: firstGeometryImage(request.selection),
       problemText: collectGeometryText(request.selection),
+      qualityMode: "quality",
     });
   }
 
@@ -546,6 +550,7 @@ export function usePlotWorkspace() {
     sceneName: string;
     imageDataUrl: string;
     problemText: string;
+    qualityMode: "fast" | "quality";
   }) {
     if (isRunning.value || aiActivity.isAIGenerating.value) {
       return;
@@ -562,7 +567,8 @@ export function usePlotWorkspace() {
           currentCode,
           dynamicConstruction: payload.dynamicConstruction,
           settings: aiSettings.value,
-          maxAttempts: 5,
+          maxAttempts: payload.qualityMode === "fast" ? 3 : 5,
+          qualityMode: payload.qualityMode,
         },
         createGeometryWorkflowOptions(),
       );
@@ -680,6 +686,14 @@ export function usePlotWorkspace() {
   async function updateAISettings(nextSettings: AIProviderSettings) {
     try {
       aiSettings.value = await saveAISettings(nextSettings);
+    } catch (error) {
+      runErrorDialog.openRunErrorDialog(getErrorMessage(error));
+    }
+  }
+
+  async function clearSavedAISettings() {
+    try {
+      aiSettings.value = await clearAISettings();
     } catch (error) {
       runErrorDialog.openRunErrorDialog(getErrorMessage(error));
     }
@@ -940,6 +954,7 @@ export function usePlotWorkspace() {
     geometryHasAgentTimeline: geometryWorkflowSession.hasAgentTimeline,
     geometryProgressLabel: geometryWorkflowSession.progressLabel,
     geometryReviewConstructionDraft: geometryWorkflowSession.reviewConstructionDraft,
+    geometryReviewSourceImageDataUrl: geometryWorkflowSession.reviewSourceImageDataUrl,
     geometryReviewSpec: geometryWorkflowSession.reviewSpec,
     geometryReviewValidationSummary: geometryWorkflowSession.reviewValidationSummary,
     goToNextScreeningPage: screeningWorkspace.goToNextScreeningPage,
@@ -1050,6 +1065,7 @@ export function usePlotWorkspace() {
     typingScriptName: scriptWorkspace.typingScriptName,
     updateCode: scriptWorkspace.updateCode,
     updateAISettings,
+    clearSavedAISettings,
     submitAIAsk,
     submitCodeAIOptimize: plotAIWorkflow.codeAIOptimize.submitOptimization,
     submitDesignCardOptimize: designCardWorkspace.submitOptimization,

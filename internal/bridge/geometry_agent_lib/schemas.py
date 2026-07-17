@@ -4,8 +4,6 @@ from typing import Any, Dict, List, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .constraint_schema import GeometryConstructionDraftModel, GeometryConstructionModel
-
 
 class GeometryEntityModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -148,26 +146,6 @@ class GeometrySceneModel(BaseModel):
     proofSteps: List[GeometryProofStepModel] = Field(default_factory=list)
 
 
-class ConstructionValidationIssueModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    severity: str = Field(description="error, warning, or info")
-    target: str = Field(description="Related object id, constraint id, or spec item")
-    message: str = Field(description="中文说明问题")
-    suggestedRepair: str = Field(default="", description="中文说明下一轮应如何修复对象、约束或构造意图")
-
-
-class ConstructionValidationResultModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    isValid: bool
-    objectCoverage: float = Field(ge=0.0, le=1.0)
-    conditionCoverage: float = Field(ge=0.0, le=1.0)
-    summary: str
-    failedItems: List[ConstructionValidationIssueModel] = Field(default_factory=list)
-    repairInstructions: List[str] = Field(default_factory=list)
-
-
 class CodeResultModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -177,7 +155,7 @@ class CodeResultModel(BaseModel):
 class ProofResultModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    proofMarkdown: str = Field(description="中文 Markdown 片段，用于右侧笔记区渲染。")
+    proofMarkdown: str = Field(description="Chinese Markdown proof for the notebook.")
     proofSteps: List[GeometryProofStepModel] = Field(default_factory=list)
     classroomQuestions: List[str] = Field(default_factory=list)
 
@@ -185,7 +163,7 @@ class ProofResultModel(BaseModel):
 class NoteResultModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    noteMarkdown: str = Field(description="中文课堂笔记 Markdown 片段。")
+    noteMarkdown: str = Field(description="Chinese classroom note Markdown.")
 
 
 class RepairResultModel(BaseModel):
@@ -203,6 +181,7 @@ class GeometryState(TypedDict, total=False):
     currentCode: str
     dynamicConstruction: bool
     maxAttempts: int
+    qualityMode: str
     settings: Dict[str, str]
     spec: Dict[str, Any]
     reviewedSpec: Dict[str, Any]

@@ -68,6 +68,19 @@ func (s *AIStore) Save(value AIProviderSettings) (AIProviderSettings, error) {
 	return normalized, nil
 }
 
+func (s *AIStore) Clear() (AIProviderSettings, error) {
+	path, err := paths.AISettingsPath()
+	if err != nil {
+		return defaultAIProviderSettings(), err
+	}
+
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return defaultAIProviderSettings(), err
+	}
+
+	return defaultAIProviderSettings(), nil
+}
+
 func defaultAIProviderSettings() AIProviderSettings {
 	return AIProviderSettings{
 		Mode:  "custom",

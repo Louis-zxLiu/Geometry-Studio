@@ -1,1 +1,1 @@
-"""Geometry Studio constraint-first agent support package."""
+"""Geometry Studio DSL ReAct agent support package."""

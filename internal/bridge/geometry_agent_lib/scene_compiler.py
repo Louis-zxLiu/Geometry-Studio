@@ -60,6 +60,19 @@ def compile_execution_to_scene(execution: Dict[str, Any]) -> Dict[str, Any]:
             }
         )
 
+    polygons = []
+    for polygon in objects.get("polygons") or []:
+        if not isinstance(polygon, dict):
+            continue
+        polygons.append(
+            {
+                "id": polygon.get("id") or "",
+                "points": list(polygon.get("points") or []),
+                "label": polygon.get("label") or polygon.get("id") or "",
+                "fill": polygon.get("fill") or "",
+            }
+        )
+
     return {
         "version": 1,
         "title": "DSL 精确构造",
@@ -68,7 +81,7 @@ def compile_execution_to_scene(execution: Dict[str, Any]) -> Dict[str, Any]:
         "segments": segments,
         "circles": circles,
         "arcs": [],
-        "polygons": [],
+        "polygons": polygons,
         "controls": [],
         "measurements": [],
         "constraints": [],
@@ -88,12 +101,3 @@ def scene_with_spec_context(scene: Dict[str, Any], spec: Dict[str, Any]) -> Dict
         annotations.append({"id": "construction_note", "text": preview_text(hints[0], 90), "x": 0.0, "y": 0.0})
     next_scene["annotations"] = annotations
     return GeometrySceneModel.model_validate(next_scene).model_dump(by_alias=True)
-
-
-def compile_construction_to_scene(construction: Dict[str, Any], spec: Dict[str, Any]) -> Dict[str, Any]:
-    execution = {
-        "dslCode": construction.get("dslCode", ""),
-        "objects": construction.get("objects") or {},
-        "steps": construction.get("steps") or [],
-    }
-    return scene_with_spec_context(compile_execution_to_scene(execution), spec)

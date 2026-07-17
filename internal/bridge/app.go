@@ -358,6 +358,24 @@ func (a *App) SaveAISettings(settings AIProviderSettings) (AIProviderSettings, e
 	}, nil
 }
 
+func (a *App) ClearAISettings() (AIProviderSettings, error) {
+	if a.aiSettingsStore == nil {
+		return AIProviderSettings{Mode: "custom"}, nil
+	}
+
+	value, err := a.aiSettingsStore.Clear()
+	if err != nil {
+		return AIProviderSettings{}, err
+	}
+
+	return AIProviderSettings{
+		Mode:  value.Mode,
+		URL:   value.URL,
+		Key:   value.Key,
+		Model: value.Model,
+	}, nil
+}
+
 func (a *App) GetUpdateStatus() (UpdateStatus, error) {
 	if a.updateService == nil {
 		return UpdateStatus{}, nil

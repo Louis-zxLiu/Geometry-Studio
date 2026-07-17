@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Evaluate Geometry Studio's geometry multi-agent workflow on GeoBuildBench.
+"""Evaluate Geometry Studio's ReAct DSL workflow on GeoBuildBench.
 
 This runner feeds GeoBuildBench problems into internal/bridge/geometry_agent.py,
-auto-accepts the teacher review, auto-acknowledges the runtime probe, converts
-the emitted GeometryScene to GeoBuildBench DSL, and scores it with the official
-GeoBuildBench DSLValidator.
+asks the agent to run in benchmark mode, reads the final authoritative
+GeometryConstruction.dslCode, and scores it with the official GeoBuildBench
+DSLValidator.
 """
 
 from __future__ import annotations
@@ -101,8 +101,43 @@ def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+SENSITIVE_TEXT_PATTERNS = [
+    re.compile(r"sk-[A-Za-z0-9_\-]{12,}"),
+    re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._\-]{12,}"),
+    re.compile(r"(?i)(api[_-]?key[\"'\s:=]+)[A-Za-z0-9._\-]{8,}"),
+    re.compile(r"(?<=://)[^/@\s]+:[^/@\s]+@"),
+]
+
+
+def redact_sensitive_text(value: str) -> str:
+    text = SENSITIVE_TEXT_PATTERNS[0].sub("sk-***redacted***", value)
+    text = SENSITIVE_TEXT_PATTERNS[1].sub(r"\1***redacted***", text)
+    text = SENSITIVE_TEXT_PATTERNS[2].sub(r"\1***redacted***", text)
+    return SENSITIVE_TEXT_PATTERNS[3].sub("***redacted***@", text)
+
+
+def redact_sensitive(value: Any) -> Any:
+    if isinstance(value, dict):
+        redacted: dict[Any, Any] = {}
+        for key, item in value.items():
+            key_text = str(key).lower()
+            if key_text in {"apikey", "api_key", "key", "authorization", "token"}:
+                redacted[key] = "***redacted***" if item else item
+            else:
+                redacted[key] = redact_sensitive(item)
+        return redacted
+    if isinstance(value, list):
+        return [redact_sensitive(item) for item in value]
+    if isinstance(value, tuple):
+        return [redact_sensitive(item) for item in value]
+    if isinstance(value, str):
+        return redact_sensitive_text(value)
+    return value
+
+
 def write_json(path: Path, data: Any) -> None:
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(redact_sensitive(data), ensure_ascii=False, indent=2), encoding="utf-8")
+
 
 
 def mojibake_score(text: str) -> int:
@@ -148,217 +183,6 @@ def import_geobuildbench(geobuildbench_root: Path) -> None:
     sys.path.insert(0, str(root))
 
 
-def sanitize_label(value: Any, fallback: str) -> str:
-    text = str(value or "").strip()
-    text = re.sub(r"[^0-9A-Za-z_]", "_", text)
-    text = re.sub(r"_+", "_", text).strip("_")
-    if not text:
-        text = fallback
-    if re.match(r"^[0-9]", text):
-        text = "p_" + text
-    return text
-
-
-def label_candidates(point: dict[str, Any]) -> list[str]:
-    values = []
-    for key in ("id", "label"):
-        value = str(point.get(key) or "").strip()
-        if value:
-            values.append(value)
-            cleaned = sanitize_label(value, "")
-            if cleaned and cleaned != value:
-                values.append(cleaned)
-    return values
-
-
-def choose_point_labels(scene: dict[str, Any], required_points: list[str]) -> tuple[dict[str, str], list[dict[str, Any]]]:
-    points = scene.get("points") or []
-    required = [str(p) for p in required_points]
-    used: set[str] = set()
-    id_to_label: dict[str, str] = {}
-    ordered_points: list[dict[str, Any]] = []
-
-    for req in required:
-        for point in points:
-            point_id = str(point.get("id") or "")
-            if point_id in id_to_label:
-                continue
-            candidates = label_candidates(point)
-            if req in candidates or req.lower() in [c.lower() for c in candidates]:
-                id_to_label[point_id] = req
-                used.add(req)
-                ordered_points.append(point)
-                break
-
-    for index, point in enumerate(points, start=1):
-        point_id = str(point.get("id") or f"point_{index}")
-        if point_id in id_to_label:
-            continue
-        preferred = ""
-        for candidate in label_candidates(point):
-            if candidate and candidate not in used:
-                preferred = candidate
-                break
-        label = sanitize_label(preferred, f"P{index}")
-        suffix = 2
-        base = label
-        while label in used:
-            label = f"{base}_{suffix}"
-            suffix += 1
-        id_to_label[point_id] = label
-        used.add(label)
-        ordered_points.append(point)
-
-    return id_to_label, ordered_points
-
-
-def scene_to_geobuildbench_dsl(scene: dict[str, Any], required_objects: dict[str, Any]) -> str:
-    id_to_label, ordered_points = choose_point_labels(scene, required_objects.get("points") or [])
-    lines: list[str] = []
-
-    for point in ordered_points:
-        point_id = str(point.get("id") or "")
-        label = id_to_label.get(point_id)
-        if not label:
-            continue
-        x = float(point.get("x") or 0)
-        y = float(point.get("y") or 0)
-        lines.append(f"point : {x:.8g} {y:.8g} -> {label}")
-
-    used_outputs: set[str] = set(id_to_label.values())
-
-    def output_name(prefix: str, *parts: str) -> str:
-        base = sanitize_label("_".join([prefix, *parts]), prefix)
-        name = base
-        suffix = 2
-        while name in used_outputs:
-            name = f"{base}_{suffix}"
-            suffix += 1
-        used_outputs.add(name)
-        return name
-
-    def point_label(point_ref: Any) -> str:
-        ref = str(point_ref or "").strip()
-        return id_to_label.get(ref, sanitize_label(ref, ref))
-
-    segment_pairs: set[tuple[str, str]] = set()
-
-    def add_segment(a_ref: Any, b_ref: Any) -> None:
-        a = point_label(a_ref)
-        b = point_label(b_ref)
-        if not a or not b or a == b:
-            return
-        key = tuple(sorted((a, b)))
-        if key in segment_pairs:
-            return
-        segment_pairs.add(key)
-        lines.append(f"segment : {a} {b} -> {output_name('seg', a, b)}")
-
-    for segment in scene.get("segments") or []:
-        add_segment(segment.get("from"), segment.get("to"))
-
-    for polygon in scene.get("polygons") or []:
-        poly_points = polygon.get("points") or []
-        for index, point_ref in enumerate(poly_points):
-            add_segment(point_ref, poly_points[(index + 1) % len(poly_points)])
-
-    for circle in scene.get("circles") or []:
-        center = point_label(circle.get("center"))
-        through = point_label(circle.get("through"))
-        if not center:
-            continue
-        if through:
-            lines.append(f"circle : {center} {through} -> {output_name('circle', center, through)}")
-            continue
-        radius = float(circle.get("radius") or 0)
-        if radius > 0:
-            lines.append(f"circle : {center} {radius:.8g} -> {output_name('circle', center)}")
-
-    return "\n".join(lines) + "\n"
-
-
-def construction_to_scene_for_export(construction: dict[str, Any], fallback_scene: dict[str, Any]) -> dict[str, Any]:
-    objects = [item for item in construction.get("objects") or [] if isinstance(item, dict)]
-    if not objects:
-        return fallback_scene
-    solution = construction.get("solution") or {}
-    solved_points = solution.get("points") or {}
-    if not isinstance(solved_points, dict) or not solved_points:
-        return fallback_scene
-
-    points: list[dict[str, Any]] = []
-    for obj in objects:
-        if str(obj.get("kind") or "").lower() != "point":
-            continue
-        point_id = str(obj.get("id") or "")
-        coords = solved_points.get(point_id)
-        if not isinstance(coords, dict):
-            continue
-        points.append(
-            {
-                "id": point_id,
-                "label": str(obj.get("label") or point_id),
-                "x": float(coords.get("x") or 0.0),
-                "y": float(coords.get("y") or 0.0),
-            }
-        )
-
-    segments: list[dict[str, Any]] = []
-    circles: list[dict[str, Any]] = []
-    polygons: list[dict[str, Any]] = []
-    circles_by_id = solution.get("circles") if isinstance(solution.get("circles"), dict) else {}
-
-    for obj in objects:
-        kind = str(obj.get("kind") or "").lower()
-        refs = [str(ref) for ref in obj.get("refs") or []]
-        obj_id = str(obj.get("id") or "")
-        if kind in {"segment", "line", "ray"} and len(refs) >= 2:
-            segments.append({"id": obj_id, "from": refs[0], "to": refs[1], "label": str(obj.get("label") or obj_id)})
-        elif kind == "polygon" and len(refs) >= 3:
-            polygons.append({"id": obj_id, "points": refs, "label": str(obj.get("label") or obj_id)})
-        elif kind == "circle":
-            circle = circles_by_id.get(obj_id) if isinstance(circles_by_id, dict) else None
-            attrs = obj.get("attributes") if isinstance(obj.get("attributes"), dict) else {}
-            center = ""
-            through = ""
-            radius = 0.0
-            if isinstance(circle, dict):
-                center = str(circle.get("center") or "")
-                through = str(circle.get("through") or "")
-                radius = float(circle.get("radius") or 0.0)
-            if not center and refs:
-                center = refs[0]
-            if not through and len(refs) >= 2:
-                through = refs[1]
-            if radius <= 0:
-                radius = float(attrs.get("radius") or attrs.get("r") or 0.0)
-            circles.append(
-                {
-                    "id": obj_id,
-                    "center": center,
-                    "through": through,
-                    "radius": radius,
-                    "label": str(obj.get("label") or obj_id),
-                }
-            )
-
-    return {
-        "points": points or fallback_scene.get("points") or [],
-        "segments": segments or fallback_scene.get("segments") or [],
-        "circles": circles or fallback_scene.get("circles") or [],
-        "polygons": polygons or fallback_scene.get("polygons") or [],
-    }
-
-
-def construction_to_geobuildbench_dsl(
-    construction: dict[str, Any],
-    scene: dict[str, Any],
-    required_objects: dict[str, Any],
-) -> str:
-    export_scene = construction_to_scene_for_export(construction, scene)
-    return scene_to_geobuildbench_dsl(export_scene, required_objects)
-
-
 def reader_thread(proc: subprocess.Popen[str], out_queue: queue.Queue[str]) -> None:
     assert proc.stdout is not None
     for line in proc.stdout:
@@ -378,6 +202,7 @@ def run_agent(
     timeout_seconds: int,
     spawn_retries: int,
     agent_max_attempts: int,
+    render_image_dir: Path,
 ) -> tuple[str, dict[str, Any], list[dict[str, Any]], float]:
     session_id = f"geobuildbench-{problem['id']}-{uuid.uuid4().hex[:8]}"
     start_time = time.time()
@@ -434,6 +259,9 @@ def run_agent(
                 "problemText": problem.get("subject") or problem.get("cleaned_text") or problem.get("original_text") or "",
                 "currentCode": "",
                 "maxAttempts": max(1, agent_max_attempts),
+                "runMode": "benchmark",
+                "benchmarkProblem": problem,
+                "renderImageDir": str(render_image_dir),
                 "settings": settings,
             },
         },
@@ -461,16 +289,7 @@ def run_agent(
         events.append(event)
 
         event_type = event.get("type")
-        if event_type == "review_required":
-            send_command(
-                proc,
-                {
-                    "type": "resume_review",
-                    "sessionId": session_id,
-                    "spec": event.get("spec") or {},
-                },
-            )
-        elif event_type == "runtime_probe":
+        if event_type == "runtime_probe":
             send_command(
                 proc,
                 {
@@ -524,6 +343,40 @@ def count_missing(missing: dict[str, Any]) -> int:
     return sum(len(value or []) for value in missing.values())
 
 
+def attempt_history_metrics(construction: dict[str, Any], validation_summary: dict[str, Any]) -> dict[str, Any]:
+    attempts = [item for item in construction.get("attemptHistory") or [] if isinstance(item, dict)]
+    hallucinations = []
+    intermediate_validation_failures = 0
+    render_success_count = 0
+    final_rendered_image_path = ""
+    for attempt in attempts:
+        execution_error = str(attempt.get("executionError") or "")
+        summary = attempt.get("validationSummary") if isinstance(attempt.get("validationSummary"), dict) else {}
+        if attempt.get("renderSuccess"):
+            render_success_count += 1
+        if attempt.get("renderedImagePath"):
+            final_rendered_image_path = str(attempt.get("renderedImagePath") or "")
+        if execution_error:
+            hallucinations.append(
+                {
+                    "attempt": attempt.get("attempt"),
+                    "error_message": execution_error,
+                    "error_type": "dsl_execution_error",
+                }
+            )
+        elif summary and not summary.get("isValid"):
+            intermediate_validation_failures += 1
+
+    return {
+        "iterations": int(validation_summary.get("iterations") or construction.get("iterations") or len(attempts) or 0),
+        "hallucination_count": len(hallucinations),
+        "hallucinations": hallucinations,
+        "intermediate_validation_failures": intermediate_validation_failures,
+        "render_success_count": render_success_count,
+        "final_rendered_image_path": final_rendered_image_path,
+    }
+
+
 def summarize_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
     evaluated = [run for run in runs if run.get("validation_result")]
     successes = [run for run in evaluated if run["validation_result"].get("success")]
@@ -554,6 +407,20 @@ def summarize_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
         "missing_objects_by_type": dict(missing_by_type),
         "failed_conditions_by_type": dict(failed_by_type),
         "average_duration_seconds": sum(float(run.get("duration_seconds") or 0.0) for run in runs) / len(runs) if runs else 0.0,
+        "average_success_steps": (
+            sum(int(run.get("iterations") or 0) for run in successes) / len(successes)
+            if successes
+            else 0.0
+        ),
+        "total_hallucinations": sum(int(run.get("hallucination_count") or 0) for run in runs),
+        "average_hallucinations_per_problem": (
+            sum(int(run.get("hallucination_count") or 0) for run in runs) / len(runs)
+            if runs
+            else 0.0
+        ),
+        "total_intermediate_validation_failures": sum(int(run.get("intermediate_validation_failures") or 0) for run in runs),
+        "total_rendered_attempts": sum(int(run.get("render_success_count") or 0) for run in runs),
+        "problems_with_rendered_image": sum(1 for run in runs if str(run.get("final_rendered_image_path") or "")),
         "proof_generated_rate": (
             sum(1 for run in runs if int(run.get("proof_markdown_chars") or 0) > 0) / len(runs)
             if runs
@@ -586,12 +453,22 @@ def markdown_table(headers: list[str], rows: list[list[Any]]) -> str:
     def fmt(value: Any) -> str:
         if isinstance(value, float):
             return f"{value:.3f}"
-        return str(value)
+        return redact_sensitive_text(str(value))
 
     lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
     for row in rows:
         lines.append("| " + " | ".join(fmt(value) for value in row) + " |")
     return "\n".join(lines)
+
+
+def report_value(value: Any) -> str:
+    return redact_sensitive_text(str(value))
+
+
+def csv_cell(value: Any) -> Any:
+    if isinstance(value, str):
+        return redact_sensitive_text(value)
+    return value
 
 
 def write_report(output_dir: Path, metadata: dict[str, Any], runs: list[dict[str, Any]]) -> None:
@@ -600,13 +477,14 @@ def write_report(output_dir: Path, metadata: dict[str, Any], runs: list[dict[str
     by_category = group_summary(runs, "category")
 
     lines = [
-        "# GeoBuildBench Evaluation: Geometry Studio Multi-Agent",
+        "# GeoBuildBench Evaluation: Geometry Studio ReAct DSL",
         "",
-        f"- Timestamp: `{metadata['timestamp']}`",
-        f"- Model: `{metadata['model']}`",
-        f"- Dataset: `{metadata['dataset']}`",
-        f"- Problems requested: `{metadata['problems_requested']}`",
-        f"- Runtime probe: auto-acknowledged; GeoBuildBench scoring is applied to generated GeometryScene.",
+        f"- Timestamp: `{report_value(metadata['timestamp'])}`",
+        f"- Model: `{report_value(metadata['model'])}`",
+        f"- Dataset: `{report_value(metadata['dataset'])}`",
+        f"- Problems requested: `{report_value(metadata['problems_requested'])}`",
+        f"- Run mode: benchmark; teacher review is skipped and GeoBuildBench scoring is applied directly to `GeometryConstruction.dslCode`.",
+        f"- Enhanced loop: rendered image feedback=`{metadata.get('vision_feedback')}`, geometry constraint targets=`{metadata.get('geometry_constraint_targets')}`.",
         "",
         "## Overall",
         "",
@@ -620,6 +498,12 @@ def write_report(output_dir: Path, metadata: dict[str, Any], runs: list[dict[str
                 ["Average object score", summary["average_object_score"]],
                 ["Average condition score", summary["average_condition_score"]],
                 ["Average total score", summary["average_total_score"]],
+                ["Average success steps", summary["average_success_steps"]],
+                ["Total hallucinations (DSL execution errors)", summary["total_hallucinations"]],
+                ["Average hallucinations per problem", summary["average_hallucinations_per_problem"]],
+                ["Intermediate validation failures", summary["total_intermediate_validation_failures"]],
+                ["Rendered attempts", summary["total_rendered_attempts"]],
+                ["Problems with rendered image", summary["problems_with_rendered_image"]],
                 ["Proof generated rate", summary["proof_generated_rate"]],
                 ["Average duration seconds", summary["average_duration_seconds"]],
             ],
@@ -672,7 +556,23 @@ def write_report(output_dir: Path, metadata: dict[str, Any], runs: list[dict[str
         "## Per-Problem",
         "",
         markdown_table(
-            ["ID", "Difficulty", "Category", "Success", "Object", "Condition", "Total", "Missing", "Failed Conds", "Proof Chars", "Seconds"],
+            [
+                "ID",
+                "Difficulty",
+                "Category",
+                "Success",
+                "Object",
+                "Condition",
+                "Total",
+                "Iters",
+                "Halluc.",
+                "Val Fails",
+                "Rendered",
+                "Missing",
+                "Failed Conds",
+                "Proof Chars",
+                "Seconds",
+            ],
             [
                 [
                     run["problem_id"],
@@ -682,6 +582,10 @@ def write_report(output_dir: Path, metadata: dict[str, Any], runs: list[dict[str
                     float((run.get("validation_result") or {}).get("object_score") or 0.0),
                     float((run.get("validation_result") or {}).get("condition_score") or 0.0),
                     float((run.get("validation_result") or {}).get("total_score") or 0.0),
+                    run.get("iterations", 0),
+                    run.get("hallucination_count", 0),
+                    run.get("intermediate_validation_failures", 0),
+                    run.get("render_success_count", 0),
                     run.get("missing_objects_count", 0),
                     run.get("failed_conditions_count", 0),
                     run.get("proof_markdown_chars", 0),
@@ -707,6 +611,11 @@ def write_csv(output_dir: Path, runs: list[dict[str, Any]]) -> None:
         "total_score",
         "missing_objects_count",
         "failed_conditions_count",
+        "iterations",
+        "hallucination_count",
+        "intermediate_validation_failures",
+        "render_success_count",
+        "final_rendered_image_path",
         "proof_markdown_chars",
         "proof_steps_count",
         "note_markdown_chars",
@@ -719,26 +628,30 @@ def write_csv(output_dir: Path, runs: list[dict[str, Any]]) -> None:
         writer.writeheader()
         for run in runs:
             validation = run.get("validation_result") or {}
-            writer.writerow(
-                {
-                    "problem_id": run.get("problem_id"),
-                    "difficulty": run.get("difficulty"),
-                    "category": run.get("category"),
-                    "agent_status": run.get("agent_status"),
-                    "success": bool(validation.get("success")),
-                    "object_score": validation.get("object_score", 0.0),
-                    "condition_score": validation.get("condition_score", 0.0),
-                    "total_score": validation.get("total_score", 0.0),
-                    "missing_objects_count": run.get("missing_objects_count", 0),
-                    "failed_conditions_count": run.get("failed_conditions_count", 0),
-                    "proof_markdown_chars": run.get("proof_markdown_chars", 0),
-                    "proof_steps_count": run.get("proof_steps_count", 0),
-                    "note_markdown_chars": run.get("note_markdown_chars", 0),
-                    "duration_seconds": f"{float(run.get('duration_seconds') or 0.0):.3f}",
-                    "error_text": run.get("error_text", ""),
-                    "dsl_path": run.get("dsl_path", ""),
-                }
-            )
+            row = {
+                "problem_id": run.get("problem_id"),
+                "difficulty": run.get("difficulty"),
+                "category": run.get("category"),
+                "agent_status": run.get("agent_status"),
+                "success": bool(validation.get("success")),
+                "object_score": validation.get("object_score", 0.0),
+                "condition_score": validation.get("condition_score", 0.0),
+                "total_score": validation.get("total_score", 0.0),
+                "missing_objects_count": run.get("missing_objects_count", 0),
+                "failed_conditions_count": run.get("failed_conditions_count", 0),
+                "iterations": run.get("iterations", 0),
+                "hallucination_count": run.get("hallucination_count", 0),
+                "intermediate_validation_failures": run.get("intermediate_validation_failures", 0),
+                "render_success_count": run.get("render_success_count", 0),
+                "final_rendered_image_path": run.get("final_rendered_image_path", ""),
+                "proof_markdown_chars": run.get("proof_markdown_chars", 0),
+                "proof_steps_count": run.get("proof_steps_count", 0),
+                "note_markdown_chars": run.get("note_markdown_chars", 0),
+                "duration_seconds": f"{float(run.get('duration_seconds') or 0.0):.3f}",
+                "error_text": run.get("error_text", ""),
+                "dsl_path": run.get("dsl_path", ""),
+            }
+            writer.writerow({key: csv_cell(value) for key, value in row.items()})
 
 
 def evaluate_problem(
@@ -758,6 +671,7 @@ def evaluate_problem(
     structure_base_delay: float,
     dsl_dir: Path,
     event_dir: Path,
+    image_dir: Path,
 ) -> dict[str, Any]:
     from src.dsl.dsl_validator import DSLValidator
 
@@ -780,6 +694,7 @@ def evaluate_problem(
             timeout_seconds,
             spawn_retries,
             agent_max_attempts,
+            image_dir / str(problem["id"]),
         )
         total_duration += duration
         rate_limited = is_retryable_rate_limit(final_event)
@@ -823,15 +738,18 @@ def evaluate_problem(
     write_json(event_dir / f"{problem['id']}.json", {"final_event": final_event, "events": events, "attempts": attempts})
 
     result = final_event.get("result") or {}
-    scene = result.get("scene") or {}
     construction = result.get("construction") or {}
-    dsl_code = construction_to_geobuildbench_dsl(construction, scene, problem.get("required_objects") or {})
+    validation_summary = result.get("validationSummary") or construction.get("validation") or {}
+    attempt_metrics = attempt_history_metrics(construction, validation_summary if isinstance(validation_summary, dict) else {})
+    dsl_code = str(construction.get("dslCode") or "").strip()
     dsl_path = dsl_dir / f"{problem['id']}.txt"
     dsl_path.write_text(dsl_code, encoding="utf-8")
 
     validation_result: dict[str, Any] | None = None
     error_text = str(final_event.get("errorText") or "")
     try:
+        if not dsl_code:
+            raise ValueError("agent did not return construction.dslCode")
         validation_result = validate_dsl(dsl_code, problem_object, DSLValidator())
     except Exception as exc:
         error_text = (error_text + "\n" + repr(exc)).strip()
@@ -855,6 +773,12 @@ def evaluate_problem(
         "proof_steps_count": len(proof_steps),
         "note_markdown_chars": len(note_markdown),
         "duration_seconds": total_duration,
+        "iterations": attempt_metrics["iterations"],
+        "hallucination_count": attempt_metrics["hallucination_count"],
+        "hallucinations": attempt_metrics["hallucinations"],
+        "intermediate_validation_failures": attempt_metrics["intermediate_validation_failures"],
+        "render_success_count": attempt_metrics["render_success_count"],
+        "final_rendered_image_path": attempt_metrics["final_rendered_image_path"],
         "agent_attempts": len(attempts),
         "rate_limit_retries": rate_limit_retry_count,
         "structure_retries": structure_retry_count,
@@ -879,7 +803,8 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--workers", type=int, default=1, help="Number of problems to evaluate in parallel; 0 means one worker per problem")
     parser.add_argument("--spawn-retries", type=int, default=8, help="Retries for launching each geometry agent subprocess")
-    parser.add_argument("--agent-max-attempts", type=int, default=3, help="Geometry agent constraint/code repair attempts per problem")
+    parser.add_argument("--agent-max-attempts", type=int, default=10, help="Maximum ReAct DSL loop attempts per problem")
+    parser.add_argument("--temperature", type=float, default=0.0, help="LLM sampling temperature; GeoBuildBench paper runner uses 0")
     parser.add_argument("--rate-limit-retries", type=int, default=8, help="Retries for a problem when the provider returns a retryable rate/concurrency limit")
     parser.add_argument("--rate-limit-base-delay", type=float, default=15.0)
     parser.add_argument("--rate-limit-max-delay", type=float, default=300.0)
@@ -915,13 +840,16 @@ def main() -> int:
     output_dir = args.output_dir / f"geobuildbench-geometry-studio-{timestamp}"
     dsl_dir = output_dir / "dsl"
     event_dir = output_dir / "events"
+    image_dir = output_dir / "images"
     dsl_dir.mkdir(parents=True, exist_ok=True)
     event_dir.mkdir(parents=True, exist_ok=True)
+    image_dir.mkdir(parents=True, exist_ok=True)
 
     settings = {
         "baseUrl": args.base_url,
         "apiKey": api_key,
         "model": args.model,
+        "temperature": args.temperature,
     }
     runs: list[dict[str, Any]] = []
     requested_workers = int(args.workers)
@@ -946,6 +874,7 @@ def main() -> int:
                 args.structure_base_delay,
                 dsl_dir,
                 event_dir,
+                image_dir,
             )
             runs.append(run)
             write_json(output_dir / "results.partial.json", {"runs": runs, "summary": summarize_runs(runs)})
@@ -971,6 +900,7 @@ def main() -> int:
                     args.structure_base_delay,
                     dsl_dir,
                     event_dir,
+                    image_dir,
                 ): index
                 for index, problem in enumerate(problems, start=1)
             }
@@ -1003,7 +933,7 @@ def main() -> int:
     metadata = {
         "timestamp": datetime.now().isoformat(),
         "model": args.model,
-        "base_url": re.sub(r"(?<=://)[^/@]+@", "", args.base_url),
+        "base_url": redact_sensitive_text(re.sub(r"(?<=://)[^/@]+@", "", args.base_url)),
         "dataset": str(dataset_path),
         "geobuildbench_root": str(args.geobuildbench_root),
         "problems_requested": len(problems),
@@ -1012,6 +942,10 @@ def main() -> int:
         "workers": workers,
         "spawn_retries": args.spawn_retries,
         "agent_max_attempts": args.agent_max_attempts,
+        "temperature": args.temperature,
+        "vision_feedback": True,
+        "geometry_constraint_targets": True,
+        "rendered_image_dir": str(image_dir),
         "rate_limit_retries": args.rate_limit_retries,
         "rate_limit_base_delay": args.rate_limit_base_delay,
         "rate_limit_max_delay": args.rate_limit_max_delay,

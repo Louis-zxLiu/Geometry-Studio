@@ -87,69 +87,57 @@ type GeometryTerminalResult =
 
 const STAGE_DEFINITIONS: Array<Pick<GeometryAgentStep, "agentName" | "description" | "stage" | "title">> = [
   {
-    stage: "parse_spec",
-    title: "几何规格解析",
-    agentName: "几何规格解析 agent",
-    description: "从图片和文本中解析题干、对象、条件、求证目标和构造提示，整理成稳定规格。",
-  },
-  {
-    stage: "build_constraint_construction",
-    title: "约束构造建模",
-    agentName: "约束构造建模 agent",
-    description: "让 MLLM 生成对象、基础谓词约束和构造意图，作为几何真相层初稿。",
-  },
-  {
-    stage: "solve_constraint_graph",
-    title: "约束求解与验证",
-    agentName: "约束求解 agent",
-    description: "用数值残差求解对象坐标，生成残差和语义反馈，供教师审核。",
+    stage: "react_dsl_loop",
+    title: "DSL ReAct 构造",
+    agentName: "ReAct DSL agent",
+    description: "VLM 直接生成 GeoBuildBench DSL，并根据执行和校验反馈迭代到最终候选。",
   },
   {
     stage: "teacher_review",
     title: "教师复核",
-    agentName: "教师复核 agent",
-    description: "暂停工作流，把题目规格、约束构造和验证反馈交给用户确认或修正。",
+    agentName: "教师复核",
+    description: "把 VLM 最后一轮 DSL 候选、校验反馈和构造记录交给用户确认或修正。",
   },
   {
-    stage: "final_repair_constraints",
-    title: "最终约束修复",
-    agentName: "最终约束修复 agent",
-    description: "根据教师是否修改规格决定复用或重建构造，并只通过 MLLM 修改对象、约束和构造意图来修复失败。",
+    stage: "post_review_react_loop",
+    title: "审核后 DSL ReAct",
+    agentName: "审核后 DSL ReAct",
+    description: "教师接受时复用最终 DSL；教师修改规格时，按新规格重新运行 ReAct DSL 循环。",
   },
   {
     stage: "scene_compile",
-    title: "构造场景编译",
-    agentName: "场景编译 agent",
-    description: "从已验证 GeometryConstruction 派生 GeometryScene 展示模型。",
+    title: "DSL 场景编译",
+    agentName: "场景编译",
+    description: "从权威 dslCode 派生 GeometryScene 展示模型。",
   },
   {
     stage: "matplotlib_code_generate",
     title: "Matplotlib 代码生成",
-    agentName: "Matplotlib 代码生成 agent",
-    description: "把几何场景转换为可运行、中文标注、适合教学的 Python 图形代码。",
+    agentName: "Matplotlib 生成",
+    description: "把 DSL 场景转换为可运行、中文标注、适合教学的 Python 图形代码。",
   },
   {
     stage: "teaching_proof_generate",
     title: "教学证明生成",
-    agentName: "教学证明生成 agent",
-    description: "生成中文证明、解答、课堂提问和右侧 Markdown 笔记。",
+    agentName: "教学证明生成",
+    description: "基于最终 DSL 和编译场景生成中文证明、解答和右侧 Markdown 笔记。",
   },
   {
     stage: "runtime_check",
     title: "运行检查",
-    agentName: "运行检查 agent",
+    agentName: "运行检查",
     description: "实际运行生成代码，检查安全性、可执行性和窗口就绪状态。",
   },
   {
     stage: "self_correct",
     title: "自我修正",
-    agentName: "自我修正 agent",
+    agentName: "自我修正",
     description: "根据运行错误修复 Matplotlib 代码，并保持中文教学表达。",
   },
   {
     stage: "publish",
     title: "发布",
-    agentName: "发布 agent",
+    agentName: "发布",
     description: "把通过检查的代码、场景规格和中文笔记写回当前场景。",
   },
 ];
@@ -165,6 +153,7 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
   const reviewSpec = ref<GeometrySpec | null>(null);
   const reviewConstructionDraft = ref<GeometryConstruction | null>(null);
   const reviewValidationSummary = ref<GeometryValidationSummary | null>(null);
+  const reviewSourceImageDataUrl = ref("");
   const cleanupEvents = bindGeometryEvents();
 
   let pendingResolver: ((result: GeometryTerminalResult) => void) | null = null;
@@ -250,6 +239,7 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     reviewSpec.value = null;
     reviewConstructionDraft.value = null;
     reviewValidationSummary.value = null;
+    reviewSourceImageDataUrl.value = "";
     await resumeGeometryWorkflow(activeSessionId.value, nextSpec);
     aiActivity.startWorking();
   }
@@ -299,6 +289,7 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     reviewSpec.value = null;
     reviewConstructionDraft.value = null;
     reviewValidationSummary.value = null;
+    reviewSourceImageDataUrl.value = "";
     pendingResolver = null;
   }
 
@@ -333,13 +324,18 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     }
 
     reviewSpec.value = event?.spec ?? null;
-    reviewConstructionDraft.value = event?.constructionDraft ?? null;
+    const draft = event?.constructionDraft ?? null;
+    if (draft && event?.attemptHistory?.length && !draft.attemptHistory?.length) {
+      draft.attemptHistory = event.attemptHistory;
+    }
+    reviewConstructionDraft.value = draft;
     reviewValidationSummary.value = event?.validationSummary ?? null;
+    reviewSourceImageDataUrl.value = event?.sourceImageDataUrl ?? "";
     markStage("teacher_review", "waiting", {
-      message: "等待用户确认几何规格与约束反馈",
+      message: "等待用户确认最终 DSL 候选",
       title: "教师复核",
-      agentName: "教师复核 agent",
-      description: "暂停工作流，把题目规格、约束构造和验证反馈交给用户确认或修正。",
+      agentName: "教师复核",
+      description: "把 VLM 最后一轮 DSL 候选、校验反馈和构造记录交给用户确认或修正。",
     });
     aiActivity.stop();
     safeInvoke(() => activeOptions?.onReviewRequired?.(event));
@@ -572,6 +568,7 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     reviewSpec.value = null;
     reviewConstructionDraft.value = null;
     reviewValidationSummary.value = null;
+    reviewSourceImageDataUrl.value = "";
     aiActivity.stop();
     resolve?.(result);
   }
@@ -586,6 +583,7 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     reviewSpec.value = null;
     reviewConstructionDraft.value = null;
     reviewValidationSummary.value = null;
+    reviewSourceImageDataUrl.value = "";
     aiActivity.stop();
   }
 
@@ -625,6 +623,7 @@ export function useGeometryWorkflowSession(aiActivity: AIActivityStatus) {
     repairWorkflow,
     resumeReview,
     reviewConstructionDraft,
+    reviewSourceImageDataUrl,
     reviewSpec,
     reviewValidationSummary,
     startWorkflow,

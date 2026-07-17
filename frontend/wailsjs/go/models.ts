@@ -553,6 +553,17 @@ export namespace bridge {
 	    reviewStatus: string;
 	    specFingerprint: string;
 	    diagnostics: string[];
+	    objectScore: number;
+	    conditionScore: number;
+	    totalScore: number;
+	    missingObjects: Record<string, any>;
+	    failedConditions: any[];
+	    iterations: number;
+	    attemptHistory: any[];
+	    renderSuccess: boolean;
+	    renderedImagePath: string;
+	    renderedImageDataUrl: string;
+	    renderError: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new GeometryConstruction(source);
@@ -570,6 +581,17 @@ export namespace bridge {
 	        this.reviewStatus = source["reviewStatus"];
 	        this.specFingerprint = source["specFingerprint"];
 	        this.diagnostics = source["diagnostics"];
+	        this.objectScore = source["objectScore"];
+	        this.conditionScore = source["conditionScore"];
+	        this.totalScore = source["totalScore"];
+	        this.missingObjects = source["missingObjects"];
+	        this.failedConditions = source["failedConditions"];
+	        this.iterations = source["iterations"];
+	        this.attemptHistory = source["attemptHistory"];
+	        this.renderSuccess = source["renderSuccess"];
+	        this.renderedImagePath = source["renderedImagePath"];
+	        this.renderedImageDataUrl = source["renderedImageDataUrl"];
+	        this.renderError = source["renderError"];
 	    }
 	}
 	export class GeometryControl {
@@ -849,6 +871,13 @@ export namespace bridge {
 	    construction: GeometryConstruction;
 	    scene: GeometryScene;
 	    diagnostics: string[];
+	    validationSummary: Record<string, any>;
+	    objectScore: number;
+	    conditionScore: number;
+	    totalScore: number;
+	    missingObjects: Record<string, any>;
+	    failedConditions: any[];
+	    iterations: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new GeometryWorkflowResult(source);
@@ -863,6 +892,13 @@ export namespace bridge {
 	        this.construction = this.convertValues(source["construction"], GeometryConstruction);
 	        this.scene = this.convertValues(source["scene"], GeometryScene);
 	        this.diagnostics = source["diagnostics"];
+	        this.validationSummary = source["validationSummary"];
+	        this.objectScore = source["objectScore"];
+	        this.conditionScore = source["conditionScore"];
+	        this.totalScore = source["totalScore"];
+	        this.missingObjects = source["missingObjects"];
+	        this.failedConditions = source["failedConditions"];
+	        this.iterations = source["iterations"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -933,6 +969,10 @@ export namespace bridge {
 	    dynamicConstruction: boolean;
 	    settings: AIProviderSettings;
 	    maxAttempts: number;
+	    runMode: string;
+	    qualityMode: string;
+	    benchmarkProblem: Record<string, any>;
+	    renderImageDir: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new GeometryWorkflowRequest(source);
@@ -947,6 +987,10 @@ export namespace bridge {
 	        this.dynamicConstruction = source["dynamicConstruction"];
 	        this.settings = this.convertValues(source["settings"], AIProviderSettings);
 	        this.maxAttempts = source["maxAttempts"];
+	        this.runMode = source["runMode"];
+	        this.qualityMode = source["qualityMode"];
+	        this.benchmarkProblem = source["benchmarkProblem"];
+	        this.renderImageDir = source["renderImageDir"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

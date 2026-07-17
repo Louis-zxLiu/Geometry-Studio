@@ -85,15 +85,27 @@ function Remove-DirectoriesByName {
         [Parameter(Mandatory = $true)]
         [string]$RootPath,
         [Parameter(Mandatory = $true)]
-        [string[]]$DirectoryNames
+        [string[]]$DirectoryNames,
+        [string[]]$PreserveRelativePaths = @()
     )
 
     if (-not (Test-Path -LiteralPath $RootPath -PathType Container)) {
         return
     }
 
+    $rootFullPath = [System.IO.Path]::GetFullPath($RootPath).TrimEnd('\', '/')
+    $preserveFullPaths = @(
+        foreach ($relativePath in $PreserveRelativePaths) {
+            [System.IO.Path]::GetFullPath((Join-Path $RootPath $relativePath)).TrimEnd('\', '/')
+        }
+    )
+
     Get-ChildItem -LiteralPath $RootPath -Recurse -Directory -Force -ErrorAction SilentlyContinue |
         Where-Object { $DirectoryNames -contains $_.Name } |
+        Where-Object {
+            $candidate = [System.IO.Path]::GetFullPath($_.FullName).TrimEnd('\', '/')
+            -not ($preserveFullPaths -contains $candidate)
+        } |
         Sort-Object FullName -Descending |
         ForEach-Object {
             if (Test-Path -LiteralPath $_.FullName) {
@@ -362,6 +374,8 @@ function Trim-PythonRuntimeClutterForRelease {
         "examples",
         "doc",
         "docs"
+    ) -PreserveRelativePaths @(
+        "Lib/site-packages/numpy/testing"
     )
 
     Remove-PathsIfPresent -RuntimeRoot $RuntimeRoot -RelativePaths @(

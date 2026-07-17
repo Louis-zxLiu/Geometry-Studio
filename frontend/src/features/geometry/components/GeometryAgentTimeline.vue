@@ -198,10 +198,10 @@ function loadCollapsedState() {
 </script>
 
 <template>
-  <section class="geometry-agent-timeline" :class="{ collapsed }" aria-label="几何多 agent 工作流">
+  <section class="geometry-agent-timeline" :class="{ collapsed }" aria-label="几何 DSL ReAct 工作流">
     <header class="geometry-agent-header">
       <button class="geometry-agent-header-main" type="button" @click="toggleCollapsed">
-        <span class="geometry-agent-kicker">多 agent 解题流程</span>
+        <span class="geometry-agent-kicker">DSL ReAct 解题流程</span>
         <strong>{{ headline }}</strong>
         <small v-if="latestLog">{{ latestLog.message }}</small>
       </button>

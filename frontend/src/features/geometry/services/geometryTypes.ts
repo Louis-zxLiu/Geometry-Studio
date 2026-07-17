@@ -130,6 +130,27 @@ export type GeometryValidationSummary = {
   failedItems: GeometryValidationIssue[];
   repairInstructions: string[];
   residualSummary?: Record<string, unknown>;
+  objectScore?: number;
+  conditionScore?: number;
+  totalScore?: number;
+  missingObjects?: Record<string, unknown>;
+  failedConditions?: unknown[];
+  iterations?: number;
+  validator?: string;
+};
+
+export type GeometryAttemptHistoryItem = {
+  attempt: number;
+  thought: string;
+  action: string;
+  dsl: string;
+  executionError: string;
+  localExecutionError?: string;
+  renderSuccess?: boolean;
+  renderedImagePath?: string;
+  renderedImageDataUrl?: string;
+  renderError?: string;
+  validationSummary?: GeometryValidationSummary;
 };
 
 export type GeometryConstruction = {
@@ -143,6 +164,17 @@ export type GeometryConstruction = {
   reviewStatus: string;
   specFingerprint: string;
   diagnostics: string[];
+  objectScore?: number;
+  conditionScore?: number;
+  totalScore?: number;
+  missingObjects?: Record<string, unknown>;
+  failedConditions?: unknown[];
+  iterations?: number;
+  attemptHistory?: GeometryAttemptHistoryItem[];
+  renderSuccess?: boolean;
+  renderedImagePath?: string;
+  renderedImageDataUrl?: string;
+  renderError?: string;
 };
 
 export type GeometryWorkflowRequest = {
@@ -153,6 +185,10 @@ export type GeometryWorkflowRequest = {
   dynamicConstruction: boolean;
   settings: AIProviderSettings;
   maxAttempts: number;
+  runMode?: "interactive" | "benchmark";
+  qualityMode?: "fast" | "quality";
+  benchmarkProblem?: Record<string, unknown>;
+  renderImageDir?: string;
 };
 
 export type GeometryWorkflowRepairRequest = {
@@ -178,6 +214,13 @@ export type GeometryWorkflowResult = {
   construction: GeometryConstruction;
   scene: GeometryScene;
   diagnostics: string[];
+  validationSummary?: GeometryValidationSummary;
+  objectScore?: number;
+  conditionScore?: number;
+  totalScore?: number;
+  missingObjects?: Record<string, unknown>;
+  failedConditions?: unknown[];
+  iterations?: number;
 };
 
 export type GeometryProgressEvent = {
@@ -203,6 +246,9 @@ export type GeometryReviewRequiredEvent = {
   spec: GeometrySpec;
   constructionDraft?: GeometryConstruction;
   validationSummary?: GeometryValidationSummary;
+  scene?: GeometryScene;
+  attemptHistory?: GeometryAttemptHistoryItem[];
+  sourceImageDataUrl?: string;
 };
 
 export type GeometryCodeAppliedEvent = {

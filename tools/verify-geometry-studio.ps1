@@ -91,8 +91,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 $graph = $graphOutput | ConvertFrom-Json
 $requiredGraphNodes = @(
-    "parse_spec",
+    "react_dsl_loop",
     "teacher_review",
+    "post_review_react_loop",
+    "scene_compile",
     "runtime_check",
     "self_correct",
     "publish"

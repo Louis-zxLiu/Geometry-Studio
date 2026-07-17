@@ -69,6 +69,10 @@ type geometryAgentRequest struct {
 	CurrentCode         string                `json:"currentCode"`
 	DynamicConstruction bool                  `json:"dynamicConstruction"`
 	MaxAttempts         int                   `json:"maxAttempts"`
+	RunMode             string                `json:"runMode"`
+	QualityMode         string                `json:"qualityMode"`
+	BenchmarkProblem    map[string]any        `json:"benchmarkProblem"`
+	RenderImageDir      string                `json:"renderImageDir"`
 	Settings            geometryAgentSettings `json:"settings"`
 	ErrorText           string                `json:"errorText"`
 	Diagnostics         []string              `json:"diagnostics"`
@@ -108,6 +112,8 @@ type geometryAgentEvent struct {
 	ConstructionDraft   GeometryConstruction   `json:"constructionDraft"`
 	ValidationSummary   map[string]any         `json:"validationSummary"`
 	Scene               GeometryScene          `json:"scene"`
+	AttemptHistory      []map[string]any       `json:"attemptHistory"`
+	SourceImageDataURL  string                 `json:"sourceImageDataUrl"`
 	Code                string                 `json:"code"`
 	NoteMarkdown        string                 `json:"noteMarkdown"`
 	ProofMarkdown       string                 `json:"proofMarkdown"`
@@ -137,6 +143,9 @@ func (s *geometryWorkflowService) Start(ctx context.Context, request GeometryWor
 	}
 	if request.MaxAttempts <= 0 {
 		request.MaxAttempts = 5
+	}
+	if strings.TrimSpace(request.RunMode) == "" {
+		request.RunMode = "interactive"
 	}
 
 	settings, err := s.resolveSettings(ctx, request.Settings)
@@ -335,6 +344,10 @@ func (s *geometryWorkflowService) startAgentProcess(ctx context.Context, entry *
 		CurrentCode:         entry.request.CurrentCode,
 		DynamicConstruction: entry.request.DynamicConstruction,
 		MaxAttempts:         entry.request.MaxAttempts,
+		RunMode:             entry.request.RunMode,
+		QualityMode:         entry.request.QualityMode,
+		BenchmarkProblem:    entry.request.BenchmarkProblem,
+		RenderImageDir:      entry.request.RenderImageDir,
 		Settings:            settings,
 	})
 }
@@ -452,7 +465,7 @@ func (s *geometryWorkflowService) readAgentEvents(ctx context.Context, entry *ge
 				SessionID: entry.session.SessionID,
 				SceneName: entry.request.SceneName,
 				Stage:     "agent_output",
-				Message:   line,
+				Message:   redactGeometrySensitiveText(line),
 				Status:    "running",
 				EventKind: "log",
 			})
@@ -485,6 +498,7 @@ func (s *geometryWorkflowService) readAgentEvents(ctx context.Context, entry *ge
 	if message == "" {
 		message = "Geometry agent exited before completing the workflow"
 	}
+	message = redactGeometrySensitiveText(message)
 	s.finishFailed(entry.session.SessionID, entry.request.SceneName, message, nil, false, GeometryWorkflowResult{})
 }
 
@@ -509,11 +523,14 @@ func (s *geometryWorkflowService) handleAgentEvent(ctx context.Context, entry *g
 		})
 	case "review_required":
 		s.app.emit(EventGeometryReview, GeometryWorkflowReviewRequiredEvent{
-			SessionID:         event.SessionID,
-			SceneName:         event.SceneName,
-			Spec:              normalizeGeometrySpec(event.Spec),
-			ConstructionDraft: normalizeGeometryConstruction(event.ConstructionDraft),
-			ValidationSummary: normalizeGeometryMap(event.ValidationSummary),
+			SessionID:          event.SessionID,
+			SceneName:          event.SceneName,
+			Spec:               normalizeGeometrySpec(event.Spec),
+			ConstructionDraft:  normalizeGeometryConstruction(event.ConstructionDraft),
+			ValidationSummary:  normalizeGeometryMap(event.ValidationSummary),
+			Scene:              normalizeGeometryScene(event.Scene),
+			AttemptHistory:     normalizeGeometryAttemptHistory(event.AttemptHistory),
+			SourceImageDataURL: event.SourceImageDataURL,
 		})
 	case "preview_updated":
 		s.app.emit(EventGeometryPreview, GeometryWorkflowPreviewUpdatedEvent{
@@ -602,6 +619,35 @@ var dynamicGeometryControlPattern = regexp.MustCompile(`(?i)(\bSlider\s*\(|matpl
 
 func codeHasDynamicGeometryControl(code string) bool {
 	return dynamicGeometryControlPattern.MatchString(code)
+}
+
+var geometrySensitiveTextPatterns = []struct {
+	pattern     *regexp.Regexp
+	replacement string
+}{
+	{regexp.MustCompile(`sk-[A-Za-z0-9_\-]{12,}`), "sk-***redacted***"},
+	{regexp.MustCompile(`(?i)(bearer\s+)[A-Za-z0-9._\-]{12,}`), "${1}***redacted***"},
+	{regexp.MustCompile(`(?i)(api[_-]?key["'\s:=]+)[A-Za-z0-9._\-]{8,}`), "${1}***redacted***"},
+	{regexp.MustCompile(`(?i)([a-z][a-z0-9+.-]*://)[^/@\s]+:[^/@\s]+@`), "${1}***redacted***@"},
+}
+
+func redactGeometrySensitiveText(value string) string {
+	redacted := value
+	for _, item := range geometrySensitiveTextPatterns {
+		redacted = item.pattern.ReplaceAllString(redacted, item.replacement)
+	}
+	return redacted
+}
+
+func redactGeometryDiagnostics(values []string) []string {
+	if values == nil {
+		return nil
+	}
+	redacted := make([]string, len(values))
+	for index, value := range values {
+		redacted[index] = redactGeometrySensitiveText(value)
+	}
+	return redacted
 }
 
 func (s *geometryWorkflowService) hydrateGeometryRepairResult(sceneName string, currentCode string, result GeometryWorkflowResult) GeometryWorkflowResult {
@@ -706,6 +752,7 @@ func (s *geometryWorkflowService) persistGeometryResult(sceneName string, imageD
 	}
 	result.Construction = normalizeGeometryConstruction(result.Construction)
 	result.Scene = normalizeGeometryScene(result.Scene)
+	result = normalizeGeometryWorkflowResult(result)
 	if imageRel != "" {
 		result.Scene.SourceImage = imageRel
 	}
@@ -874,6 +921,7 @@ func (s *geometryWorkflowService) finishSucceeded(sessionID string, sceneName st
 	result.Spec = normalizeGeometrySpec(result.Spec)
 	result.Construction = normalizeGeometryConstruction(result.Construction)
 	result.Scene = normalizeGeometryScene(result.Scene)
+	result = normalizeGeometryWorkflowResult(result)
 	s.app.emit(EventGeometryApplied, GeometryWorkflowCodeAppliedEvent{
 		SessionID: sessionID,
 		SceneName: sceneName,
@@ -891,12 +939,15 @@ func (s *geometryWorkflowService) finishFailed(sessionID string, sceneName strin
 	if !s.clearActive(sessionID) {
 		return
 	}
+	errorText = redactGeometrySensitiveText(errorText)
+	diagnostics = redactGeometryDiagnostics(diagnostics)
 	if result.Diagnostics == nil {
 		result.Diagnostics = diagnostics
 	}
 	result.Spec = normalizeGeometrySpec(result.Spec)
 	result.Construction = normalizeGeometryConstruction(result.Construction)
 	result.Scene = normalizeGeometryScene(result.Scene)
+	result = normalizeGeometryWorkflowResult(result)
 	s.app.emit(EventGeometryFailed, GeometryWorkflowFailedEvent{
 		SessionID:   sessionID,
 		SceneName:   sceneName,
@@ -963,12 +1014,57 @@ func normalizeGeometryConstruction(construction GeometryConstruction) GeometryCo
 	if construction.Diagnostics == nil {
 		construction.Diagnostics = []string{}
 	}
+	if construction.MissingObjects == nil {
+		construction.MissingObjects = map[string]any{}
+	}
+	if construction.FailedConditions == nil {
+		construction.FailedConditions = []any{}
+	}
+	if construction.AttemptHistory == nil {
+		construction.AttemptHistory = []map[string]any{}
+	}
 	return construction
+}
+
+func normalizeGeometryWorkflowResult(result GeometryWorkflowResult) GeometryWorkflowResult {
+	result.ValidationSummary = normalizeGeometryMap(result.ValidationSummary)
+	if result.MissingObjects == nil {
+		result.MissingObjects = map[string]any{}
+	}
+	if result.FailedConditions == nil {
+		result.FailedConditions = []any{}
+	}
+	if result.ObjectScore == 0 && result.Construction.ObjectScore != 0 {
+		result.ObjectScore = result.Construction.ObjectScore
+	}
+	if result.ConditionScore == 0 && result.Construction.ConditionScore != 0 {
+		result.ConditionScore = result.Construction.ConditionScore
+	}
+	if result.TotalScore == 0 && result.Construction.TotalScore != 0 {
+		result.TotalScore = result.Construction.TotalScore
+	}
+	if len(result.MissingObjects) == 0 && len(result.Construction.MissingObjects) > 0 {
+		result.MissingObjects = result.Construction.MissingObjects
+	}
+	if len(result.FailedConditions) == 0 && len(result.Construction.FailedConditions) > 0 {
+		result.FailedConditions = result.Construction.FailedConditions
+	}
+	if result.Iterations == 0 && result.Construction.Iterations != 0 {
+		result.Iterations = result.Construction.Iterations
+	}
+	return result
 }
 
 func normalizeGeometryMap(value map[string]any) map[string]any {
 	if value == nil {
 		return map[string]any{}
+	}
+	return value
+}
+
+func normalizeGeometryAttemptHistory(value []map[string]any) []map[string]any {
+	if value == nil {
+		return []map[string]any{}
 	}
 	return value
 }
@@ -991,7 +1087,14 @@ func isEmptyGeometryConstruction(construction GeometryConstruction) bool {
 		len(construction.Validation) == 0 &&
 		construction.ReviewStatus == "" &&
 		construction.SpecFingerprint == "" &&
-		len(construction.Diagnostics) == 0
+		len(construction.Diagnostics) == 0 &&
+		construction.ObjectScore == 0 &&
+		construction.ConditionScore == 0 &&
+		construction.TotalScore == 0 &&
+		len(construction.MissingObjects) == 0 &&
+		len(construction.FailedConditions) == 0 &&
+		construction.Iterations == 0 &&
+		len(construction.AttemptHistory) == 0
 }
 
 func normalizeGeometryScene(scene GeometryScene) GeometryScene {

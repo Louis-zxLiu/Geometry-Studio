@@ -10,6 +10,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  clear: [];
   close: [];
   "update:settings": [settings: AIProviderSettings];
 }>();
@@ -50,7 +51,7 @@ function updateField(field: "url" | "key" | "model", value: string) {
             <span class="ai-mode-check" aria-hidden="true"></span>
             <span class="ai-mode-copy">
               <strong>自定义 OpenAI 兼容 API</strong>
-              <small>在这里填写 LLM API，代码 AI、设计卡和拍照解题会共用这份配置。</small>
+              <small>代码 AI、设计卡和几何解题会共用这份配置。</small>
             </span>
           </button>
 
@@ -71,6 +72,7 @@ function updateField(field: "url" | "key" | "model", value: string) {
               <input
                 class="ai-provider-input"
                 type="password"
+                autocomplete="off"
                 :value="settings.key"
                 placeholder="sk-..."
                 @input="updateField('key', ($event.target as HTMLInputElement).value)"
@@ -90,9 +92,12 @@ function updateField(field: "url" | "key" | "model", value: string) {
           </div>
 
           <p class="ai-settings-hint">
-            保存位置：<code>config/ai-settings.json</code>。现场演示请使用支持图片输入的多模态模型。
+            保存位置：<code>config/ai-settings.json</code>。运行日志和 benchmark 输出会自动脱敏 API KEY。
           </p>
 
+          <button class="dialog-button secondary ai-settings-clear" type="button" @click="emit('clear')">
+            清除本机 AI 配置
+          </button>
         </div>
 
         <div class="create-dialog-actions">

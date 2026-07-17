@@ -402,12 +402,13 @@ onBeforeUnmount(() => {
       @confirm="workspace.startGeometryFromProblem"
     />
 
-    <GeometryReviewDialog
-      :open="workspace.isGeometryReviewDialogOpen"
-      :pending="workspace.isAIGenerating"
-      :construction-draft="workspace.geometryReviewConstructionDraft"
-      :spec="workspace.geometryReviewSpec"
-      :validation-summary="workspace.geometryReviewValidationSummary"
+      <GeometryReviewDialog
+        :open="workspace.isGeometryReviewDialogOpen"
+        :pending="workspace.isAIGenerating"
+        :construction-draft="workspace.geometryReviewConstructionDraft"
+        :source-image-data-url="workspace.geometryReviewSourceImageDataUrl"
+        :spec="workspace.geometryReviewSpec"
+        :validation-summary="workspace.geometryReviewValidationSummary"
       @cancel="workspace.cancelGeometryReview"
       @confirm="workspace.confirmGeometryReview"
     />
@@ -428,6 +429,7 @@ onBeforeUnmount(() => {
       :open="workspace.isAISettingsDialogOpen"
       :settings="workspace.aiSettings"
       @close="workspace.closeAISettings"
+      @clear="workspace.clearSavedAISettings"
       @update:settings="workspace.updateAISettings"
     />
 

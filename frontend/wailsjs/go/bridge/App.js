@@ -18,6 +18,10 @@ export function CheckForUpdates(arg1) {
   return window['go']['bridge']['App']['CheckForUpdates'](arg1);
 }
 
+export function ClearAISettings() {
+  return window['go']['bridge']['App']['ClearAISettings']();
+}
+
 export function CreateCodeAIVersion(arg1) {
   return window['go']['bridge']['App']['CreateCodeAIVersion'](arg1);
 }
