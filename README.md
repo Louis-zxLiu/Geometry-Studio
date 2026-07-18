@@ -11,6 +11,12 @@ go test ./...
 wails build -clean
 ```
 
+## 演示视频
+
+<video src="Hackathon%E5%B1%95%E7%A4%BA.mp4" controls width="100%"></video>
+
+[无法内嵌播放时，点击打开演示视频](Hackathon%E5%B1%95%E7%A4%BA.mp4)
+
 ## 项目亮点
 
 - 图片/文本双入口：可上传题图，也可直接输入几何题文字。
@@ -62,6 +68,16 @@ GeoBuildBench 测评脚本位于 `tools/geobuildbench_geometry_studio_eval.py`�
 ```powershell
 python tools\geobuildbench_geometry_studio_eval.py --help
 ```
+
+### 最新测评结果
+
+![GeoBuildBench 整体测评结果](benchmark-results/geobuildbench_overall_table_pdf.png)
+
+Geometry Studio 接入 GPT-5.5 后，在 2026-07-17 完成了 489 道题的完整测评，GeoBuildBench 成功率为 **92.2%**，成功题平均使用 **1.24** 步。
+
+为保证与 GeoBuildBench 论文结果的统计口径一致，表格中的 `Missing Objects` 和 `Failed Constraints` 会累计每道题所有有效验证步骤。本次测评共记录 829 次有效验证：全程累计缺失对象 **38** 个、失败约束 **409** 个。`Hallucinations / Prob.` 同样按完整执行过程统计 DSL 执行错误。
+
+完整的最终 DSL 评分与逐题结果见 [`benchmark-results/geobuildbench-geometry-studio-20260717-173926/report.md`](benchmark-results/geobuildbench-geometry-studio-20260717-173926/report.md)。
 
 ## 安装与运行
 

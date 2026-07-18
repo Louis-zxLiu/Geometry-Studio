@@ -1,0 +1,34 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{geometry}
+\usepackage{graphicx}
+
+\geometry{paperwidth=11in,paperheight=3.45in,margin=0.35in}
+\captionsetup{font=small,labelfont=bf}
+\pagestyle{empty}
+
+\begin{document}
+\noindent\begin{minipage}{\textwidth}
+\centering
+\captionof{table}{Overall performance on GeoBuildBench. Lower is better ($\downarrow$) for steps, hallucinations, missing objects, and failed constraints.}
+\label{tab:geobuildbench_overall_with_gpt55}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+Model & Success Rate (\%) & Avg. Steps $\downarrow$ & Hallucinations / Prob. $\downarrow$ & Missing Objects $\downarrow$ & Failed Constraints $\downarrow$ \\
+\midrule
+Geometry Studio + GPT-5.5 & \textbf{92.2} & \textbf{1.24} & 0.16 & \textbf{38} & \textbf{409} \\
+GPT-5.5 & 90.4 & 1.32 & \textbf{0.04} & 125 & 466 \\
+\midrule
+GPT-5.1 & 78.9 & 1.87 & 0.40 & 939 & 1119 \\
+Gemini-3-Flash & 75.3 & 1.55 & 0.34 & 329 & 932 \\
+Qwen3-VL-235B & 42.2 & 2.30 & 2.30 & 2042 & 1817 \\
+LLaMA-3.2-90B-Vision & 21.3 & 2.23 & 2.38 & 1823 & 1584 \\
+\bottomrule
+\end{tabular}%
+}
+\end{minipage}
+\end{document}
