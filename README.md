@@ -13,9 +13,9 @@ wails build -clean
 
 ## 演示视频
 
-<video src="Hackathon%E5%B1%95%E7%A4%BA.mp4" controls width="100%"></video>
+[![Geometry Studio 演示视频](docs/assets/hackathon-demo-preview.gif)](Hackathon%E5%B1%95%E7%A4%BA.mp4?raw=1)
 
-[无法内嵌播放时，点击打开演示视频](Hackathon%E5%B1%95%E7%A4%BA.mp4)
+点击动态预览可打开完整演示视频。
 
 ## 项目亮点
 
